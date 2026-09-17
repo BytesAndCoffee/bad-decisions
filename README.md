@@ -42,6 +42,32 @@ bad-decisions pack import example.carddeck /absolute/pack/registry
 rejects traversal, symlinks, unexpected members, checksum mismatches,
 oversized content, and dangerous compression ratios before any pack is written.
 
+### Public CardDeck catalog and remote imports
+
+The live [public CardDeck catalog](https://bad-decisions.objects.us-west-1.bytes.coffee/packs/index)
+lists every intentionally public archive with metadata, licensing/provenance,
+SHA-256, and direct download URLs.
+
+The runtime remains immutable: it loads packs at startup and has no endpoint to
+upload or alter them. To add a public pack, use the explicit remote-import CLI,
+then restart with `BAD_DECISIONS_PACK_DIR` pointing to the registry:
+
+```bash
+python -m bad_decisions.remote_cli archive \
+  https://bad-decisions-native.objects.us-west-1.bytes.coffee/packs/coffee.carddeck \
+  /absolute/pack/registry
+
+python -m bad_decisions.remote_cli index \
+  https://bad-decisions.objects.us-west-1.bytes.coffee/packs/index \
+  /absolute/pack/registry \
+  --pack coffee \
+  --pack pyx-2-base-game-us
+```
+
+Remote imports accept HTTPS only and reject redirects, URL credentials,
+oversized responses, malformed catalogs, duplicate selections, and invalid
+archives before the normal atomic, non-overwrite import occurs.
+
 ### Pretend You're Xyzzy imports
 
 The distribution does not bundle Pretend You're Xyzzy card data. If you have a
