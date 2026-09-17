@@ -1,8 +1,8 @@
-# CAHPACK 1: portable card-pack format
+# CardDeck 1: portable card-pack format
 
-CAHPACK is a small, offline interchange format for card packs compatible with
-the Cards Against Coffee engine. A CAHPACK archive is a ZIP file named with the
-`.cahpack` extension. This document defines version 1.
+CardDeck is a small, offline interchange format for card packs compatible with
+fill-in-the-blank card-game engines. A CardDeck archive is a ZIP file named
+with the `.carddeck` extension. This document defines version 1.
 
 The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**,
 and **MAY** are to be interpreted as described by RFC 2119.
@@ -34,12 +34,12 @@ Member names MUST be plain basenames. They MUST NOT contain path separators,
 ## Manifest
 
 `manifest.json` MUST be UTF-8 JSON conforming to
-[`schemas/cahpack-manifest-v1.schema.json`](schemas/cahpack-manifest-v1.schema.json).
+[`schemas/carddeck-manifest-v1.schema.json`](schemas/carddeck-manifest-v1.schema.json).
 It has no extension fields in version 1.
 
 ```json
 {
-  "format": "cahpack",
+  "format": "carddeck",
   "format_version": 1,
   "pack_id": "example-pack",
   "pack_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
@@ -97,7 +97,7 @@ The reference implementation limits each member to 2 MiB, the archive payload
 to 5 MiB, and a member's compression ratio to 100:1. Other implementations MAY
 choose stricter limits but SHOULD document them.
 
-Importing a CAHPACK archive does not require, authorize, or imply a runtime API
+Importing a CardDeck archive does not require, authorize, or imply a runtime API
 upload. A server SHOULD load its registry only at startup and require an
 operator-controlled restart after its registry changes.
 
@@ -111,14 +111,22 @@ recommended but is not required for conformance.
 ## Compatibility
 
 Consumers MUST reject `format_version` values they do not understand. A future
-CAHPACK version may add capabilities only through a new version; version-1
+CardDeck versions may add capabilities only through a new version; version-1
 readers MUST NOT silently accept unknown archive members or manifest fields.
 
 ## Reference commands
 
 ```bash
-cah pack validate example.cahpack
-cah pack export maha ./maha.cahpack
-cah pack init-registry /absolute/pack/registry
-cah pack import example.cahpack /absolute/pack/registry
+bad-decisions pack validate example.carddeck
+bad-decisions pack export example ./example.carddeck
+bad-decisions pack init-registry /absolute/pack/registry
+bad-decisions pack import example.carddeck /absolute/pack/registry
 ```
+
+## CAHPACK migration
+
+`.cahpack` archives are accepted as a legacy compatibility format when their
+manifest identifies `"format": "cahpack"` and version 1. Exporting to a
+`.cahpack` filename produces that legacy manifest deliberately. New archives
+SHOULD use `.carddeck` and `"format": "carddeck"`. The archive layout,
+validation rules, and checksum semantics are otherwise identical in version 1.

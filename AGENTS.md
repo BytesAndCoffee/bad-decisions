@@ -8,8 +8,8 @@ validation, licenses, backups, and ZIP-bomb defenses are not.
 
 ## Project map
 
-- `src/cah_engine/`: engine, pack models, CLI, API, and CAHPACK support.
-- `src/cah_engine/data/packs/`: bundled, validated JSON packs.
+- `src/bad_decisions/`: engine, pack models, CLI, API, and CardDeck support.
+- `src/bad_decisions/data/packs/`: bundled, validated JSON packs.
 - `client/`: separate dependency-free terminal-client distribution.
 - `scripts/`: reproducible import/conversion utilities.
 - `tests/`: pytest suite; keep behavioral and security coverage here.
@@ -19,7 +19,7 @@ validation, licenses, backups, and ZIP-bomb defenses are not.
 
 - Preserve the API's immutable-runtime model. Packs are loaded at startup; do
   not add API endpoints that import, upload, edit, or otherwise mutate packs.
-- `CAH_PACK_DIR` replaces the bundled registry. Use `cah pack init-registry`
+- `BAD_DECISIONS_PACK_DIR` replaces the bundled registry. Use `bad-decisions pack init-registry`
   before importing a portable pack when bundled packs should remain available.
 - Keep CLI one-shot output clean: no banners, logs, or diagnostics on stdout.
 - Maintain strict Pydantic validation and stable JSON error envelopes. Do not
@@ -58,7 +58,7 @@ For a server release, build and validate the exact artifacts:
 ```bash
 .venv/bin/python -m build .
 .venv/bin/python -m build client
-.pypi-venv/bin/twine check dist/cards_against_coffee_server-* client/dist/cards_against_coffee-*
+.pypi-venv/bin/twine check dist/bad_decisions-* client/dist/bad_decisions_client-*
 ```
 
 ## Deployment and publishing

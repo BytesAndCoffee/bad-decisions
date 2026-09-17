@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/BytesAndCoffee/cards-against-coffee/blob/main/schemas/cahpack-manifest-v1.schema.json",
-  "title": "CAHPACK 1 manifest",
+  "$id": "https://github.com/BytesAndCoffee/cards-against-coffee/blob/main/schemas/carddeck-manifest-v1.schema.json",
+  "title": "CardDeck 1 manifest",
   "type": "object",
   "additionalProperties": false,
   "required": ["format", "format_version", "pack_id", "pack_sha256"],
   "properties": {
-    "format": {"const": "cahpack"},
+    "format": {"const": "carddeck"},
     "format_version": {"const": 1},
     "pack_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$"},
     "pack_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}

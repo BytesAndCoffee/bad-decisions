@@ -86,27 +86,28 @@ pack requires validation and restart:
 PYTHONPATH=src .venv/bin/python scripts/validate_packs.py /absolute/pack/dir
 ```
 
-### Portable `.cahpack` archives
+### Portable `.carddeck` archives
 
-Share one pack as a `.cahpack` ZIP archive. Version 1 contains exactly
+Share one pack as a `.carddeck` ZIP archive. Version 1 contains exactly
 `manifest.json`, `pack.json`, `LICENSE.txt`, and `ATTRIBUTION.md`; the manifest
 pins a SHA-256 checksum of the pack payload. Archive operations are local CLI
 actions only—the HTTP API never imports or changes packs at runtime.
 
-The complete interoperable format is specified in [CAHPACK 1](CAHPACK.md), with
-a machine-readable [manifest schema](schemas/cahpack-manifest-v1.schema.json).
+The complete interoperable format is specified in [CardDeck 1](CARDDECK.md), with
+a machine-readable [manifest schema](schemas/carddeck-manifest-v1.schema.json).
 
 ```bash
-cah pack export maha ./maha.cahpack
-cah pack validate ./maha.cahpack
-cah pack init-registry /absolute/pack/registry
-cah pack import ./maha.cahpack /absolute/pack/registry
+bad-decisions pack export maha ./maha.carddeck
+bad-decisions pack validate ./maha.carddeck
+bad-decisions pack init-registry /absolute/pack/registry
+bad-decisions pack import ./maha.carddeck /absolute/pack/registry
 ```
 
 `init-registry` creates an empty complete registry containing the bundled packs.
 Import creates `<registry>/<pack-id>.json` atomically and refuses to overwrite
 an existing pack. Configure that complete registry through `CAH_PACK_DIR` and
-restart the service. The validator rejects malformed data, missing license or
+restart the service. Existing `.cahpack` archives remain accepted as a legacy
+format; new exports use `.carddeck`. The validator rejects malformed data, missing license or
 attribution text, path traversal, symlinks, unexpected members, oversized
 archives, high compression ratios, and checksum mismatches.
 

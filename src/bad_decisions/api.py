@@ -103,8 +103,8 @@ Inspect the loaded registry:
   GET {prefix}/v1/packs/{{pack_id}}
 
 Portable packs:
-  bad-decisions pack validate example.cahpack
-  Format documentation: CAHPACK.md
+  bad-decisions pack validate example.carddeck
+  Format documentation: CARDDECK.md
 
 Service interfaces:
   Interactive API docs: {prefix}/docs

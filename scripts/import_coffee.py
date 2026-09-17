@@ -107,7 +107,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("legacy_zip", type=Path)
     parser.add_argument("output_json", type=Path)
-    parser.add_argument("--archive", type=Path, help="also write a .cahpack archive")
+    parser.add_argument("--archive", type=Path, help="also write a .carddeck archive")
     args = parser.parse_args()
     legacy, payload = load_legacy(args.legacy_zip)
     pack = convert(legacy, hashlib.sha256(payload).hexdigest())

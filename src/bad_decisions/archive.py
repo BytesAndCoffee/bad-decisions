@@ -1,4 +1,4 @@
-"""Portable, offline .cahpack archive support."""
+"""Portable, offline CardDeck archive support."""
 
 from __future__ import annotations
 
@@ -16,8 +16,11 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from .errors import PackConfigurationError
 from .models import ID_PATTERN, Pack
 
-FORMAT = "cahpack"
+FORMAT = "carddeck"
+LEGACY_FORMAT = "cahpack"
 FORMAT_VERSION = 1
+CARDDECK_SUFFIX = ".carddeck"
+LEGACY_SUFFIX = ".cahpack"
 REQUIRED_MEMBERS = frozenset({"manifest.json", "pack.json", "LICENSE.txt", "ATTRIBUTION.md"})
 MAX_MEMBER_BYTES = 2 * 1024 * 1024
 MAX_ARCHIVE_BYTES = 5 * 1024 * 1024
@@ -34,7 +37,15 @@ class ArchiveManifest(BaseModel):
 
 
 def _error(message: str) -> PackConfigurationError:
-    return PackConfigurationError(f"cahpack: {message}")
+    return PackConfigurationError(f"carddeck: {message}")
+
+
+def _format_for_path(path: Path) -> str:
+    if path.suffix == CARDDECK_SUFFIX:
+        return FORMAT
+    if path.suffix == LEGACY_SUFFIX:
+        return LEGACY_FORMAT
+    raise _error("archive filename must end in .carddeck (or legacy .cahpack)")
 
 
 def _canonical_json(value: object) -> bytes:
@@ -46,8 +57,7 @@ def _pack_payload(pack: Pack) -> bytes:
 
 
 def _read_archive(path: Path) -> tuple[ArchiveManifest, Pack, bytes, str, str]:
-    if path.suffix != ".cahpack":
-        raise _error("archive filename must end in .cahpack")
+    expected_format = _format_for_path(path)
     try:
         with zipfile.ZipFile(path) as archive:
             infos = archive.infolist()
@@ -77,7 +87,7 @@ def _read_archive(path: Path) -> tuple[ArchiveManifest, Pack, bytes, str, str]:
         manifest = ArchiveManifest.model_validate_json(members["manifest.json"])
     except ValidationError as exc:
         raise _error(f"invalid manifest: {exc}") from exc
-    if manifest.format != FORMAT or manifest.format_version != FORMAT_VERSION:
+    if manifest.format != expected_format or manifest.format_version != FORMAT_VERSION:
         raise _error("unsupported archive format or version")
     payload = members["pack.json"]
     if hashlib.sha256(payload).hexdigest() != manifest.pack_sha256:
@@ -109,14 +119,13 @@ def export_pack(pack: Pack, destination: str | Path) -> Path:
     """Write a deterministic portable archive, refusing an existing target."""
 
     target = Path(destination)
-    if target.suffix != ".cahpack":
-        raise _error("destination filename must end in .cahpack")
+    format_name = _format_for_path(target)
     if target.exists():
         raise _error(f"destination already exists: {target}")
     target.parent.mkdir(parents=True, exist_ok=True)
     payload = _pack_payload(pack)
     manifest = ArchiveManifest(
-        format=FORMAT,
+        format=format_name,
         format_version=FORMAT_VERSION,
         pack_id=pack.metadata.id,
         pack_sha256=hashlib.sha256(payload).hexdigest(),
@@ -153,7 +162,7 @@ def import_pack(archive_path: str | Path, registry_dir: str | Path) -> Path:
     if destination.exists():
         raise _error(f"refusing to overwrite existing pack: {destination}")
     try:
-        with tempfile.NamedTemporaryFile("wb", dir=destination_dir, prefix=".cahpack-", delete=False) as handle:
+        with tempfile.NamedTemporaryFile("wb", dir=destination_dir, prefix=".carddeck-", delete=False) as handle:
             temporary = Path(handle.name)
             handle.write(payload)
         os.chmod(temporary, 0o644)

@@ -43,7 +43,7 @@ def parser() -> argparse.ArgumentParser:
 
 
 def pack_parser() -> argparse.ArgumentParser:
-    result = argparse.ArgumentParser(prog="bad-decisions pack", description="Validate, export, or import portable .cahpack archives.")
+    result = argparse.ArgumentParser(prog="bad-decisions pack", description="Validate, export, or import portable .carddeck archives.")
     commands = result.add_subparsers(dest="command", required=True)
     validate = commands.add_parser("validate", help="validate an archive without changing disk")
     validate.add_argument("archive", type=Path)
@@ -95,7 +95,7 @@ def _run_pack(argv: Sequence[str]) -> int:
     args = pack_parser().parse_args(argv)
     if args.command == "validate":
         pack = validate_archive(args.archive)
-        _write(f"valid cahpack: {pack.metadata.id}")
+        _write(f"valid carddeck: {pack.metadata.id}")
         return 0
     if args.command == "export":
         registry = load_registry()
