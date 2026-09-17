@@ -8,6 +8,7 @@ import os
 import stat
 import tempfile
 import zipfile
+from importlib.resources import files
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -164,3 +165,30 @@ def import_pack(archive_path: str | Path, registry_dir: str | Path) -> Path:
             pass
         raise _error(f"cannot import pack: {exc}") from exc
     return destination
+
+
+def initialize_registry(registry_dir: str | Path) -> tuple[Path, ...]:
+    """Create an empty absolute registry directory populated with bundled packs."""
+
+    destination_dir = Path(registry_dir)
+    if not destination_dir.is_absolute():
+        raise _error("registry directory must be an absolute path")
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    if not destination_dir.is_dir():
+        raise _error(f"registry path is not a directory: {destination_dir}")
+    if any(destination_dir.iterdir()):
+        raise _error(f"refusing to initialize non-empty registry: {destination_dir}")
+    source_dir = files("cah_engine").joinpath("data/packs")
+    copied: list[Path] = []
+    try:
+        for source in sorted(source_dir.iterdir(), key=lambda item: item.name):
+            if source.name.endswith(".json"):
+                target = destination_dir / source.name
+                target.write_bytes(source.read_bytes())
+                os.chmod(target, 0o644)
+                copied.append(target)
+    except OSError as exc:
+        raise _error(f"cannot initialize registry: {exc}") from exc
+    if not copied:
+        raise _error("no bundled pack files found")
+    return tuple(copied)

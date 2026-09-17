@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 from typing import Sequence
 
-from .archive import export_pack, import_pack, validate_archive
+from .archive import export_pack, import_pack, initialize_registry, validate_archive
 from .engine import generate_from_resolved, render_round
 from .errors import CahError, PackConfigurationError, UnknownPackError
 from .packs import load_registry, resolve_pools
@@ -52,6 +52,8 @@ def pack_parser() -> argparse.ArgumentParser:
     imported = commands.add_parser("import", help="import an archive into an absolute pack registry directory")
     imported.add_argument("archive", type=Path)
     imported.add_argument("registry_dir", type=Path)
+    initialized = commands.add_parser("init-registry", help="initialize an empty absolute registry with bundled packs")
+    initialized.add_argument("registry_dir", type=Path)
     return result
 
 
@@ -100,6 +102,10 @@ def _run_pack(argv: Sequence[str]) -> int:
             raise UnknownPackError(f"Unknown pack: {args.pack_id}", {"available_packs": list(registry.ids)})
         target = export_pack(registry.packs[args.pack_id], args.archive)
         _write(f"exported {args.pack_id} to {target}")
+        return 0
+    if args.command == "init-registry":
+        copied = initialize_registry(args.registry_dir)
+        _write(f"initialized registry with {len(copied)} bundled packs at {args.registry_dir}")
         return 0
     target = import_pack(args.archive, args.registry_dir)
     _write(f"imported {target.stem} to {target}")

@@ -5,7 +5,7 @@ import zipfile
 
 import pytest
 
-from cah_engine.archive import export_pack, import_pack, validate_archive
+from cah_engine.archive import export_pack, import_pack, initialize_registry, validate_archive
 from cah_engine.errors import PackConfigurationError
 from cah_engine.packs import load_registry
 
@@ -22,7 +22,8 @@ def test_export_validate_and_import_round_trip(tmp_path):
     registry = (tmp_path / "registry").resolve()
     imported = import_pack(archive, registry)
     assert imported == registry / "maha.json"
-    assert load_registry(registry).packs["maha"] == pack
+    with pytest.raises(PackConfigurationError, match="overwrite"):
+        import_pack(archive, registry)
 
 
 def test_import_requires_absolute_destination_and_never_overwrites(tmp_path):
@@ -42,3 +43,12 @@ def test_rejects_unexpected_or_unsafe_members(tmp_path):
             contents.writestr(name, "{}")
     with pytest.raises(PackConfigurationError, match="exactly"):
         validate_archive(archive)
+
+
+def test_initialize_registry_requires_empty_absolute_directory(tmp_path):
+    registry = (tmp_path / "registry").resolve()
+    copied = initialize_registry(registry)
+    assert [path.name for path in copied] == ["base.json", "maha.json"]
+    assert load_registry(registry).ids == ("base", "maha")
+    with pytest.raises(PackConfigurationError, match="non-empty"):
+        initialize_registry(registry)

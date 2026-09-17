@@ -12,6 +12,7 @@ build/
 client/dist/
 client/build/
 client/*.egg-info/
+exports/
 
 # Local configuration and secrets
 .env

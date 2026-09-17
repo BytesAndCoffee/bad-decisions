@@ -80,9 +80,11 @@ actions only—the HTTP API never imports or changes packs at runtime.
 ```bash
 cah pack export maha ./maha.cahpack
 cah pack validate ./maha.cahpack
+cah pack init-registry /absolute/pack/registry
 cah pack import ./maha.cahpack /absolute/pack/registry
 ```
 
+`init-registry` creates an empty complete registry containing the bundled packs.
 Import creates `<registry>/<pack-id>.json` atomically and refuses to overwrite
 an existing pack. Configure that complete registry through `CAH_PACK_DIR` and
 restart the service. The validator rejects malformed data, missing license or
