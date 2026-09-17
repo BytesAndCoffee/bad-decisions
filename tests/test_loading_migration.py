@@ -34,7 +34,7 @@ def test_maha_exact_migration_equivalence():
             original_black = [{kw.arg: ast.literal_eval(kw.value) for kw in item.keywords} for item in node.value.elts]
         elif node.targets[0].id == "WHITE_CARDS":
             original_white = ast.literal_eval(node.value)
-    pack = json.loads((ROOT / "src/cah_engine/data/packs/maha.json").read_text())
+    pack = json.loads((ROOT / "src/bad_decisions/data/packs/maha.json").read_text())
     migrated_black = [{key: card[key] for key in ("repr", "template", "slots")} for card in pack["black"]]
     migrated_white = [card["text"] for card in pack["white"]]
     assert (migrated_black, migrated_white) == (original_black, original_white)

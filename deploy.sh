@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploy a tested Cards Against Coffee server wheel to a configurable host.
+# Deploy a tested Bad Decisions server wheel to a configurable Linux host.
 set -euo pipefail
 
 if [[ ${EUID} -ne 0 ]]; then
@@ -9,14 +9,14 @@ fi
 
 umask 0027
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
-APP_NAME=${APP_NAME:-cards-against-coffee-server}
+APP_NAME=${APP_NAME:-bad-decisions}
 SERVICE_USER=${SERVICE_USER:-${APP_NAME}}
 APP_ROOT=${APP_ROOT:-/opt/${APP_NAME}}
 SERVICE_NAME=${SERVICE_NAME:-${APP_NAME}}
-ENV_FILE=${ENV_FILE:-/etc/${SERVICE_NAME}.env}
+ENV_FILE=${ENV_FILE:-/etc/bad-decisions/bad-decisions.env}
 PYTHON=${PYTHON:-/usr/bin/python3.12}
 BUILD_PYTHON=${BUILD_PYTHON:-${SCRIPT_DIR}/.venv/bin/python}
-ROOT_PATH=${ROOT_PATH:-/cah}
+ROOT_PATH=${ROOT_PATH:-/bad-decisions}
 BIND_HOST=${BIND_HOST:-127.0.0.1}
 PORT=${PORT:-8000}
 WORKERS=${WORKERS:-2}
@@ -65,8 +65,8 @@ fi
 
 echo "Building ${APP_NAME} wheel"
 "${BUILD_PYTHON}" -m build "${SCRIPT_DIR}"
-VERSION=$("${BUILD_PYTHON}" -c 'from cah_engine import __version__; print(__version__)')
-WHEEL=${SCRIPT_DIR}/dist/cards_against_coffee_server-${VERSION}-py3-none-any.whl
+VERSION=$("${BUILD_PYTHON}" -c 'from bad_decisions import __version__; print(__version__)')
+WHEEL=${SCRIPT_DIR}/dist/bad_decisions-${VERSION}-py3-none-any.whl
 if [[ ! -f ${WHEEL} ]]; then
   echo "Expected wheel was not created: ${WHEEL}" >&2
   exit 1
@@ -129,10 +129,11 @@ backup_file "${UNIT_FILE}" "${BACKUP_DIR}/unit"
 if [[ ! -f ${ENV_FILE} ]]; then
   install -o root -g root -m 0644 "${SCRIPT_DIR}/deploy/server.env.example" "${ENV_FILE}"
 fi
-if grep -q '^CAH_ROOT_PATH=' "${ENV_FILE}"; then
-  sed -i "s|^CAH_ROOT_PATH=.*|CAH_ROOT_PATH=${ROOT_PATH}|" "${ENV_FILE}"
+install -d -o root -g root -m 0755 "$(dirname "${ENV_FILE}")"
+if grep -q '^BAD_DECISIONS_ROOT_PATH=' "${ENV_FILE}"; then
+  sed -i "s|^BAD_DECISIONS_ROOT_PATH=.*|BAD_DECISIONS_ROOT_PATH=${ROOT_PATH}|" "${ENV_FILE}"
 else
-  printf '\nCAH_ROOT_PATH=%s\n' "${ROOT_PATH}" >> "${ENV_FILE}"
+  printf '\nBAD_DECISIONS_ROOT_PATH=%s\n' "${ROOT_PATH}" >> "${ENV_FILE}"
 fi
 sed \
   -e "s|@SERVICE_USER@|${SERVICE_USER}|g" \
@@ -148,8 +149,8 @@ if [[ ${CONFIGURE_NGINX} == 1 ]]; then
   backup_file "${NGINX_SITE_CONFIG}" "${BACKUP_DIR}/site"
   backup_file "${NGINX_LIMIT}" "${BACKUP_DIR}/limit"
   backup_file "${NGINX_SNIPPET}" "${BACKUP_DIR}/snippet"
-  if ! grep -Fq '# cards-against-coffee-location' "${NGINX_SITE_CONFIG}" && ! grep -Fq "include ${NGINX_SNIPPET};" "${NGINX_SITE_CONFIG}"; then
-    echo "Add '# cards-against-coffee-location' inside the intended nginx server block first." >&2
+  if ! grep -Fq '# bad-decisions-location' "${NGINX_SITE_CONFIG}" && ! grep -Fq "include ${NGINX_SNIPPET};" "${NGINX_SITE_CONFIG}"; then
+    echo "Add '# bad-decisions-location' inside the intended nginx server block first." >&2
     exit 1
   fi
   install -d -o root -g root -m 0755 /etc/nginx/snippets
@@ -167,7 +168,7 @@ location ${ROOT_PATH}/ {
 }
 EOF
   if ! grep -Fq "include ${NGINX_SNIPPET};" "${NGINX_SITE_CONFIG}"; then
-    sed -i "s|# cards-against-coffee-location|    include ${NGINX_SNIPPET};\\n    # cards-against-coffee-location|" "${NGINX_SITE_CONFIG}"
+    sed -i "s|# bad-decisions-location|    include ${NGINX_SNIPPET};\\n    # bad-decisions-location|" "${NGINX_SITE_CONFIG}"
   fi
   nginx -t
 fi

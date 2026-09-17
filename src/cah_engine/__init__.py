@@ -1,3 +1,5 @@
-"""Multi-pack random card engine."""
+"""Deprecated compatibility namespace for :mod:`bad_decisions`."""
 
-__version__ = "1.0.11"
+from bad_decisions import __version__
+
+__all__ = ["__version__"]

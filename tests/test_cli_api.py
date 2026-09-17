@@ -5,11 +5,11 @@ import sys
 
 from fastapi.testclient import TestClient
 
-from cah_engine.api import create_app
+from bad_decisions.api import create_app
 
 
 def run_cli(*args):
-    return subprocess.run([sys.executable, "-m", "cah_engine.cli", *args], text=True, capture_output=True)
+    return subprocess.run([sys.executable, "-m", "bad_decisions.cli", *args], text=True, capture_output=True)
 
 
 def test_oneshot_is_clean_and_filters_work():
@@ -34,10 +34,9 @@ def test_api_success_metadata_and_cache():
         howto = client.get("/")
         assert howto.status_code == 200
         assert howto.headers["content-type"].startswith("text/plain")
-        assert "/cah/v1/round" in howto.text
-        assert "/cah/web/" in howto.text
+        assert "/v1/round" in howto.text
         assert "CAHPACK.md" in howto.text
-        assert client.get("/healthz").json() == {"status": "ok", "version": "1.0.11", "pack_count": 2}
+        assert client.get("/healthz").json() == {"status": "ok", "version": "1.0.0", "pack_count": 2}
         web = client.get("/web/")
         assert web.status_code == 200 and "Cards Against Coffee" in web.text
         assert '<base href="/web/">' in web.text

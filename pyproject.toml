@@ -3,9 +3,9 @@ requires = ["hatchling==1.27.0"]
 build-backend = "hatchling.build"
 
 [project]
-name = "cards-against-coffee-server"
-version = "1.0.11"
-description = "Multi-pack random card round engine, CLI, and REST API"
+name = "bad-decisions"
+version = "1.0.0"
+description = "Reusable engine and service for fill-in-the-blank party card games"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { file = "LICENSE" }
@@ -23,11 +23,12 @@ dev = [
 ]
 
 [project.scripts]
-cah = "cah_engine.cli:main"
+bad-decisions = "bad_decisions.cli:main"
+cah = "bad_decisions.cli:legacy_main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/cah_engine"]
-include = ["src/cah_engine/web/**"]
+packages = ["src/bad_decisions", "src/cah_engine"]
+include = ["src/bad_decisions/data/**", "src/bad_decisions/web/**"]
 
 [tool.hatch.build.targets.sdist]
 include = ["src", "tests", "scripts", "deploy", "imports", "LICENSES", "*.md", "*.py", "pyproject.toml", "requirements*.lock"]

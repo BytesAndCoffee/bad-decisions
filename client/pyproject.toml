@@ -3,24 +3,25 @@ requires = ["hatchling==1.27.0"]
 build-backend = "hatchling.build"
 
 [project]
-name = "cards-against-coffee"
-version = "0.1.1"
-description = "A small terminal client for the Cards Against Coffee API"
+name = "bad-decisions-client"
+version = "1.0.0"
+description = "Cross-platform terminal client for Bad Decisions services"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
-authors = [{ name = "Cards Against Coffee contributors" }]
+authors = [{ name = "Bad Decisions contributors" }]
 classifiers = ["Development Status :: 3 - Alpha", "Environment :: Console", "License :: OSI Approved :: MIT License", "Programming Language :: Python :: 3", "Programming Language :: Python :: 3 :: Only"]
 
 [project.scripts]
-coffee-cards = "cards_against_coffee.cli:main"
+regret = "bad_decisions_client.cli:main"
+coffee-cards = "bad_decisions_client.cli:legacy_main"
 
 [project.urls]
 Homepage = "https://github.com/BytesAndCoffee/cards-against-coffee"
 Documentation = "https://github.com/BytesAndCoffee/cards-against-coffee#readme"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/cards_against_coffee"]
+packages = ["src/bad_decisions_client", "src/cards_against_coffee"]
 
 [tool.pytest.ini_options]
 addopts = "-q"

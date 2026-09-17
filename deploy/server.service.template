@@ -1,5 +1,5 @@
 [Unit]
-Description=Cards Against Coffee API
+Description=Bad Decisions API
 After=network-online.target
 Wants=network-online.target
 
@@ -9,7 +9,7 @@ User=@SERVICE_USER@
 Group=@SERVICE_USER@
 WorkingDirectory=@APP_ROOT@/current
 EnvironmentFile=@ENV_FILE@
-ExecStart=@APP_ROOT@/current/.venv/bin/uvicorn cah_engine.api:create_app --factory --host @BIND_HOST@ --port @PORT@ --workers @WORKERS@ --proxy-headers --forwarded-allow-ips=@BIND_HOST@
+ExecStart=@APP_ROOT@/current/.venv/bin/uvicorn bad_decisions.api:create_app --factory --host @BIND_HOST@ --port @PORT@ --workers @WORKERS@ --proxy-headers --forwarded-allow-ips=@BIND_HOST@
 Restart=on-failure
 RestartSec=3
 NoNewPrivileges=true

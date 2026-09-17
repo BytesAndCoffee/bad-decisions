@@ -1,3 +1,5 @@
-"""Dependency-free client for the Cards Against Coffee API."""
+"""Deprecated compatibility namespace for :mod:`bad_decisions_client`."""
 
-__version__ = "0.1.0"
+from bad_decisions_client import __version__
+
+__all__ = ["__version__"]
