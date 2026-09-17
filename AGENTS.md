@@ -1,5 +1,11 @@
 # Cards Against Coffee contributor guide
 
+> You are about to modify production infrastructure for a card game made from
+> questionable decisions. Please make new questionable decisions deliberately.
+
+This is an unofficial, unaffiliated fan project. It is absurd by design; its
+validation, licenses, backups, and ZIP-bomb defenses are not.
+
 ## Project map
 
 - `src/cah_engine/`: engine, pack models, CLI, API, and CAHPACK support.
