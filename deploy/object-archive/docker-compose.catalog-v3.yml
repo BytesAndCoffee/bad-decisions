@@ -1,0 +1,18 @@
+services:
+  carddeck-catalog:
+    build:
+      context: ./indexer
+      dockerfile: Dockerfile.catalog
+    restart: unless-stopped
+    network_mode: host
+    user: "${CATALOG_UID:?set the catalog uid}:${CATALOG_GID:?set the catalog gid}"
+    environment:
+      CATALOG_BIND_HOST: ${GARAGE_TAILNET_IP}
+      CATALOG_BIND_PORT: "8080"
+      CATALOG_ENDPOINT_URL: http://${GARAGE_TAILNET_IP}:3900
+      CATALOG_REGION: ${OBJECT_ARCHIVE_REGION:-us-west-1}
+      CATALOG_BUCKETS: ${CATALOG_BUCKETS:-bad-decisions-native,bad-decisions-pyx}
+      CATALOG_PUBLIC_OBJECT_DOMAIN: ${CATALOG_PUBLIC_OBJECT_DOMAIN:?set the archive object domain}
+      CATALOG_CREDENTIALS_FILE: /run/secrets/indexer_key
+    volumes:
+      - ./secrets/archive-indexer-key.txt:/run/secrets/indexer_key:ro

@@ -1,0 +1,30 @@
+# Render and install this exact-name server block on the public nginx edge.
+# It wins over the generic archive-host regex in nginx.
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name bad-decisions.@OBJECT_ARCHIVE_DOMAIN@;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name bad-decisions.@OBJECT_ARCHIVE_DOMAIN@;
+
+    # Supply the wildcard certificate for *.@OBJECT_ARCHIVE_DOMAIN@ here.
+
+    location = /packs/index {
+        proxy_pass http://@CATALOG_UPSTREAM@;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+
+    location / {
+        return 404;
+    }
+}

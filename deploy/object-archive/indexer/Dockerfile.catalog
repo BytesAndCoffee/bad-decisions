@@ -1,0 +1,8 @@
+FROM python:3.12-slim
+
+RUN pip install --no-cache-dir boto3==1.35.99
+
+COPY catalog.py /app/catalog.py
+
+USER 65534:65534
+ENTRYPOINT ["python", "/app/catalog.py"]
