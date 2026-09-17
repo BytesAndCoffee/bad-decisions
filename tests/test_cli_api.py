@@ -37,9 +37,10 @@ def test_api_success_metadata_and_cache():
         assert "/cah/v1/round" in howto.text
         assert "/cah/web/" in howto.text
         assert "CAHPACK.md" in howto.text
-        assert client.get("/healthz").json() == {"status": "ok", "version": "1.0.6", "pack_count": 2}
+        assert client.get("/healthz").json() == {"status": "ok", "version": "1.0.7", "pack_count": 2}
         web = client.get("/web/")
         assert web.status_code == 200 and "Cards Against Coffee" in web.text
+        assert client.get("/web", follow_redirects=False).status_code == 200
         assert client.get("/web/app.js").status_code == 200
         packs = client.get("/v1/packs").json()
         assert [p["id"] for p in packs] == ["base", "maha"]

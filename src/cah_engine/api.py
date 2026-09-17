@@ -120,6 +120,7 @@ For people and robots:
             return JSONResponse(envelope("path_not_found", "Path not found"), status_code=404)
         return FileResponse(str(files("cah_engine").joinpath("web", name)), media_type=media_type)
 
+    @app.get("/web", include_in_schema=False)
     @app.get("/web/", include_in_schema=False)
     def web_index():
         return web_asset("index.html")
