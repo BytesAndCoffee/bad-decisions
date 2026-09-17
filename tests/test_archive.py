@@ -1,0 +1,44 @@
+from __future__ import annotations
+
+import json
+import zipfile
+
+import pytest
+
+from cah_engine.archive import export_pack, import_pack, validate_archive
+from cah_engine.errors import PackConfigurationError
+from cah_engine.packs import load_registry
+
+
+def test_export_validate_and_import_round_trip(tmp_path):
+    pack = load_registry().packs["maha"]
+    archive = export_pack(pack, tmp_path / "maha.cahpack")
+    assert validate_archive(archive) == pack
+    with zipfile.ZipFile(archive) as contents:
+        assert set(contents.namelist()) == {"manifest.json", "pack.json", "LICENSE.txt", "ATTRIBUTION.md"}
+        manifest = json.loads(contents.read("manifest.json"))
+        assert manifest["format"] == "cahpack"
+        assert manifest["pack_id"] == "maha"
+    registry = (tmp_path / "registry").resolve()
+    imported = import_pack(archive, registry)
+    assert imported == registry / "maha.json"
+    assert load_registry(registry).packs["maha"] == pack
+
+
+def test_import_requires_absolute_destination_and_never_overwrites(tmp_path):
+    archive = export_pack(load_registry().packs["maha"], tmp_path / "maha.cahpack")
+    with pytest.raises(PackConfigurationError, match="absolute"):
+        import_pack(archive, "relative")
+    registry = (tmp_path / "registry").resolve()
+    import_pack(archive, registry)
+    with pytest.raises(PackConfigurationError, match="overwrite"):
+        import_pack(archive, registry)
+
+
+def test_rejects_unexpected_or_unsafe_members(tmp_path):
+    archive = tmp_path / "bad.cahpack"
+    with zipfile.ZipFile(archive, "w") as contents:
+        for name in ("manifest.json", "pack.json", "LICENSE.txt", "ATTRIBUTION.md", "../surprise"):
+            contents.writestr(name, "{}")
+    with pytest.raises(PackConfigurationError, match="exactly"):
+        validate_archive(archive)

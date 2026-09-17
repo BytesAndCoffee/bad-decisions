@@ -35,7 +35,7 @@ def test_api_success_metadata_and_cache():
         assert howto.status_code == 200
         assert howto.headers["content-type"].startswith("text/plain")
         assert "/cah/v1/round" in howto.text
-        assert client.get("/healthz").json() == {"status": "ok", "version": "1.0.1", "pack_count": 2}
+        assert client.get("/healthz").json() == {"status": "ok", "version": "1.0.2", "pack_count": 2}
         packs = client.get("/v1/packs").json()
         assert [p["id"] for p in packs] == ["base", "maha"]
         assert client.get("/v1/packs/maha").json()["counts"] == {"black": 27, "white": 52}

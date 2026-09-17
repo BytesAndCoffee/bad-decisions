@@ -5,10 +5,12 @@ import math
 import signal
 import sys
 import time
+from pathlib import Path
 from typing import Sequence
 
+from .archive import export_pack, import_pack, validate_archive
 from .engine import generate_from_resolved, render_round
-from .errors import CahError, PackConfigurationError
+from .errors import CahError, PackConfigurationError, UnknownPackError
 from .packs import load_registry, resolve_pools
 
 
@@ -36,6 +38,20 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--black-packs", help="override the black-card selector")
     result.add_argument("--white-packs", help="override the white-card selector")
     result.add_argument("--list-packs", action="store_true", help="list available packs and exit")
+    return result
+
+
+def pack_parser() -> argparse.ArgumentParser:
+    result = argparse.ArgumentParser(prog="cah pack", description="Validate, export, or import portable .cahpack archives.")
+    commands = result.add_subparsers(dest="command", required=True)
+    validate = commands.add_parser("validate", help="validate an archive without changing disk")
+    validate.add_argument("archive", type=Path)
+    export = commands.add_parser("export", help="export one registered pack to an archive")
+    export.add_argument("pack_id")
+    export.add_argument("archive", type=Path)
+    imported = commands.add_parser("import", help="import an archive into an absolute pack registry directory")
+    imported.add_argument("archive", type=Path)
+    imported.add_argument("registry_dir", type=Path)
     return result
 
 
@@ -72,8 +88,29 @@ def _interactive(resolved, registry) -> int:
             return 0
 
 
+def _run_pack(argv: Sequence[str]) -> int:
+    args = pack_parser().parse_args(argv)
+    if args.command == "validate":
+        pack = validate_archive(args.archive)
+        _write(f"valid cahpack: {pack.metadata.id}")
+        return 0
+    if args.command == "export":
+        registry = load_registry()
+        if args.pack_id not in registry.packs:
+            raise UnknownPackError(f"Unknown pack: {args.pack_id}", {"available_packs": list(registry.ids)})
+        target = export_pack(registry.packs[args.pack_id], args.archive)
+        _write(f"exported {args.pack_id} to {target}")
+        return 0
+    target = import_pack(args.archive, args.registry_dir)
+    _write(f"imported {target.stem} to {target}")
+    return 0
+
+
 def run(argv: Sequence[str] | None = None, *, sleep=time.sleep) -> int:
-    args = parser().parse_args(argv)
+    values = list(sys.argv[1:] if argv is None else argv)
+    if values and values[0] == "pack":
+        return _run_pack(values[1:])
+    args = parser().parse_args(values)
     if args.delay is not None and not args.rapid:
         parser().error("--delay may only be used with --rapid")
     registry = load_registry()
