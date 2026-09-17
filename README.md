@@ -77,6 +77,9 @@ Share one pack as a `.cahpack` ZIP archive. Version 1 contains exactly
 pins a SHA-256 checksum of the pack payload. Archive operations are local CLI
 actions only—the HTTP API never imports or changes packs at runtime.
 
+The complete interoperable format is specified in [CAHPACK 1](CAHPACK.md), with
+a machine-readable [manifest schema](schemas/cahpack-manifest-v1.schema.json).
+
 ```bash
 cah pack export maha ./maha.cahpack
 cah pack validate ./maha.cahpack
