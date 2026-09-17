@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from cah_engine.models import BlackCard, WhiteCard
+from bad_decisions.models import BlackCard, WhiteCard
 from conftest import make_pack
 
 

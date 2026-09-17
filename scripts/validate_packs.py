@@ -5,7 +5,7 @@ import argparse
 import json
 from pathlib import Path
 
-from cah_engine.packs import load_registry
+from bad_decisions.packs import load_registry
 
 
 def main() -> int:

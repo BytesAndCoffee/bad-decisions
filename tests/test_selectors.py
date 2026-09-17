@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from cah_engine.errors import SelectorError, UnknownPackError
-from cah_engine.packs import resolve_pools
+from bad_decisions.errors import SelectorError, UnknownPackError
+from bad_decisions.packs import resolve_pools
 
 
 def identities(cards):

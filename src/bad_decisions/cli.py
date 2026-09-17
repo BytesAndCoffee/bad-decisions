@@ -10,7 +10,7 @@ from typing import Sequence
 
 from .archive import export_pack, import_pack, initialize_registry, validate_archive
 from .engine import generate_from_resolved, render_round
-from .errors import CahError, PackConfigurationError, UnknownPackError
+from .errors import BadDecisionsError, PackConfigurationError, UnknownPackError
 from .packs import load_registry, resolve_pools
 from . import operations
 
@@ -148,16 +148,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     except PackConfigurationError as exc:
         _write(f"configuration error: {exc.message}", stream=sys.stderr)
         return 1
-    except CahError as exc:
+    except BadDecisionsError as exc:
         _write(f"{exc.code}: {exc.message}", stream=sys.stderr)
         return 2
     except BrokenPipeError:
         return 0
-
-
-def legacy_main(argv: Sequence[str] | None = None) -> int:
-    """Compatibility entry point for the deprecated ``cah`` executable."""
-    return main(argv)
 
 
 if __name__ == "__main__":

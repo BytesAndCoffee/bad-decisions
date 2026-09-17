@@ -5,10 +5,10 @@ import random
 import pytest
 from pydantic import ValidationError
 
-from cah_engine.engine import generate_from_resolved, render_round
-from cah_engine.errors import RenderError
-from cah_engine.models import BlackCard
-from cah_engine.packs import resolve_pools
+from bad_decisions.engine import generate_from_resolved, render_round
+from bad_decisions.errors import RenderError
+from bad_decisions.models import BlackCard
+from bad_decisions.packs import resolve_pools
 
 
 @pytest.mark.parametrize("slots", [True, 0, -1, 1.0, "1"])

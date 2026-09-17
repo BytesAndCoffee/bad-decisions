@@ -65,6 +65,6 @@ def test_initialize_registry_requires_empty_absolute_directory(tmp_path):
         initialize_registry(registry)
 
 
-def test_rejects_legacy_cahpack_filename(tmp_path):
+def test_rejects_non_carddeck_filename(tmp_path):
     with pytest.raises(PackConfigurationError, match=".carddeck"):
-        export_pack(load_registry().packs["maha"], tmp_path / "maha.cahpack")
+        export_pack(load_registry().packs["maha"], tmp_path / "maha.zip")

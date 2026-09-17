@@ -15,7 +15,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import __version__
 from .engine import generate_from_resolved
-from .errors import CahError
+from .errors import BadDecisionsError
 from .models import Round
 from .packs import Registry, load_registry, resolve_pools
 from .settings import Settings
@@ -63,8 +63,8 @@ def create_app() -> FastAPI:
         )
         return response
 
-    @app.exception_handler(CahError)
-    async def domain_error(_request: Request, exc: CahError):
+    @app.exception_handler(BadDecisionsError)
+    async def domain_error(_request: Request, exc: BadDecisionsError):
         return JSONResponse(envelope(exc.code, exc.message, exc.details), status_code=400)
 
     @app.exception_handler(RequestValidationError)

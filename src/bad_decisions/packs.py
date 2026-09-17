@@ -42,7 +42,7 @@ def _load_file(path: Path) -> Pack:
 
 
 def load_registry(pack_dir: str | Path | None = None) -> Registry:
-    configured = pack_dir if pack_dir is not None else os.getenv("BAD_DECISIONS_PACK_DIR", os.getenv("CAH_PACK_DIR"))
+    configured = pack_dir if pack_dir is not None else os.getenv("BAD_DECISIONS_PACK_DIR")
     if configured is not None:
         root = Path(configured)
         if not root.is_absolute():

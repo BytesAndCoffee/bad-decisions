@@ -14,14 +14,13 @@ classifiers = ["Development Status :: 3 - Alpha", "Environment :: Console", "Lic
 
 [project.scripts]
 regret = "bad_decisions_client.cli:main"
-coffee-cards = "bad_decisions_client.cli:legacy_main"
 
 [project.urls]
 Homepage = "https://github.com/BytesAndCoffee/cards-against-coffee"
 Documentation = "https://github.com/BytesAndCoffee/cards-against-coffee#readme"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/bad_decisions_client", "src/cards_against_coffee"]
+packages = ["src/bad_decisions_client"]
 
 [tool.pytest.ini_options]
 addopts = "-q"

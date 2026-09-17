@@ -1,12 +1,12 @@
 # Include this file inside the chosen nginx server block after adjusting the
 # route and upstream for your deployment.
-location /cah/ {
-    limit_req zone=cah_cards burst=30 nodelay;
+location /bad-decisions/ {
+    limit_req zone=bad_decisions burst=30 nodelay;
     proxy_pass http://127.0.0.1:8000/;
     proxy_http_version 1.1;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_set_header X-Forwarded-Prefix /cah;
+    proxy_set_header X-Forwarded-Prefix /bad-decisions;
 }

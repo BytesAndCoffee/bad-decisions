@@ -36,7 +36,7 @@ def test_api_success_metadata_and_cache():
         assert howto.headers["content-type"].startswith("text/plain")
         assert "/v1/round" in howto.text
         assert "CARDDECK.md" in howto.text
-        assert client.get("/healthz").json() == {"status": "ok", "version": "1.0.2", "pack_count": 2}
+        assert client.get("/healthz").json() == {"status": "ok", "version": "1.0.3", "pack_count": 2}
         web = client.get("/web/")
         assert web.status_code == 200 and "Cards Against Coffee" in web.text
         assert '<base href="/web/">' in web.text
@@ -55,10 +55,10 @@ def test_api_success_metadata_and_cache():
 
 
 def test_web_client_works_with_proxy_root_path(monkeypatch):
-    monkeypatch.setenv("CAH_ROOT_PATH", "/cah")
+    monkeypatch.setenv("BAD_DECISIONS_ROOT_PATH", "/bad-decisions")
     with TestClient(create_app()) as client:
         assert client.get("/web/").status_code == 200
-        assert '<base href="/cah/web/">' in client.get("/web").text
+        assert '<base href="/bad-decisions/web/">' in client.get("/web").text
         assert client.get("/web/style.css").status_code == 200
         assert client.get("/web/../api.py").status_code == 404
 

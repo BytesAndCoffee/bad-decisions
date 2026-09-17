@@ -9,8 +9,8 @@ import json
 import zipfile
 from pathlib import Path
 
-from cah_engine.archive import export_pack
-from cah_engine.models import Pack
+from bad_decisions.archive import export_pack
+from bad_decisions.models import Pack
 
 LEGACY_DECK_MEMBER = "bytesandcoffee-pack-v2.json"
 LICENSE_URL = "https://creativecommons.org/licenses/by-sa/4.0/"

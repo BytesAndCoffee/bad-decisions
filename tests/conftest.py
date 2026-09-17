@@ -4,8 +4,8 @@ from types import MappingProxyType
 
 import pytest
 
-from cah_engine.models import BlackCard, Pack, PackMetadata, Source, WhiteCard
-from cah_engine.packs import Registry
+from bad_decisions.models import BlackCard, Pack, PackMetadata, Source, WhiteCard
+from bad_decisions.packs import Registry
 
 
 def make_pack(pack_id: str, *, black=(), white=()) -> Pack:
