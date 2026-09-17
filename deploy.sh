@@ -101,9 +101,13 @@ rollback_on_error() {
     restore_file "${BACKUP_DIR}/env" "${ENV_FILE}" || true
     restore_file "${BACKUP_DIR}/unit" "${UNIT_FILE}" || true
     if [[ ${CONFIGURE_NGINX} == 1 ]]; then
-      restore_file "${BACKUP_DIR}/site" "${NGINX_SITE_CONFIG}" || true
-      restore_file "${BACKUP_DIR}/limit" "${NGINX_LIMIT}" || true
-      restore_file "${BACKUP_DIR}/snippet" "${NGINX_SNIPPET}" || true
+      for name in site limit snippet; do
+        backup="${BACKUP_DIR}/${name}"
+        destination=${NGINX_SITE_CONFIG}
+        [[ ${name} == limit ]] && destination=${NGINX_LIMIT}
+        [[ ${name} == snippet ]] && destination=${NGINX_SNIPPET}
+        if [[ -e ${backup} || -e ${backup}.absent ]]; then restore_file "${backup}" "${destination}" || true; fi
+      done
       nginx -t && systemctl reload nginx || true
     fi
   fi
@@ -126,10 +130,10 @@ chmod -R u=rwX,g=rX,o= "${RELEASE_DIR}"
 
 backup_file "${ENV_FILE}" "${BACKUP_DIR}/env"
 backup_file "${UNIT_FILE}" "${BACKUP_DIR}/unit"
+install -d -o root -g root -m 0755 "$(dirname "${ENV_FILE}")"
 if [[ ! -f ${ENV_FILE} ]]; then
   install -o root -g root -m 0644 "${SCRIPT_DIR}/deploy/server.env.example" "${ENV_FILE}"
 fi
-install -d -o root -g root -m 0755 "$(dirname "${ENV_FILE}")"
 if grep -q '^BAD_DECISIONS_ROOT_PATH=' "${ENV_FILE}"; then
   sed -i "s|^BAD_DECISIONS_ROOT_PATH=.*|BAD_DECISIONS_ROOT_PATH=${ROOT_PATH}|" "${ENV_FILE}"
 else
