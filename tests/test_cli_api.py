@@ -6,6 +6,7 @@ import sys
 from fastapi.testclient import TestClient
 
 from bad_decisions.api import create_app
+from bad_decisions import __version__
 
 
 def run_cli(*args):
@@ -36,7 +37,7 @@ def test_api_success_metadata_and_cache():
         assert howto.headers["content-type"].startswith("text/plain")
         assert "/v1/round" in howto.text
         assert "CARDDECK.md" in howto.text
-        assert client.get("/healthz").json() == {"status": "ok", "version": "1.0.8", "pack_count": 3}
+        assert client.get("/healthz").json() == {"status": "ok", "version": __version__, "pack_count": 3}
         web = client.get("/web/")
         assert web.status_code == 200 and "Bad Decisions" in web.text
         assert '<base href="/web/">' in web.text
