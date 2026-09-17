@@ -36,9 +36,9 @@ def test_api_success_metadata_and_cache():
         assert howto.headers["content-type"].startswith("text/plain")
         assert "/v1/round" in howto.text
         assert "CARDDECK.md" in howto.text
-        assert client.get("/healthz").json() == {"status": "ok", "version": "1.0.3", "pack_count": 2}
+        assert client.get("/healthz").json() == {"status": "ok", "version": "1.0.4", "pack_count": 2}
         web = client.get("/web/")
-        assert web.status_code == 200 and "Cards Against Coffee" in web.text
+        assert web.status_code == 200 and "Bad Decisions" in web.text
         assert '<base href="/web/">' in web.text
         assert client.get("/web", follow_redirects=False).status_code == 200
         assert client.get("/web/app.js").status_code == 200

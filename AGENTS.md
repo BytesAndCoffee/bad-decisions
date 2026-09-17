@@ -1,4 +1,4 @@
-# Cards Against Coffee contributor guide
+# Bad Decisions contributor guide
 
 > You are about to modify production infrastructure for a card game made from
 > questionable decisions. Please make new questionable decisions deliberately.
@@ -35,7 +35,7 @@ validation, licenses, backups, and ZIP-bomb defenses are not.
   pack unless the task explicitly authorizes a content transformation.
 - Do not add third-party card data without recorded source, license evidence,
   attribution, and redistribution compatibility.
-- MAHA and owner-authorized Cards Against Coffee material are CC BY-SA 4.0.
+- MAHA and owner-authorized custom material are CC BY-SA 4.0.
   The bundled `base` pack remains CC BY-NC-SA 2.0; combined distributions must
   honor its more restrictive terms.
 - Do not publish raw source-message corpora or personal data. The Coffee pack

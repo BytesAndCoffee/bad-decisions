@@ -10,7 +10,7 @@ from urllib.request import Request, urlopen
 
 from . import __version__
 
-DEFAULT_API_URL = "https://bytes.coffee/cah"
+DEFAULT_API_URL = "https://bytes.coffee/bad-decisions"
 
 
 def parser() -> argparse.ArgumentParser:

@@ -1,38 +1,27 @@
-# Cards Against Coffee terminal client
+# Bad Decisions terminal client
 
-`cards-against-coffee` is a dependency-free terminal client for the Cards
-Against Coffee API. It includes no card corpus and does not cache rounds.
+`bad-decisions-client` is a dependency-free terminal client for a Bad
+Decisions service. It contains no card corpus and runs on Linux, macOS, and
+Windows.
 
 ```bash
-python -m pip install cards-against-coffee
-coffee-cards
-coffee-cards --packs base,maha
-coffee-cards --black-packs maha --white-packs base,maha
-coffee-cards --list-packs
-coffee-cards --json
+python -m pip install bad-decisions-client
+regret health
+regret deal
+regret deal --packs base,maha
+regret --list-packs
 ```
 
-The default API is `https://bytes.coffee/cah`. Override it with `--api-url` to
-use any compatible private or local deployment.
+The default endpoint is `https://bytes.coffee/bad-decisions`. Use `--api-url`
+for another compatible deployment. Connection and API failures return a
+non-zero exit status.
 
-Card-data licensing and adult-content constraints are set by the service and
-its packs, not by this client.
+## Release
 
-## Release to PyPI
-
-The published client is available as
-[`cards-against-coffee`](https://pypi.org/project/cards-against-coffee/). The
-server/runtime is separately published as
-[`cards-against-coffee-server`](https://pypi.org/project/cards-against-coffee-server/).
-Recheck the intended version immediately before publishing an update.
+Build and validate before uploading a new immutable PyPI version:
 
 ```bash
 cd client
-python -m pip install --upgrade build twine
 python -m build
 twine check dist/*
-twine upload dist/*
 ```
-
-Use a PyPI API token through `TWINE_USERNAME=__token__` and `TWINE_PASSWORD`,
-or configure a keyring/token locally. Do not commit credentials or `.pypirc`.

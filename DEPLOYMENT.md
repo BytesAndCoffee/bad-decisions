@@ -14,7 +14,7 @@ Select the existing nginx server configuration that should expose the API. Add
 this exact marker inside the appropriate `server` block, then validate nginx:
 
 ```nginx
-# cards-against-coffee-location
+# bad-decisions-location
 ```
 
 The marker lets the deployer insert one managed `include` without replacing or
@@ -24,7 +24,7 @@ guessing at the rest of your nginx configuration.
 
 ```bash
 sudo NGINX_SITE_CONFIG=/etc/nginx/sites-available/example.com \
-  PUBLIC_BASE_URL=https://example.com/cah \
+  PUBLIC_BASE_URL=https://example.com/bad-decisions \
   ./deploy.sh
 ```
 
@@ -36,10 +36,10 @@ then performed.
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
-| `APP_NAME` | `cards-against-coffee-server` | Release directory and systemd service name. |
+| `APP_NAME` | `bad-decisions` | Release directory and systemd service name. |
 | `APP_ROOT` | `/opt/$APP_NAME` | Immutable release root. |
 | `SERVICE_USER` | `$APP_NAME` | Locked system account that runs the API. |
-| `ROOT_PATH` | `/cah` | Public nginx route and FastAPI root path. |
+| `ROOT_PATH` | `/bad-decisions` | Public nginx route and FastAPI root path. |
 | `BIND_HOST` | `127.0.0.1` | Uvicorn bind address. Keep loopback-only behind nginx. |
 | `PORT` | `8000` | Uvicorn port. |
 | `WORKERS` | `2` | Uvicorn worker count. |
