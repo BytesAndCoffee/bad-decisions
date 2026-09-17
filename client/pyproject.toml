@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cards-against-coffee"
-version = "0.1.0"
+version = "0.1.1"
 description = "A small terminal client for the Cards Against Coffee API"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -16,8 +16,8 @@ classifiers = ["Development Status :: 3 - Alpha", "Environment :: Console", "Lic
 coffee-cards = "cards_against_coffee.cli:main"
 
 [project.urls]
-Homepage = "https://bytes.coffee/cah/"
-Documentation = "https://bytes.coffee/cah/docs"
+Homepage = "https://github.com/BytesAndCoffee/cards-against-coffee"
+Documentation = "https://github.com/BytesAndCoffee/cards-against-coffee#readme"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/cards_against_coffee"]

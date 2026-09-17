@@ -109,43 +109,29 @@ available API paths and filter examples.
 
 ## Production deployment and rollback
 
-On dev-vps, after the local tests have passed, run the simple release deployer:
+`deploy.sh` is a configurable Linux/systemd/nginx deployer. It creates immutable
+wheel-based releases, manages a dedicated service account, and can add an nginx
+location to a server block you explicitly identify. It never assumes a domain,
+host name, user home, or existing site layout.
+
+Choose the site configuration and add this marker inside its desired TLS
+`server` block:
 
 ```bash
-sudo ./deploy.sh
+# cards-against-coffee-location
 ```
 
-It builds the wheel, creates `/opt/cah-api/releases/<UTC timestamp>`, installs
-the exact runtime lockfile and wheel, atomically switches `/opt/cah-api/current`,
-backs up a pre-existing unit/environment file, installs/enables `cah-api`, and
-verifies health plus an independently filtered round. It configures the existing
-`bytes.coffee` nginx TLS site at `/cah/`, validates and reloads nginx, and tests
-the routed HTTPS health endpoint. The MAHA route is publicly served with the
-project owner's authorization and its CC BY-SA 4.0 attribution/share-alike notice.
-Release files are owned by `root:cah-api`; the service group receives read and
-execute permissions only, never write permissions.
+Then deploy, supplying the target site and its public base URL:
 
-Install `python3.12-venv`, build tooling, nginx, and Poppler only for imports.
-Create a locked `cah-api` system user. Build a wheel, create immutable
-`/opt/cah-api/releases/<release-id>`, create its venv with
-`/usr/bin/python3.12`, install runtime locks, then `pip install --no-deps` the
-wheel. Make the release root/deployer-owned and non-writable to `cah-api`.
-Install `/etc/cah-api.env` before the unit; install the unit, run
-`systemctl daemon-reload`, then enable/start it. Two workers are a modest
-default; use a systemd override with an edited full `ExecStart` for one worker
-on a small VPS. Host/port are command arguments, not environment settings.
+```bash
+sudo NGINX_SITE_CONFIG=/etc/nginx/sites-available/example.com \
+  PUBLIC_BASE_URL=https://example.com/cah \
+  ./deploy.sh
+```
 
-Before changing nginx: inspect `nginx -T`, listeners, server names, TLS, auth,
-and upstream conventions; back up only the affected file. Integrate the route
-without replacing existing sites. Run `nginx -t` before graceful reload. Use
-the existing ACME/certificate workflow and redirect HTTP to HTTPS for public
-access. Keep port 8000 localhost-only; without an established domain use SSH
-forwarding. Check `systemctl status cah-api`, `journalctl -u cah-api`, localhost
-health, real generation, the external route, and a controlled service restart.
-
-For updates, stage and validate a new release, smoke-test on a spare localhost
-port, atomically repoint `/opt/cah-api/current`, restart, and verify. Keep the
-prior release plus env/nginx backups. Roll back by repointing `current` to the
-previous release, restoring only changed configuration if needed, restarting,
-and rechecking health. A normal service restart can briefly interrupt traffic;
-this setup does not claim zero downtime.
+The defaults are `APP_NAME=cards-against-coffee-server`, a `/cah` route, a
+loopback listener on port 8000, and two workers. Override them through the
+environment when needed; see `DEPLOYMENT.md` for every setting. The deployer
+backs up only the files it changes, validates nginx before reloading it, tests
+both local and public health endpoints, and restores the prior healthy release
+if activation fails.

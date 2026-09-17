@@ -1,80 +1,53 @@
-# dev-vps deployment record
+# Portable deployment
 
-Inspected 2026-09-16 on the current machine. Its static hostname is `bytes`;
-Tailscale identifies it as `dev-vps` at `100.126.191.148`. It runs Ubuntu
-24.04.4, system Python 3.12.3, nginx 1.24.0, and systemd. Ports 80/443 are
-active; `127.0.0.1:8000` was unused. Nginx includes `sites-enabled/*` and the
-enabled TLS site `bytes.coffee` already uses Certbot. Existing `/`, `/api`, and
-`/gmail-pubsub` routes must be preserved. `/cah/` was selected as the proposed
-nonconflicting route, with prefix stripping and `CAH_ROOT_PATH=/cah`.
+`deploy.sh` deploys this project to a Linux host using systemd and nginx. It is
+deliberately parameterized: it does not name a provider, host, domain, user
+home, or pre-existing nginx site.
 
-The wheel and localhost API are tested, but the durable deployment is blocked:
-this session's `sudo -n` reports `a password is required`. It therefore did not
-create `/opt/cah-api`, the `cah-api` account, `/etc/cah-api.env`, or a systemd
-unit, and did not change/reload nginx. Public routing is additionally blocked
-by the MAHA pack's unknown redistribution rights; keep the complete service on
-localhost/private access unless those rights are resolved. A public base-only
-registry would be a materially different deployment and was not substituted.
+Install Python 3.12 with venv support, nginx, and curl. Build and test the
+project first. The script must run as root because it creates a service account,
+release directory, systemd unit, environment file, and nginx configuration.
 
-## Exact remaining privileged steps
+## Configure the target server block
 
-The preferred path is now simply:
+Select the existing nginx server configuration that should expose the API. Add
+this exact marker inside the appropriate `server` block, then validate nginx:
 
-```bash
-cd /home/michael/cards
-sudo ./deploy.sh
+```nginx
+# cards-against-coffee-location
 ```
 
-The script performs the release/service steps below, configures the existing
-`bytes.coffee` HTTPS site at `/cah/`, validates/reloads nginx, and tests the
-routed health endpoint. MAHA deployment is owner-authorized and CC BY-SA 4.0;
-the base pack remains separately CC BY-NC-SA 2.0.
+The marker lets the deployer insert one managed `include` without replacing or
+guessing at the rest of your nginx configuration.
 
-Run from `/home/michael/cards` after reviewing paths and granting sudo:
+## Deploy
 
 ```bash
-sudo useradd --system --home /nonexistent --shell /usr/sbin/nologin cah-api
-sudo install -d -o root -g root -m 0755 /opt/cah-api/releases
-sudo install -d -o root -g root -m 0755 /opt/cah-api/releases/20260916-1
-sudo /usr/bin/python3.12 -m venv /opt/cah-api/releases/20260916-1/.venv
-sudo /opt/cah-api/releases/20260916-1/.venv/bin/pip install --requirement /home/michael/cards/requirements.lock
-sudo /opt/cah-api/releases/20260916-1/.venv/bin/pip install --no-deps /home/michael/cards/dist/cah_engine-1.0.0-py3-none-any.whl
-sudo chown -R root:root /opt/cah-api/releases/20260916-1
-sudo chmod -R go-w /opt/cah-api/releases/20260916-1
-sudo ln -sfn /opt/cah-api/releases/20260916-1 /opt/cah-api/current.new
-sudo mv -Tf /opt/cah-api/current.new /opt/cah-api/current
-printf 'CAH_LOG_LEVEL=INFO\nCAH_ROOT_PATH=/cah\n' | sudo tee /etc/cah-api.env >/dev/null
-sudo chown root:root /etc/cah-api.env
-sudo chmod 0644 /etc/cah-api.env
-sudo install -o root -g root -m 0644 deploy/cah-api.service /etc/systemd/system/cah-api.service
-sudo systemctl daemon-reload
-sudo systemctl enable --now cah-api
-curl --fail-with-body http://127.0.0.1:8000/healthz
-curl --fail-with-body --get http://127.0.0.1:8000/v1/round --data-urlencode 'black_packs=maha' --data-urlencode 'white_packs=base,maha'
-sudo systemctl status cah-api --no-pager
-sudo journalctl -u cah-api -n 100 --no-pager
+sudo NGINX_SITE_CONFIG=/etc/nginx/sites-available/example.com \
+  PUBLIC_BASE_URL=https://example.com/cah \
+  ./deploy.sh
 ```
 
-Before any public route, resolve MAHA rights or establish private nginx access.
-Then merge the two-context directives in
-`deploy/nginx.bytes.coffee.location.conf` into `/etc/nginx/nginx.conf` (the
-`limit_req_zone`) and the existing TLS block in
-`/etc/nginx/sites-available/bytes.coffee` (the `location`) after timestamped
-backups. Do not paste the whole snippet into one context. Validate and reload:
+The supplied public URL is used only for the post-deployment HTTPS health
+check. To deploy without nginx, use `CONFIGURE_NGINX=0`; no public check is
+then performed.
 
-```bash
-sudo nginx -t
-sudo systemctl reload nginx
-curl --fail-with-body https://bytes.coffee/cah/healthz
-curl --fail-with-body --get https://bytes.coffee/cah/v1/round --data-urlencode 'packs=all'
-```
+## Settings
 
-Verify controlled recovery with `sudo systemctl restart cah-api`, then repeat
-health and generation checks and inspect the journal. To roll back, atomically
-repoint `/opt/cah-api/current` to the retained previous release, restore only
-the timestamped env/nginx files if changed, restart `cah-api`, validate nginx,
-reload if needed, and repeat health checks.
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `APP_NAME` | `cards-against-coffee-server` | Release directory and systemd service name. |
+| `APP_ROOT` | `/opt/$APP_NAME` | Immutable release root. |
+| `SERVICE_USER` | `$APP_NAME` | Locked system account that runs the API. |
+| `ROOT_PATH` | `/cah` | Public nginx route and FastAPI root path. |
+| `BIND_HOST` | `127.0.0.1` | Uvicorn bind address. Keep loopback-only behind nginx. |
+| `PORT` | `8000` | Uvicorn port. |
+| `WORKERS` | `2` | Uvicorn worker count. |
+| `NGINX_SITE_CONFIG` | required when nginx is enabled | Existing server configuration containing the marker. |
+| `PUBLIC_BASE_URL` | required when nginx is enabled | HTTPS URL corresponding to `ROOT_PATH`. |
+| `CONFIGURE_NGINX` | `1` | Set to `0` to install only the systemd service. |
 
-The deployer automatically rolls back only to a release that was healthy before
-the update. It leaves a first failed deployment selected for diagnosis instead
-of restoring a known-failed release.
+For an update, rerun the same command. The script builds a wheel, stages an
+immutable release, atomically switches `current`, restarts the service, and
+retains the prior healthy release for rollback. Inspect service logs with
+`journalctl -u <APP_NAME> -n 100 --no-pager`.

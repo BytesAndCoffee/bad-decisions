@@ -1,0 +1,22 @@
+[Unit]
+Description=Cards Against Coffee API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=@SERVICE_USER@
+Group=@SERVICE_USER@
+WorkingDirectory=@APP_ROOT@/current
+EnvironmentFile=@ENV_FILE@
+ExecStart=@APP_ROOT@/current/.venv/bin/uvicorn cah_engine.api:create_app --factory --host @BIND_HOST@ --port @PORT@ --workers @WORKERS@ --proxy-headers --forwarded-allow-ips=@BIND_HOST@
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=@APP_ROOT@
+
+[Install]
+WantedBy=multi-user.target

@@ -1,41 +1,69 @@
 #!/usr/bin/env bash
-# Deploy the tested wheel as an immutable local release.
-# Run from any directory with: sudo /path/to/deploy.sh
+# Deploy a tested Cards Against Coffee server wheel to a configurable host.
 set -euo pipefail
 
 if [[ ${EUID} -ne 0 ]]; then
-  echo "Run this script with sudo: sudo ./deploy.sh" >&2
+  echo "Run this script with sudo." >&2
   exit 1
 fi
 
 umask 0027
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
-APP_ROOT=/opt/cah-api
+APP_NAME=${APP_NAME:-cards-against-coffee-server}
+SERVICE_USER=${SERVICE_USER:-${APP_NAME}}
+APP_ROOT=${APP_ROOT:-/opt/${APP_NAME}}
+SERVICE_NAME=${SERVICE_NAME:-${APP_NAME}}
+ENV_FILE=${ENV_FILE:-/etc/${SERVICE_NAME}.env}
+PYTHON=${PYTHON:-/usr/bin/python3.12}
+BUILD_PYTHON=${BUILD_PYTHON:-${SCRIPT_DIR}/.venv/bin/python}
+ROOT_PATH=${ROOT_PATH:-/cah}
+BIND_HOST=${BIND_HOST:-127.0.0.1}
+PORT=${PORT:-8000}
+WORKERS=${WORKERS:-2}
+CONFIGURE_NGINX=${CONFIGURE_NGINX:-1}
+NGINX_SITE_CONFIG=${NGINX_SITE_CONFIG:-}
+PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-}
+NGINX_ZONE=${NGINX_ZONE:-cah_cards}
 RELEASES_DIR=${APP_ROOT}/releases
 CURRENT_LINK=${APP_ROOT}/current
-PYTHON=/usr/bin/python3.12
-BUILD_PYTHON=${SCRIPT_DIR}/.venv/bin/python
-SITE_CONFIG=/etc/nginx/sites-available/bytes.coffee
-NGINX_LIMIT=/etc/nginx/conf.d/cah-api-limit.conf
-NGINX_SNIPPET=/etc/nginx/snippets/cah-api-location.conf
+UNIT_FILE=/etc/systemd/system/${SERVICE_NAME}.service
+NGINX_LIMIT=/etc/nginx/conf.d/${APP_NAME}.limit.conf
+NGINX_SNIPPET=/etc/nginx/snippets/${APP_NAME}.conf
 
-if [[ ! -x ${PYTHON} ]]; then
-  echo "Missing required interpreter: ${PYTHON}" >&2
+if [[ ! ${APP_NAME} =~ ^[a-z0-9][a-z0-9-]*$ ]] || [[ ! ${SERVICE_USER} =~ ^[a-z_][a-z0-9_-]*$ ]] || [[ ! ${SERVICE_NAME} =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+  echo "APP_NAME, SERVICE_NAME, and SERVICE_USER must be safe Linux identifiers." >&2
   exit 1
 fi
-if [[ ! -x ${BUILD_PYTHON} ]]; then
-  echo "Missing ${BUILD_PYTHON}. First create the tested project environment." >&2
+if [[ ! ${ROOT_PATH} =~ ^/[a-zA-Z0-9._/-]+$ ]] || [[ ${ROOT_PATH} == / ]]; then
+  echo "ROOT_PATH must be a non-root absolute URL path." >&2
   exit 1
 fi
-if [[ ! -f ${SITE_CONFIG} ]] || ! grep -q 'server_name bytes\.coffee;' "${SITE_CONFIG}"; then
-  echo "Expected dev-vps nginx site was not found: ${SITE_CONFIG}" >&2
+ROOT_PATH=${ROOT_PATH%/}
+if [[ ! ${PORT} =~ ^[0-9]+$ ]] || [[ ! ${WORKERS} =~ ^[1-9][0-9]*$ ]] || [[ ! ${NGINX_ZONE} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+  echo "PORT, WORKERS, or NGINX_ZONE is invalid." >&2
   exit 1
 fi
-if ! id -u cah-api >/dev/null 2>&1; then
-  useradd --system --home /nonexistent --shell /usr/sbin/nologin cah-api
+if [[ ! -x ${PYTHON} ]] || [[ ! -x ${BUILD_PYTHON} ]]; then
+  echo "Missing required Python interpreter or project build environment." >&2
+  exit 1
+fi
+if [[ ${CONFIGURE_NGINX} != 0 && ${CONFIGURE_NGINX} != 1 ]]; then
+  echo "CONFIGURE_NGINX must be 0 or 1." >&2
+  exit 1
+fi
+if [[ ${CONFIGURE_NGINX} == 1 ]]; then
+  if [[ -z ${NGINX_SITE_CONFIG} || ! -f ${NGINX_SITE_CONFIG} || -z ${PUBLIC_BASE_URL} ]]; then
+    echo "Set NGINX_SITE_CONFIG and PUBLIC_BASE_URL, or use CONFIGURE_NGINX=0." >&2
+    exit 1
+  fi
+  if [[ ! ${PUBLIC_BASE_URL} =~ ^https:// ]]; then
+    echo "PUBLIC_BASE_URL must be an HTTPS URL." >&2
+    exit 1
+  fi
+  PUBLIC_BASE_URL=${PUBLIC_BASE_URL%/}
 fi
 
-echo "Building wheel from ${SCRIPT_DIR}"
+echo "Building ${APP_NAME} wheel"
 "${BUILD_PYTHON}" -m build "${SCRIPT_DIR}"
 VERSION=$("${BUILD_PYTHON}" -c 'from cah_engine import __version__; print(__version__)')
 WHEEL=${SCRIPT_DIR}/dist/cards_against_coffee_server-${VERSION}-py3-none-any.whl
@@ -44,149 +72,119 @@ if [[ ! -f ${WHEEL} ]]; then
   exit 1
 fi
 
+if ! id -u "${SERVICE_USER}" >/dev/null 2>&1; then
+  useradd --system --home /nonexistent --shell /usr/sbin/nologin "${SERVICE_USER}"
+fi
+
 RELEASE_ID=$(date -u +%Y%m%dT%H%M%SZ)
 RELEASE_DIR=${RELEASES_DIR}/${RELEASE_ID}
-if [[ -e ${RELEASE_DIR} ]]; then
-  echo "Release path already exists: ${RELEASE_DIR}" >&2
-  exit 1
-fi
 PREVIOUS_RELEASE=
-if systemctl is-active --quiet cah-api && [[ -L ${CURRENT_LINK} ]]; then
+if systemctl is-active --quiet "${SERVICE_NAME}" && [[ -L ${CURRENT_LINK} ]]; then
   PREVIOUS_RELEASE=$(readlink -f "${CURRENT_LINK}" || true)
 fi
 ACTIVATED=false
-NGINX_CONFIGURED=false
 BACKUP_DIR=${APP_ROOT}/backups/${RELEASE_ID}
-ENV_EXISTED=false
-UNIT_EXISTED=false
 
 backup_file() {
   local source=$1 destination=$2
-  if [[ -e ${source} ]]; then
-    cp -p "${source}" "${destination}"
-  else
-    : > "${destination}.absent"
-  fi
+  if [[ -e ${source} ]]; then cp -p "${source}" "${destination}"; else : > "${destination}.absent"; fi
 }
 
 restore_file() {
   local backup=$1 destination=$2
-  if [[ -e ${backup}.absent ]]; then
-    rm -f "${destination}"
-  else
-    cp -p "${backup}" "${destination}"
-  fi
+  if [[ -e ${backup}.absent ]]; then rm -f "${destination}"; else cp -p "${backup}" "${destination}"; fi
 }
 
 rollback_on_error() {
-  status=$?
-  if [[ ${NGINX_CONFIGURED} == true ]]; then
-    restore_file "${BACKUP_DIR}/bytes.coffee" "${SITE_CONFIG}"
-    restore_file "${BACKUP_DIR}/cah-api-limit.conf" "${NGINX_LIMIT}"
-    restore_file "${BACKUP_DIR}/cah-api-location.conf" "${NGINX_SNIPPET}"
-    nginx -t && systemctl reload nginx || true
-  fi
-  if [[ ${ENV_EXISTED} == true ]]; then
-    cp -p "${BACKUP_DIR}/cah-api.env" /etc/cah-api.env
-  elif [[ -d ${BACKUP_DIR} ]]; then
-    rm -f /etc/cah-api.env
-  fi
-  if [[ ${UNIT_EXISTED} == true ]]; then
-    cp -p "${BACKUP_DIR}/cah-api.service" /etc/systemd/system/cah-api.service
-  elif [[ -d ${BACKUP_DIR} ]]; then
-    rm -f /etc/systemd/system/cah-api.service
+  local status=$?
+  if [[ -d ${BACKUP_DIR} ]]; then
+    restore_file "${BACKUP_DIR}/env" "${ENV_FILE}" || true
+    restore_file "${BACKUP_DIR}/unit" "${UNIT_FILE}" || true
+    if [[ ${CONFIGURE_NGINX} == 1 ]]; then
+      restore_file "${BACKUP_DIR}/site" "${NGINX_SITE_CONFIG}" || true
+      restore_file "${BACKUP_DIR}/limit" "${NGINX_LIMIT}" || true
+      restore_file "${BACKUP_DIR}/snippet" "${NGINX_SNIPPET}" || true
+      nginx -t && systemctl reload nginx || true
+    fi
   fi
   systemctl daemon-reload || true
   if [[ ${ACTIVATED} == true && -n ${PREVIOUS_RELEASE} && -d ${PREVIOUS_RELEASE} ]]; then
-    echo "Deployment failed; restoring ${PREVIOUS_RELEASE}" >&2
     ln -sfn "${PREVIOUS_RELEASE}" "${APP_ROOT}/current.new"
     mv -Tf "${APP_ROOT}/current.new" "${CURRENT_LINK}"
-    systemctl restart cah-api || true
-  elif [[ ${ACTIVATED} == true ]]; then
-    echo "Deployment failed, but no previously healthy release exists to restore." >&2
-    echo "The newly staged release remains selected for diagnosis." >&2
+    systemctl restart "${SERVICE_NAME}" || true
   fi
   exit "${status}"
 }
 trap rollback_on_error ERR
 
-install -d -o root -g root -m 0755 "${RELEASES_DIR}" "${RELEASE_DIR}"
+install -d -o root -g root -m 0755 "${RELEASES_DIR}" "${RELEASE_DIR}" "${BACKUP_DIR}"
 "${PYTHON}" -m venv "${RELEASE_DIR}/.venv"
 "${RELEASE_DIR}/.venv/bin/pip" install --requirement "${SCRIPT_DIR}/requirements.lock"
 "${RELEASE_DIR}/.venv/bin/pip" install --no-deps "${WHEEL}"
-
-# The service account must traverse the release and execute the venv, but it
-# must never be able to write it. Root remains the owner; cah-api gets read/X.
-chown -R root:cah-api "${RELEASE_DIR}"
+chown -R root:"${SERVICE_USER}" "${RELEASE_DIR}"
 chmod -R u=rwX,g=rX,o= "${RELEASE_DIR}"
 
-install -d -o root -g root -m 0755 "${APP_ROOT}/backups" "${BACKUP_DIR}"
-if [[ -f /etc/cah-api.env ]]; then
-  ENV_EXISTED=true
-  cp -p /etc/cah-api.env "${BACKUP_DIR}/cah-api.env"
+backup_file "${ENV_FILE}" "${BACKUP_DIR}/env"
+backup_file "${UNIT_FILE}" "${BACKUP_DIR}/unit"
+if [[ ! -f ${ENV_FILE} ]]; then
+  install -o root -g root -m 0644 "${SCRIPT_DIR}/deploy/server.env.example" "${ENV_FILE}"
+fi
+if grep -q '^CAH_ROOT_PATH=' "${ENV_FILE}"; then
+  sed -i "s|^CAH_ROOT_PATH=.*|CAH_ROOT_PATH=${ROOT_PATH}|" "${ENV_FILE}"
 else
-  install -o root -g root -m 0644 "${SCRIPT_DIR}/deploy/cah-api.env.example" /etc/cah-api.env
+  printf '\nCAH_ROOT_PATH=%s\n' "${ROOT_PATH}" >> "${ENV_FILE}"
 fi
-if [[ -f /etc/systemd/system/cah-api.service ]]; then
-  UNIT_EXISTED=true
-  cp -p /etc/systemd/system/cah-api.service "${BACKUP_DIR}/cah-api.service"
-fi
-install -o root -g root -m 0644 "${SCRIPT_DIR}/deploy/cah-api.service" /etc/systemd/system/cah-api.service
-if grep -q '^CAH_ROOT_PATH=' /etc/cah-api.env; then
-  sed -i 's|^CAH_ROOT_PATH=.*|CAH_ROOT_PATH=/cah|' /etc/cah-api.env
-else
-  printf '\nCAH_ROOT_PATH=/cah\n' >> /etc/cah-api.env
-fi
+sed \
+  -e "s|@SERVICE_USER@|${SERVICE_USER}|g" \
+  -e "s|@APP_ROOT@|${APP_ROOT}|g" \
+  -e "s|@ENV_FILE@|${ENV_FILE}|g" \
+  -e "s|@BIND_HOST@|${BIND_HOST}|g" \
+  -e "s|@PORT@|${PORT}|g" \
+  -e "s|@WORKERS@|${WORKERS}|g" \
+  "${SCRIPT_DIR}/deploy/server.service.template" > "${UNIT_FILE}"
+chmod 0644 "${UNIT_FILE}"
 
-backup_file "${SITE_CONFIG}" "${BACKUP_DIR}/bytes.coffee"
-backup_file "${NGINX_LIMIT}" "${BACKUP_DIR}/cah-api-limit.conf"
-backup_file "${NGINX_SNIPPET}" "${BACKUP_DIR}/cah-api-location.conf"
-install -d -o root -g root -m 0755 /etc/nginx/snippets
-install -o root -g root -m 0644 /dev/stdin "${NGINX_LIMIT}" <<'EOF'
-limit_req_zone $binary_remote_addr zone=cah_api:10m rate=5r/s;
-EOF
-install -o root -g root -m 0644 /dev/stdin "${NGINX_SNIPPET}" <<EOF
-location /cah/ {
-    limit_req zone=cah_api burst=10 nodelay;
-    limit_req_status 429;
-    proxy_pass http://127.0.0.1:8000/;
+if [[ ${CONFIGURE_NGINX} == 1 ]]; then
+  backup_file "${NGINX_SITE_CONFIG}" "${BACKUP_DIR}/site"
+  backup_file "${NGINX_LIMIT}" "${BACKUP_DIR}/limit"
+  backup_file "${NGINX_SNIPPET}" "${BACKUP_DIR}/snippet"
+  if ! grep -Fq '# cards-against-coffee-location' "${NGINX_SITE_CONFIG}" && ! grep -Fq "include ${NGINX_SNIPPET};" "${NGINX_SITE_CONFIG}"; then
+    echo "Add '# cards-against-coffee-location' inside the intended nginx server block first." >&2
+    exit 1
+  fi
+  install -d -o root -g root -m 0755 /etc/nginx/snippets
+  printf 'limit_req_zone $binary_remote_addr zone=%s:10m rate=10r/s;\n' "${NGINX_ZONE}" > "${NGINX_LIMIT}"
+  cat > "${NGINX_SNIPPET}" <<EOF
+location ${ROOT_PATH}/ {
+    limit_req zone=${NGINX_ZONE} burst=30 nodelay;
+    proxy_pass http://${BIND_HOST}:${PORT}/;
     proxy_http_version 1.1;
     proxy_set_header Host \$host;
     proxy_set_header X-Real-IP \$remote_addr;
     proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto \$scheme;
-    proxy_connect_timeout 5s;
-    proxy_read_timeout 15s;
+    proxy_set_header X-Forwarded-Prefix ${ROOT_PATH};
 }
 EOF
-if ! grep -Fq 'include /etc/nginx/snippets/cah-api-location.conf;' "${SITE_CONFIG}"; then
-  if ! grep -q '^[[:space:]]*include fcgiwrap\.conf;' "${SITE_CONFIG}"; then
-    echo "Cannot find the expected bytes.coffee insertion point; nginx was not changed." >&2
-    exit 1
+  if ! grep -Fq "include ${NGINX_SNIPPET};" "${NGINX_SITE_CONFIG}"; then
+    sed -i "s|# cards-against-coffee-location|    include ${NGINX_SNIPPET};\\n    # cards-against-coffee-location|" "${NGINX_SITE_CONFIG}"
   fi
-  sed -i '/^[[:space:]]*include fcgiwrap\.conf;/i\    include /etc/nginx/snippets/cah-api-location.conf;' "${SITE_CONFIG}"
+  nginx -t
 fi
-NGINX_CONFIGURED=true
-nginx -t
 
 ln -sfn "${RELEASE_DIR}" "${APP_ROOT}/current.new"
 mv -Tf "${APP_ROOT}/current.new" "${CURRENT_LINK}"
 ACTIVATED=true
-
 systemctl daemon-reload
-systemctl enable cah-api
-systemctl restart cah-api
-curl --fail --silent --show-error --retry 10 --retry-connrefused http://127.0.0.1:8000/healthz
-curl --fail --silent --show-error --get http://127.0.0.1:8000/v1/round \
-  --data-urlencode 'black_packs=maha' \
-  --data-urlencode 'white_packs=base,maha' \
-  --output /dev/null
-systemctl reload nginx
-curl --fail --silent --show-error --resolve bytes.coffee:443:127.0.0.1 \
-  https://bytes.coffee/cah/healthz
+systemctl enable "${SERVICE_NAME}"
+systemctl restart "${SERVICE_NAME}"
+curl --fail --silent --show-error --retry 10 --retry-connrefused "http://${BIND_HOST}:${PORT}/healthz"
+curl --fail --silent --show-error --get "http://${BIND_HOST}:${PORT}/v1/round" --data-urlencode 'packs=base'
+if [[ ${CONFIGURE_NGINX} == 1 ]]; then
+  systemctl reload nginx
+  curl --fail --silent --show-error "${PUBLIC_BASE_URL}/healthz"
+fi
 
 trap - ERR
-echo
-echo "Deployed ${RELEASE_ID} to ${CURRENT_LINK}"
-echo "Check logs with: journalctl -u cah-api -n 100 --no-pager"
-echo "Nginx route: https://bytes.coffee/cah/"
+echo "Deployment complete: ${APP_NAME} ${VERSION}"
+echo "Logs: journalctl -u ${SERVICE_NAME} -n 100 --no-pager"

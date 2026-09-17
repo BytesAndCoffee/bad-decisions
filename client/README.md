@@ -12,8 +12,8 @@ coffee-cards --list-packs
 coffee-cards --json
 ```
 
-The default API is `https://bytes.coffee/cah`. Override it with
-`--api-url http://127.0.0.1:8000` for a private or local deployment.
+The default API is `https://bytes.coffee/cah`. Override it with `--api-url` to
+use any compatible private or local deployment.
 
 Card-data licensing and adult-content constraints are set by the service and
 its packs, not by this client.
