@@ -1,8 +1,30 @@
-# Multi-pack card engine
+# Cards Against Coffee server
 
 Python 3.12 engine, CLI, and FastAPI service for generating random completed
 card rounds. Content is adult/offensive satire. This is not a multiplayer game
 and has no accounts, database, uploads, runtime downloads, or mutable API state.
+
+## PyPI packages
+
+Cards Against Coffee is published as two packages:
+
+- [`cards-against-coffee-server`](https://pypi.org/project/cards-against-coffee-server/)
+  provides the engine, `cah` command, packs, and FastAPI application.
+- [`cards-against-coffee`](https://pypi.org/project/cards-against-coffee/)
+  provides the lightweight `coffee-cards` terminal client for the hosted API.
+
+Install the server/runtime with:
+
+```bash
+python -m pip install cards-against-coffee-server
+```
+
+For the API-backed terminal client, install and run:
+
+```bash
+python -m pip install cards-against-coffee
+coffee-cards
+```
 
 The immutable registry loads and validates once at startup. `base` is the
 default; `--packs maha` restores the original MAHA-only behavior. Black and

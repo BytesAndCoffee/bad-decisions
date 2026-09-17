@@ -20,8 +20,11 @@ its packs, not by this client.
 
 ## Release to PyPI
 
-`cards-against-coffee` was available on PyPI when prepared; recheck immediately
-before publishing.
+The published client is available as
+[`cards-against-coffee`](https://pypi.org/project/cards-against-coffee/). The
+server/runtime is separately published as
+[`cards-against-coffee-server`](https://pypi.org/project/cards-against-coffee-server/).
+Recheck the intended version immediately before publishing an update.
 
 ```bash
 cd client
