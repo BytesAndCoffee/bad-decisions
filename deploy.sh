@@ -153,7 +153,12 @@ if [[ ${CONFIGURE_NGINX} == 1 ]]; then
   backup_file "${NGINX_SITE_CONFIG}" "${BACKUP_DIR}/site"
   backup_file "${NGINX_LIMIT}" "${BACKUP_DIR}/limit"
   backup_file "${NGINX_SNIPPET}" "${BACKUP_DIR}/snippet"
-  if ! grep -Fq '# bad-decisions-location' "${NGINX_SITE_CONFIG}" && ! grep -Fq "include ${NGINX_SNIPPET};" "${NGINX_SITE_CONFIG}"; then
+  marker_count=$(grep -Fc '# bad-decisions-location' "${NGINX_SITE_CONFIG}" || true)
+  if [[ ${marker_count} -gt 1 ]]; then
+    echo "NGINX_SITE_CONFIG contains multiple '# bad-decisions-location' markers; leave exactly one." >&2
+    exit 1
+  fi
+  if [[ ${marker_count} == 0 ]] && ! grep -Fq "include ${NGINX_SNIPPET};" "${NGINX_SITE_CONFIG}"; then
     echo "Add '# bad-decisions-location' inside the intended nginx server block first." >&2
     exit 1
   fi
