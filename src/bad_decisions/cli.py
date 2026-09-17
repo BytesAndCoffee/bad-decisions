@@ -12,6 +12,7 @@ from .archive import export_pack, import_pack, initialize_registry, validate_arc
 from .engine import generate_from_resolved, render_round
 from .errors import BadDecisionsError, PackConfigurationError, UnknownPackError
 from .packs import load_registry, resolve_pools
+from .remote import import_index, import_url
 from . import operations
 
 
@@ -51,8 +52,12 @@ def pack_parser() -> argparse.ArgumentParser:
     export.add_argument("pack_id")
     export.add_argument("archive", type=Path)
     imported = commands.add_parser("import", help="import an archive into an absolute pack registry directory")
-    imported.add_argument("archive", type=Path)
+    source = imported.add_mutually_exclusive_group()
+    source.add_argument("--remote", action="store_true", help="download one HTTPS .carddeck archive")
+    source.add_argument("--index", action="store_true", help="import selected packs from a live HTTPS CardDeck index")
+    imported.add_argument("archive")
     imported.add_argument("registry_dir", type=Path)
+    imported.add_argument("--pack", dest="pack_ids", action="append", help="catalog pack ID; repeat with --index")
     initialized = commands.add_parser("init-registry", help="initialize an empty absolute registry with bundled packs")
     initialized.add_argument("registry_dir", type=Path)
     return result
@@ -108,7 +113,19 @@ def _run_pack(argv: Sequence[str]) -> int:
         copied = initialize_registry(args.registry_dir)
         _write(f"initialized registry with {len(copied)} bundled packs at {args.registry_dir}")
         return 0
-    target = import_pack(args.archive, args.registry_dir)
+    if args.remote:
+        if args.pack_ids:
+            raise PackConfigurationError("--pack may only be used with --index")
+        target = import_url(args.archive, args.registry_dir)
+    elif args.index:
+        targets = import_index(args.archive, args.registry_dir, pack_ids=args.pack_ids or ())
+        for target in targets:
+            _write(f"imported {target.stem} to {target}")
+        return 0
+    elif args.pack_ids:
+        raise PackConfigurationError("--pack may only be used with --index")
+    else:
+        target = import_pack(args.archive, args.registry_dir)
     _write(f"imported {target.stem} to {target}")
     return 0
 

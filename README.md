@@ -53,11 +53,11 @@ upload or alter them. To add a public pack, use the explicit remote-import CLI,
 then restart with `BAD_DECISIONS_PACK_DIR` pointing to the registry:
 
 ```bash
-python -m bad_decisions.remote_cli archive \
+bad-decisions pack import --remote \
   https://bad-decisions-native.objects.us-west-1.bytes.coffee/packs/coffee.carddeck \
   /absolute/pack/registry
 
-python -m bad_decisions.remote_cli index \
+bad-decisions pack import --index \
   https://bad-decisions.objects.us-west-1.bytes.coffee/packs/index \
   /absolute/pack/registry \
   --pack coffee \
