@@ -88,23 +88,30 @@ def create_app() -> FastAPI:
 
     @app.get("/", response_class=PlainTextResponse, include_in_schema=False)
     def howto():
-        return """Card Round API
+        return """Cards Against Coffee
 
-Generate a completed random round:
+From joke to prod, in hours: a portable, reconfigurable card-round engine.
+
+Play in your browser:
+  /cah/web/
+
+Deal a completed round:
   GET /cah/v1/round
-
-Choose packs (comma-separated, case-sensitive):
-  GET /cah/v1/round?packs=base,maha
   GET /cah/v1/round?black_packs=maha&white_packs=base,maha
 
-Inspect available packs:
+See what is loaded:
   GET /cah/v1/packs
-  GET /cah/v1/packs/maha
+  GET /cah/v1/packs/{pack_id}
 
-Service health: GET /cah/healthz
-Interactive API docs: /cah/docs
-OpenAPI schema: /cah/openapi.json
-Browser client: /cah/web/
+Bring your own questionable decisions:
+  Import portable .cahpack files with the cah CLI.
+  Format docs: https://github.com/BytesAndCoffee/cards-against-coffee/blob/main/CAHPACK.md
+  Project docs: https://github.com/BytesAndCoffee/cards-against-coffee
+
+For people and robots:
+  Interactive API docs: /cah/docs
+  OpenAPI schema: /cah/openapi.json
+  Health: /cah/healthz
 """
 
     def web_asset(name: str):
