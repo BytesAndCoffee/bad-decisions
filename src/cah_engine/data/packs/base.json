@@ -1,0 +1,3674 @@
+{
+  "schema_version": 1,
+  "metadata": {
+    "id": "base",
+    "name": "Cards Against Humanity downloadable main game",
+    "description": "Cards from the verified official downloadable main-game PDF.",
+    "version": "2019-12-02",
+    "language": "en-US",
+    "custom": false,
+    "authors": [
+      "Cards Against Humanity LLC"
+    ],
+    "attribution": "Cards Against Humanity by Cards Against Humanity LLC, used under CC BY-NC-SA 2.0.",
+    "license_id": "CC-BY-NC-SA-2.0",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/2.0/",
+    "license_notice": "Noncommercial use only; attribution and share-alike apply. No endorsement is implied.",
+    "sources": [
+      {
+        "origin": "https://s3.amazonaws.com/cah/CAH_MainGame.pdf",
+        "edition": "Official downloadable main game PDF, created 2019-12-02",
+        "sha256": "92c8a719c6d7f28b89a87ecbfae780e7d4cd7472c97c7cf1ffe3037c2af89f9b",
+        "retrieved": "2026-09-16",
+        "license_evidence": "PDF page 17 Terms of Use; LICENSES/CC-BY-NC-SA-2.0-legalcode.html"
+      }
+    ],
+    "modifications": [
+      "Layout-aware text extraction; line wrapping collapsed to spaces; printed underscore runs normalized to anonymous placeholders; prompts without printed blanks append answers on new lines."
+    ]
+  },
+  "black": [
+    {
+      "id": "b001",
+      "repr": "Hey Reddit! I’m __________________. Ask me anything.",
+      "template": "Hey Reddit! I’m {}. Ask me anything.",
+      "slots": 1,
+      "source_ref": "pdf:p15:r1:c1",
+      "pack": "base"
+    },
+    {
+      "id": "b002",
+      "repr": "Introducing X-treme Baseball! It’s like baseball, but with __________!",
+      "template": "Introducing X-treme Baseball! It’s like baseball, but with {}!",
+      "slots": 1,
+      "source_ref": "pdf:p15:r1:c2",
+      "pack": "base"
+    },
+    {
+      "id": "b003",
+      "repr": "What is Batman’s guilty pleasure.",
+      "template": "What is Batman’s guilty pleasure.\n{}",
+      "slots": 1,
+      "source_ref": "pdf:p15:r1:c3",
+      "pack": "base"
+    },
+    {
+      "id": "b004",
+      "repr": "TSA guidelines now prohibit __________________ on airplanes.",
+      "template": "TSA guidelines now prohibit {} on airplanes.",
+      "slots": 1,
+      "source_ref": "pdf:p15:r1:c4",
+      "pack": "base"
+    },
+    {
+      "id": "b005",
+      "repr": "When Pharaoh remained unmoved, Moses called down a Plague of __________________.",
+      "template": "When Pharaoh remained unmoved, Moses called down a Plague of {}.",
+      "slots": 1,
+      "source_ref": "pdf:p15:r1:c5",
+      "pack": "base"
+    },
+    {
+      "id": "b006",
+      "repr": "Just once, I’d like to hear you say “Thanks, Mom. Thanks for _________________.”",
+      "template": "Just once, I’d like to hear you say “Thanks, Mom. Thanks for {}.”",
+      "slots": 1,
+      "source_ref": "pdf:p15:r1:c6",
+      "pack": "base"
+    },
+    {
+      "id": "b007",
+      "repr": "Daddy, why is mommy crying?",
+      "template": "Daddy, why is mommy crying?\n{}",
+      "slots": 1,
+      "source_ref": "pdf:p15:r1:c7",
+      "pack": "base"
+    },
+    {
+      "id": "b008",
+      "repr": "When I was tripping on acid, __________________ turned into _________________.",
+      "template": "When I was tripping on acid, {} turned into {}.",
+      "slots": 2,
+      "source_ref": "pdf:p15:r1:c8",
+      "pack": "base"
+    },
+    {
+      "id": "b009",
+      "repr": "Next from J.K. Rowling: Harry Potter and the Chamber of __________________.",
+      "template": "Next from J.K. Rowling: Harry Potter and the Chamber of {}.",
+      "slots": 1,
+      "source_ref": "pdf:p15:r2:c1",
+      "pack": "base"
+    },
+    {
+      "id": "b010",
+      "repr": "That’s right, I killed _________________. How, you ask? _________________.",
+      "template": "That’s right, I killed {}. How, you ask? {}.",
+      "slots": 2,
+      "source_ref": "pdf:p15:r2:c2",
+      "pack": "base"
+    },
+    {
+      "id": "b011",
+      "repr": "I’m sorry, Professor, but I couldn’t complete my homework because of __________.",
+      "template": "I’m sorry, Professor, but I couldn’t complete my homework because of {}.",
+      "slots": 1,
+      "source_ref": "pdf:p15:r2:c3",
+      "pack": "base"
+    },
+    {
+      "id": "b012",
+      "repr": "And the Academy Award for __________________ goes to __________.",
+      "template": "And the Academy Award for {} goes to {}.",
+      "slots": 2,
+      "source_ref": "pdf:p15:r2:c4",
+      "pack": "base"
+    },
+    {
+      "id": "b013",
+      "repr": "50% of all marriages end in __________________.",
+      "template": "50% of all marriages end in {}.",
+      "slots": 1,
+      "source_ref": "pdf:p15:r2:c5",
+      "pack": "base"
+    },
+    {
+      "id": "b014",
+      "repr": "My fellow Americans: Before this decade is out, we will have __________________ on the moon!",
+      "template": "My fellow Americans: Before this decade is out, we will have {} on the moon!",
+      "slots": 1,
+      "source_ref": "pdf:p15:r2:c6",
+      "pack": "base"
+    },
+    {
+      "id": "b015",
+      "repr": "This season at Steppenwolf, Samuel Beckett’s classic existential play: Waiting for __________________.",
+      "template": "This season at Steppenwolf, Samuel Beckett’s classic existential play: Waiting for {}.",
+      "slots": 1,
+      "source_ref": "pdf:p15:r2:c7",
+      "pack": "base"
+    },
+    {
+      "id": "b016",
+      "repr": "Instead of coal, Santa now gives the bad children __________________.",
+      "template": "Instead of coal, Santa now gives the bad children {}.",
+      "slots": 1,
+      "source_ref": "pdf:p15:r2:c8",
+      "pack": "base"
+    },
+    {
+      "id": "b017",
+      "repr": "Dude, do not go in that bathroom. There’s __________ in there.",
+      "template": "Dude, do not go in that bathroom. There’s {} in there.",
+      "slots": 1,
+      "source_ref": "pdf:p15:r3:c1",
+      "pack": "base"
+    },
+    {
+      "id": "b018",
+      "repr": "How did I lose my virginity?",
+      "template": "How did I lose my virginity?\n{}",
+      "slots": 1,
+      "source_ref": "pdf:p15:r3:c2",
+      "pack": "base"
+    },
+    {
+      "id": "b019",
+      "repr": "It’s a pity that kids these days are all getting involved with _____________.",
+      "template": "It’s a pity that kids these days are all getting involved with {}.",
+      "slots": 1,
+      "source_ref": "pdf:p15:r3:c3",
+      "pack": "base"
+    },
+    {
+      "id": "b020",
+      "repr": "Step 1: __________. Step 2: __________. Step 3: Profit.",
+      "template": "Step 1: {}. Step 2: {}. Step 3: Profit.",
+      "slots": 2,
+      "source_ref": "pdf:p15:r3:c4",
+      "pack": "base"
+    },
+    {
+      "id": "b021",
+      "repr": "Life for American Indians was forever changed when the White Man introduced them to __________________.",
+      "template": "Life for American Indians was forever changed when the White Man introduced them to {}.",
+      "slots": 1,
+      "source_ref": "pdf:p15:r3:c5",
+      "pack": "base"
+    },
+    {
+      "id": "b022",
+      "repr": "What’s Teach For America using to inspire inner city students to succeed?",
+      "template": "What’s Teach For America using to inspire inner city students to succeed?\n{}",
+      "slots": 1,
+      "source_ref": "pdf:p15:r3:c6",
+      "pack": "base"
+    },
+    {
+      "id": "b023",
+      "repr": "Mabe she’s born with it. Maybe it’s __________________.",
+      "template": "Mabe she’s born with it. Maybe it’s {}.",
+      "slots": 1,
+      "source_ref": "pdf:p15:r3:c7",
+      "pack": "base"
+    },
+    {
+      "id": "b024",
+      "repr": "What is George W. Bush thinking about right now?",
+      "template": "What is George W. Bush thinking about right now?\n{}",
+      "slots": 1,
+      "source_ref": "pdf:p15:r3:c8",
+      "pack": "base"
+    },
+    {
+      "id": "b025",
+      "repr": "_________________. Betcha can’t have just one!",
+      "template": "{}. Betcha can’t have just one!",
+      "slots": 1,
+      "source_ref": "pdf:p15:r4:c1",
+      "pack": "base"
+    },
+    {
+      "id": "b026",
+      "repr": "Kids, I don’t need drugs to get high. I’m high on __________.",
+      "template": "Kids, I don’t need drugs to get high. I’m high on {}.",
+      "slots": 1,
+      "source_ref": "pdf:p15:r4:c2",
+      "pack": "base"
+    },
+    {
+      "id": "b027",
+      "repr": "For my next trick, I will pull __________ out of ___________.",
+      "template": "For my next trick, I will pull {} out of {}.",
+      "slots": 2,
+      "source_ref": "pdf:p15:r4:c3",
+      "pack": "base"
+    },
+    {
+      "id": "b028",
+      "repr": "While the United States raced the Soviet Union to the moon, the Mexican government funneled millions of pesos into research on _____________________.",
+      "template": "While the United States raced the Soviet Union to the moon, the Mexican government funneled millions of pesos into research on {}.",
+      "slots": 1,
+      "source_ref": "pdf:p15:r4:c4",
+      "pack": "base"
+    },
+    {
+      "id": "b029",
+      "repr": "White people like __________________.",
+      "template": "White people like {}.",
+      "slots": 1,
+      "source_ref": "pdf:p15:r4:c5",
+      "pack": "base"
+    },
+    {
+      "id": "b030",
+      "repr": "__________________ is a slippery slope that leads to _________________.",
+      "template": "{} is a slippery slope that leads to {}.",
+      "slots": 2,
+      "source_ref": "pdf:p15:r4:c6",
+      "pack": "base"
+    },
+    {
+      "id": "b031",
+      "repr": "Why do I hurt all over?",
+      "template": "Why do I hurt all over?\n{}",
+      "slots": 1,
+      "source_ref": "pdf:p15:r4:c7",
+      "pack": "base"
+    },
+    {
+      "id": "b032",
+      "repr": "A romantic, candlelit dinner would be incomplete without __________________.",
+      "template": "A romantic, candlelit dinner would be incomplete without {}.",
+      "slots": 1,
+      "source_ref": "pdf:p15:r4:c8",
+      "pack": "base"
+    },
+    {
+      "id": "b033",
+      "repr": "In the Disney Channel Original Movie, Hannah Montana struggles with _____________ for the first time.",
+      "template": "In the Disney Channel Original Movie, Hannah Montana struggles with {} for the first time.",
+      "slots": 1,
+      "source_ref": "pdf:p15:r5:c1",
+      "pack": "base"
+    },
+    {
+      "id": "b034",
+      "repr": "What’s my secret power?",
+      "template": "What’s my secret power?\n{}",
+      "slots": 1,
+      "source_ref": "pdf:p15:r5:c2",
+      "pack": "base"
+    },
+    {
+      "id": "b035",
+      "repr": "I’m going on a cleanse this week. Nothing but kale juice and __________________.",
+      "template": "I’m going on a cleanse this week. Nothing but kale juice and {}.",
+      "slots": 1,
+      "source_ref": "pdf:p15:r5:c3",
+      "pack": "base"
+    },
+    {
+      "id": "b036",
+      "repr": "________ + ________ = ________________.",
+      "template": "{} + {} = {}.",
+      "slots": 3,
+      "source_ref": "pdf:p15:r5:c4",
+      "pack": "base"
+    },
+    {
+      "id": "b037",
+      "repr": "Just saw this upsetting video! Please retweet!! #stop_____________",
+      "template": "Just saw this upsetting video! Please retweet!! #stop{}",
+      "slots": 1,
+      "source_ref": "pdf:p15:r5:c5",
+      "pack": "base"
+    },
+    {
+      "id": "b038",
+      "repr": "Fun tip! When your man asks you to go down on him, try surprising him with __________________ instead.",
+      "template": "Fun tip! When your man asks you to go down on him, try surprising him with {} instead.",
+      "slots": 1,
+      "source_ref": "pdf:p15:r5:c6",
+      "pack": "base"
+    },
+    {
+      "id": "b039",
+      "repr": "The class field trip was completely ruined by __________________.",
+      "template": "The class field trip was completely ruined by {}.",
+      "slots": 1,
+      "source_ref": "pdf:p15:r5:c7",
+      "pack": "base"
+    },
+    {
+      "id": "b040",
+      "repr": "What’s a girl’s best friend?",
+      "template": "What’s a girl’s best friend?\n{}",
+      "slots": 1,
+      "source_ref": "pdf:p15:r5:c8",
+      "pack": "base"
+    },
+    {
+      "id": "b041",
+      "repr": "Dear Abby, I’m having some trouble with __________________ and would like your advice.",
+      "template": "Dear Abby, I’m having some trouble with {} and would like your advice.",
+      "slots": 1,
+      "source_ref": "pdf:p16:r1:c1",
+      "pack": "base"
+    },
+    {
+      "id": "b042",
+      "repr": "In M. Night Shyamalan’s new movie, Bruce Willis discovers that __________had really been _______________ all along.",
+      "template": "In M. Night Shyamalan’s new movie, Bruce Willis discovers that {}had really been {} all along.",
+      "slots": 2,
+      "source_ref": "pdf:p16:r1:c2",
+      "pack": "base"
+    },
+    {
+      "id": "b043",
+      "repr": "When I am President, I will create the Department of __________________.",
+      "template": "When I am President, I will create the Department of {}.",
+      "slots": 1,
+      "source_ref": "pdf:p16:r1:c3",
+      "pack": "base"
+    },
+    {
+      "id": "b044",
+      "repr": "What are my parents hiding from me?",
+      "template": "What are my parents hiding from me?\n{}",
+      "slots": 1,
+      "source_ref": "pdf:p16:r1:c4",
+      "pack": "base"
+    },
+    {
+      "id": "b045",
+      "repr": "I’m no doctor but I’m pretty sure what you’re suffering from is called “__________.”",
+      "template": "I’m no doctor but I’m pretty sure what you’re suffering from is called “{}.”",
+      "slots": 1,
+      "source_ref": "pdf:p16:r1:c5",
+      "pack": "base"
+    },
+    {
+      "id": "b046",
+      "repr": "What’s there a ton of in heaven?",
+      "template": "What’s there a ton of in heaven?\n{}",
+      "slots": 1,
+      "source_ref": "pdf:p16:r1:c6",
+      "pack": "base"
+    },
+    {
+      "id": "b047",
+      "repr": "After four platinum albums and three Grammys, it’s time to get back to my roots, to what inspired me to make music in the first place: __________.",
+      "template": "After four platinum albums and three Grammys, it’s time to get back to my roots, to what inspired me to make music in the first place: {}.",
+      "slots": 1,
+      "source_ref": "pdf:p16:r1:c7",
+      "pack": "base"
+    },
+    {
+      "id": "b048",
+      "repr": "What will always get you laid?",
+      "template": "What will always get you laid?\n{}",
+      "slots": 1,
+      "source_ref": "pdf:p16:r1:c8",
+      "pack": "base"
+    },
+    {
+      "id": "b049",
+      "repr": "What never fails to liven up the party?",
+      "template": "What never fails to liven up the party?\n{}",
+      "slots": 1,
+      "source_ref": "pdf:p16:r2:c1",
+      "pack": "base"
+    },
+    {
+      "id": "b050",
+      "repr": "IF you like __________________, YOU MIGHT BE A REDNECK.",
+      "template": "IF you like {}, YOU MIGHT BE A REDNECK.",
+      "slots": 1,
+      "source_ref": "pdf:p16:r2:c2",
+      "pack": "base"
+    },
+    {
+      "id": "b051",
+      "repr": "Make a haiku.",
+      "template": "Make a haiku.\n{}",
+      "slots": 1,
+      "source_ref": "pdf:p16:r2:c3",
+      "pack": "base"
+    },
+    {
+      "id": "b052",
+      "repr": "What made my first kiss so awkward?",
+      "template": "What made my first kiss so awkward?\n{}",
+      "slots": 1,
+      "source_ref": "pdf:p16:r2:c4",
+      "pack": "base"
+    },
+    {
+      "id": "b053",
+      "repr": "They said we were crazy. They said we couldn’t put __________________ inside of _________. They were wrong.",
+      "template": "They said we were crazy. They said we couldn’t put {} inside of {}. They were wrong.",
+      "slots": 2,
+      "source_ref": "pdf:p16:r2:c5",
+      "pack": "base"
+    },
+    {
+      "id": "b054",
+      "repr": "Lifetime ® presents “_________________: the Story of _________________.”",
+      "template": "Lifetime ® presents “{}: the Story of {}.”",
+      "slots": 2,
+      "source_ref": "pdf:p16:r2:c6",
+      "pack": "base"
+    },
+    {
+      "id": "b055",
+      "repr": "__________________: kid-tested, mother-approved.",
+      "template": "{}: kid-tested, mother-approved.",
+      "slots": 1,
+      "source_ref": "pdf:p16:r2:c7",
+      "pack": "base"
+    },
+    {
+      "id": "b056",
+      "repr": "Why can’t I sleep at night?",
+      "template": "Why can’t I sleep at night?\n{}",
+      "slots": 1,
+      "source_ref": "pdf:p16:r2:c8",
+      "pack": "base"
+    },
+    {
+      "id": "b057",
+      "repr": "Hey guys, welcome to Chili’s! Would you like to start the night off right with _________________?",
+      "template": "Hey guys, welcome to Chili’s! Would you like to start the night off right with {}?",
+      "slots": 1,
+      "source_ref": "pdf:p16:r3:c1",
+      "pack": "base"
+    },
+    {
+      "id": "b058",
+      "repr": "I got 99 problems but _______________ ain’t one.",
+      "template": "I got 99 problems but {} ain’t one.",
+      "slots": 1,
+      "source_ref": "pdf:p16:r3:c2",
+      "pack": "base"
+    },
+    {
+      "id": "b059",
+      "repr": "__________________. It’s a trap!",
+      "template": "{}. It’s a trap!",
+      "slots": 1,
+      "source_ref": "pdf:p16:r3:c3",
+      "pack": "base"
+    },
+    {
+      "id": "b060",
+      "repr": "Bravo’s new reality show features eight washed-up celebrities living with _____________.",
+      "template": "Bravo’s new reality show features eight washed-up celebrities living with {}.",
+      "slots": 1,
+      "source_ref": "pdf:p16:r3:c4",
+      "pack": "base"
+    },
+    {
+      "id": "b061",
+      "repr": "What’s that smell?",
+      "template": "What’s that smell?\n{}",
+      "slots": 1,
+      "source_ref": "pdf:p16:r3:c5",
+      "pack": "base"
+    },
+    {
+      "id": "b062",
+      "repr": "After eight years in the White House, how is Obama finally letting loose?",
+      "template": "After eight years in the White House, how is Obama finally letting loose?\n{}",
+      "slots": 1,
+      "source_ref": "pdf:p16:r3:c6",
+      "pack": "base"
+    },
+    {
+      "id": "b063",
+      "repr": "This is the way the world ends This is the way the world ends Not with a bang but with __________________.",
+      "template": "This is the way the world ends This is the way the world ends Not with a bang but with {}.",
+      "slots": 1,
+      "source_ref": "pdf:p16:r3:c7",
+      "pack": "base"
+    },
+    {
+      "id": "b064",
+      "repr": "Coming to Broadway this season, __________________: The Musical.",
+      "template": "Coming to Broadway this season, {}: The Musical.",
+      "slots": 1,
+      "source_ref": "pdf:p16:r3:c8",
+      "pack": "base"
+    },
+    {
+      "id": "b065",
+      "repr": "What would grandma find disturbing, yet oddly charming?",
+      "template": "What would grandma find disturbing, yet oddly charming?\n{}",
+      "slots": 1,
+      "source_ref": "pdf:p16:r4:c1",
+      "pack": "base"
+    },
+    {
+      "id": "b066",
+      "repr": "__________________. That was so metal.",
+      "template": "{}. That was so metal.",
+      "slots": 1,
+      "source_ref": "pdf:p16:r4:c2",
+      "pack": "base"
+    },
+    {
+      "id": "b067",
+      "repr": "I never truly understood __________________ until I encountered _________________.",
+      "template": "I never truly understood {} until I encountered {}.",
+      "slots": 2,
+      "source_ref": "pdf:p16:r4:c3",
+      "pack": "base"
+    },
+    {
+      "id": "b068",
+      "repr": "During sex, I like to think about __________________.",
+      "template": "During sex, I like to think about {}.",
+      "slots": 1,
+      "source_ref": "pdf:p16:r4:c4",
+      "pack": "base"
+    },
+    {
+      "id": "b069",
+      "repr": "Here is the church Here is the steeple Open the doors And there is __________________.",
+      "template": "Here is the church Here is the steeple Open the doors And there is {}.",
+      "slots": 1,
+      "source_ref": "pdf:p16:r4:c5",
+      "pack": "base"
+    },
+    {
+      "id": "b070",
+      "repr": "But before I kill you, Mr. Bond, I must show you __________________.",
+      "template": "But before I kill you, Mr. Bond, I must show you {}.",
+      "slots": 1,
+      "source_ref": "pdf:p16:r4:c6",
+      "pack": "base"
+    },
+    {
+      "id": "b071",
+      "repr": "A recent laboratory study shows that undergraduates have 50% less sex after being exposed to ___________________.",
+      "template": "A recent laboratory study shows that undergraduates have 50% less sex after being exposed to {}.",
+      "slots": 1,
+      "source_ref": "pdf:p16:r4:c7",
+      "pack": "base"
+    },
+    {
+      "id": "b072",
+      "repr": "Introducing the amazing superhero/sidekick duo! It’s __________ and _____________!",
+      "template": "Introducing the amazing superhero/sidekick duo! It’s {} and {}!",
+      "slots": 2,
+      "source_ref": "pdf:p16:r4:c8",
+      "pack": "base"
+    },
+    {
+      "id": "b073",
+      "repr": "What ended my last relationship?",
+      "template": "What ended my last relationship?\n{}",
+      "slots": 1,
+      "source_ref": "pdf:p16:r5:c1",
+      "pack": "base"
+    },
+    {
+      "id": "b074",
+      "repr": "What’s that sound?",
+      "template": "What’s that sound?\n{}",
+      "slots": 1,
+      "source_ref": "pdf:p16:r5:c2",
+      "pack": "base"
+    },
+    {
+      "id": "b075",
+      "repr": "Uh, hey guys, I know this was my idea, but I’m having serious doubts about ____________.",
+      "template": "Uh, hey guys, I know this was my idea, but I’m having serious doubts about {}.",
+      "slots": 1,
+      "source_ref": "pdf:p16:r5:c3",
+      "pack": "base"
+    },
+    {
+      "id": "b076",
+      "repr": "Why am I sticky?",
+      "template": "Why am I sticky?\n{}",
+      "slots": 1,
+      "source_ref": "pdf:p16:r5:c4",
+      "pack": "base"
+    },
+    {
+      "id": "b077",
+      "repr": "Next on ESPN2: The World Series of __________________.",
+      "template": "Next on ESPN2: The World Series of {}.",
+      "slots": 1,
+      "source_ref": "pdf:p16:r5:c5",
+      "pack": "base"
+    },
+    {
+      "id": "b078",
+      "repr": "When I am a billionaire, I shall erect a 50-foot statue to commemorate __________________.",
+      "template": "When I am a billionaire, I shall erect a 50-foot statue to commemorate {}.",
+      "slots": 1,
+      "source_ref": "pdf:p16:r5:c6",
+      "pack": "base"
+    },
+    {
+      "id": "b079",
+      "repr": "Military historians remember Alexander the Great for his brilliant use of ____________________ against the Persians.",
+      "template": "Military historians remember Alexander the Great for his brilliant use of {} against the Persians.",
+      "slots": 1,
+      "source_ref": "pdf:p16:r5:c7",
+      "pack": "base"
+    },
+    {
+      "id": "b080",
+      "repr": "War! What is it good for?",
+      "template": "War! What is it good for?\n{}",
+      "slots": 1,
+      "source_ref": "pdf:p16:r5:c8",
+      "pack": "base"
+    }
+  ],
+  "white": [
+    {
+      "id": "w001",
+      "text": "Silence.",
+      "source_ref": "pdf:p2:r1:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w002",
+      "text": "The illusion of choice in a late-stage capitalist society.",
+      "source_ref": "pdf:p2:r1:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w003",
+      "text": "Many bats.",
+      "source_ref": "pdf:p2:r1:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w004",
+      "text": "Famine.",
+      "source_ref": "pdf:p2:r1:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w005",
+      "text": "Flesh-eating bacteria.",
+      "source_ref": "pdf:p2:r2:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w006",
+      "text": "Flying sex snakes.",
+      "source_ref": "pdf:p2:r2:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w007",
+      "text": "Not giving a shit about the Third World.",
+      "source_ref": "pdf:p2:r2:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w008",
+      "text": "Magnets.",
+      "source_ref": "pdf:p2:r2:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w009",
+      "text": "Shapeshifters.",
+      "source_ref": "pdf:p2:r3:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w010",
+      "text": "Seeing what happens when you lock people in a room with hungry seagulls.",
+      "source_ref": "pdf:p2:r3:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w011",
+      "text": "A crucifixion.",
+      "source_ref": "pdf:p2:r3:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w012",
+      "text": "Jennifer Lawrence.",
+      "source_ref": "pdf:p2:r3:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w013",
+      "text": "72 virgins.",
+      "source_ref": "pdf:p2:r4:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w014",
+      "text": "A live studio audience.",
+      "source_ref": "pdf:p2:r4:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w015",
+      "text": "A time travel paradox.",
+      "source_ref": "pdf:p2:r4:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w016",
+      "text": "Authentic Mexican cuisine.",
+      "source_ref": "pdf:p2:r4:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w017",
+      "text": "Doing crimes.",
+      "source_ref": "pdf:p2:r5:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w018",
+      "text": "Synergistic management solutions.",
+      "source_ref": "pdf:p2:r5:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w019",
+      "text": "Crippling debt.",
+      "source_ref": "pdf:p2:r5:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w020",
+      "text": "Daddy issues.",
+      "source_ref": "pdf:p2:r5:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w021",
+      "text": "Used panties.",
+      "source_ref": "pdf:p3:r1:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w022",
+      "text": "A fart so powerful that it wakes the giants from their thousand-year slumber.",
+      "source_ref": "pdf:p3:r1:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w023",
+      "text": "Former President George W. Bush.",
+      "source_ref": "pdf:p3:r1:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w024",
+      "text": "Full frontal nudity.",
+      "source_ref": "pdf:p3:r1:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w025",
+      "text": "Soft, kissy missionary sex.",
+      "source_ref": "pdf:p3:r1:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w026",
+      "text": "BATMAN!",
+      "source_ref": "pdf:p3:r1:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w027",
+      "text": "Agriculture.",
+      "source_ref": "pdf:p3:r1:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w028",
+      "text": "Barely making $25,000 a year.",
+      "source_ref": "pdf:p3:r1:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w029",
+      "text": "Covering myself with Parmesan cheese and chili flakes because I am pizza.",
+      "source_ref": "pdf:p3:r2:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w030",
+      "text": "Laying an egg.",
+      "source_ref": "pdf:p3:r2:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w031",
+      "text": "Getting naked and watching Nickelodeon.",
+      "source_ref": "pdf:p3:r2:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w032",
+      "text": "Pretending to care.",
+      "source_ref": "pdf:p3:r2:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w033",
+      "text": "Natural selection.",
+      "source_ref": "pdf:p3:r2:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w034",
+      "text": "Coat hanger abortions.",
+      "source_ref": "pdf:p3:r2:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w035",
+      "text": "Sex with Patrick Stewart.",
+      "source_ref": "pdf:p3:r2:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w036",
+      "text": "My abusive boyfriend who really isn’t so bad once you get to know him.",
+      "source_ref": "pdf:p3:r2:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w037",
+      "text": "Having big dreams but no realistic way to achieve them.",
+      "source_ref": "pdf:p3:r3:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w038",
+      "text": "Seeing Grandma naked.",
+      "source_ref": "pdf:p3:r3:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w039",
+      "text": "Boogers.",
+      "source_ref": "pdf:p3:r3:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w040",
+      "text": "The inevitable heat death of the universe.",
+      "source_ref": "pdf:p3:r3:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w041",
+      "text": "Prescription pain killers.",
+      "source_ref": "pdf:p3:r3:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w042",
+      "text": "Swooping.",
+      "source_ref": "pdf:p3:r3:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w043",
+      "text": "Mansplaining.",
+      "source_ref": "pdf:p3:r3:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w044",
+      "text": "A homoerotic volleyball montage.",
+      "source_ref": "pdf:p3:r3:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w045",
+      "text": "The miracle of childbirth.",
+      "source_ref": "pdf:p3:r4:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w046",
+      "text": "The Rapture.",
+      "source_ref": "pdf:p3:r4:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w047",
+      "text": "Whipping it out.",
+      "source_ref": "pdf:p3:r4:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w048",
+      "text": "White privilege.",
+      "source_ref": "pdf:p3:r4:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w049",
+      "text": "Alexandria Ocasio-Cortez.",
+      "source_ref": "pdf:p3:r4:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w050",
+      "text": "Putting things where they go.",
+      "source_ref": "pdf:p3:r4:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w051",
+      "text": "Fragile masculinity.",
+      "source_ref": "pdf:p3:r4:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w052",
+      "text": "All-you-can-eat shrimp for $8.99.",
+      "source_ref": "pdf:p3:r4:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w053",
+      "text": "Emerging from the sea and rampaging through Tokyo.",
+      "source_ref": "pdf:p3:r5:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w054",
+      "text": "The Hamburglar.",
+      "source_ref": "pdf:p3:r5:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w055",
+      "text": "AXE Body Spray.",
+      "source_ref": "pdf:p3:r5:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w056",
+      "text": "The Blood of Christ.",
+      "source_ref": "pdf:p3:r5:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w057",
+      "text": "An old guy who’s almost dead.",
+      "source_ref": "pdf:p3:r5:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w058",
+      "text": "Kanye West.",
+      "source_ref": "pdf:p3:r5:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w059",
+      "text": "Hot cheese.",
+      "source_ref": "pdf:p3:r5:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w060",
+      "text": "Raptor attacks.",
+      "source_ref": "pdf:p3:r5:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w061",
+      "text": "Seven dead and three in critical condition.",
+      "source_ref": "pdf:p4:r1:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w062",
+      "text": "Smegma.",
+      "source_ref": "pdf:p4:r1:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w063",
+      "text": "Alcoholism.",
+      "source_ref": "pdf:p4:r1:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w064",
+      "text": "A middle-aged man on roller skates.",
+      "source_ref": "pdf:p4:r1:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w065",
+      "text": "The past.",
+      "source_ref": "pdf:p4:r1:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w066",
+      "text": "My genitals.",
+      "source_ref": "pdf:p4:r1:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w067",
+      "text": "An endless stream of diarrhea.",
+      "source_ref": "pdf:p4:r1:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w068",
+      "text": "Science.",
+      "source_ref": "pdf:p4:r1:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w069",
+      "text": "Looking in the mirror, applying lipstick, and whispering “tonight, you will have sex with Tom Cruise.”",
+      "source_ref": "pdf:p4:r2:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w070",
+      "text": "Bingeing and purging.",
+      "source_ref": "pdf:p4:r2:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w071",
+      "text": "An oversized lollipop.",
+      "source_ref": "pdf:p4:r2:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w072",
+      "text": "Self-loathing.",
+      "source_ref": "pdf:p4:r2:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w073",
+      "text": "Not reciprocating oral sex.",
+      "source_ref": "pdf:p4:r2:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w074",
+      "text": "Flightless birds.",
+      "source_ref": "pdf:p4:r2:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w075",
+      "text": "A good sniff.",
+      "source_ref": "pdf:p4:r2:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w076",
+      "text": "50,000 volts straight to the nipples.",
+      "source_ref": "pdf:p4:r2:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w077",
+      "text": "Sitting on my face and telling me I’m garbage.",
+      "source_ref": "pdf:p4:r3:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w078",
+      "text": "Half-assed foreplay.",
+      "source_ref": "pdf:p4:r3:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w079",
+      "text": "The Holy Bible.",
+      "source_ref": "pdf:p4:r3:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w080",
+      "text": "German dungeon porn.",
+      "source_ref": "pdf:p4:r3:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w081",
+      "text": "A balanced breakfast.",
+      "source_ref": "pdf:p4:r3:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w082",
+      "text": "Dead birds everywhere.",
+      "source_ref": "pdf:p4:r3:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w083",
+      "text": "The arrival of the pizza.",
+      "source_ref": "pdf:p4:r3:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w084",
+      "text": "Permanent Orgasm-Face Disorder.",
+      "source_ref": "pdf:p4:r3:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w085",
+      "text": "Being on fire.",
+      "source_ref": "pdf:p4:r4:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w086",
+      "text": "Teenage pregnancy.",
+      "source_ref": "pdf:p4:r4:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w087",
+      "text": "Gandhi.",
+      "source_ref": "pdf:p4:r4:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w088",
+      "text": "Your weird brother.",
+      "source_ref": "pdf:p4:r4:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w089",
+      "text": "The cool, refreshing taste of Pepsi. ®",
+      "source_ref": "pdf:p4:r4:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w090",
+      "text": "Chemical weapons.",
+      "source_ref": "pdf:p4:r4:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w091",
+      "text": "Oprah.",
+      "source_ref": "pdf:p4:r4:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w092",
+      "text": "Wondering if it’s possible to get some of that salsa to go.",
+      "source_ref": "pdf:p4:r4:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w093",
+      "text": "A Fleshlight. ®",
+      "source_ref": "pdf:p4:r5:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w094",
+      "text": "A pyramid of severed heads.",
+      "source_ref": "pdf:p4:r5:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w095",
+      "text": "An erection that lasts longer than four hours.",
+      "source_ref": "pdf:p4:r5:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w096",
+      "text": "A three-way with my wife and Shaquille O’Neal.",
+      "source_ref": "pdf:p4:r5:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w097",
+      "text": "Bananas.",
+      "source_ref": "pdf:p4:r5:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w098",
+      "text": "Passive aggressive Post-it notes.",
+      "source_ref": "pdf:p4:r5:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w099",
+      "text": "Hillary Clinton’s emails.",
+      "source_ref": "pdf:p4:r5:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w100",
+      "text": "Switching to Geico. ®",
+      "source_ref": "pdf:p4:r5:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w101",
+      "text": "Peeing a little bit.",
+      "source_ref": "pdf:p5:r1:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w102",
+      "text": "Wet dreams.",
+      "source_ref": "pdf:p5:r1:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w103",
+      "text": "The Jews.",
+      "source_ref": "pdf:p5:r1:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w104",
+      "text": "My cheating son-of-a-bitch husband.",
+      "source_ref": "pdf:p5:r1:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w105",
+      "text": "Poverty.",
+      "source_ref": "pdf:p5:r1:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w106",
+      "text": "Kamikaze pilots.",
+      "source_ref": "pdf:p5:r1:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w107",
+      "text": "Committing suicide.",
+      "source_ref": "pdf:p5:r1:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w108",
+      "text": "The homosexual agenda.",
+      "source_ref": "pdf:p5:r1:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w109",
+      "text": "Powerful thighs.",
+      "source_ref": "pdf:p5:r2:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w110",
+      "text": "These hoes.",
+      "source_ref": "pdf:p5:r2:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w111",
+      "text": "The only gay person in a hundred miles.",
+      "source_ref": "pdf:p5:r2:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w112",
+      "text": "Having sex for the first time.",
+      "source_ref": "pdf:p5:r2:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w113",
+      "text": "A Mexican.",
+      "source_ref": "pdf:p5:r2:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w114",
+      "text": "A falcon with a cap on its head.",
+      "source_ref": "pdf:p5:r2:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w115",
+      "text": "Wizard music.",
+      "source_ref": "pdf:p5:r2:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w116",
+      "text": "The Kool-Aid Man.",
+      "source_ref": "pdf:p5:r2:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w117",
+      "text": "Donald J. Trump.",
+      "source_ref": "pdf:p5:r3:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w118",
+      "text": "Kissing grandma on the forehead and turning off her life support.",
+      "source_ref": "pdf:p5:r3:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w119",
+      "text": "Sexual tension.",
+      "source_ref": "pdf:p5:r3:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w120",
+      "text": "An AR-15 assault rifle.",
+      "source_ref": "pdf:p5:r3:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w121",
+      "text": "Juuling.",
+      "source_ref": "pdf:p5:r3:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w122",
+      "text": "Free samples.",
+      "source_ref": "pdf:p5:r3:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w123",
+      "text": "Hurting those closest to me.",
+      "source_ref": "pdf:p5:r3:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w124",
+      "text": "Doing the right thing.",
+      "source_ref": "pdf:p5:r3:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w125",
+      "text": "My good bra.",
+      "source_ref": "pdf:p5:r4:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w126",
+      "text": "Punching a congressman in the face.",
+      "source_ref": "pdf:p5:r4:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w127",
+      "text": "Fancy Feast. ®",
+      "source_ref": "pdf:p5:r4:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w128",
+      "text": "Being rich.",
+      "source_ref": "pdf:p5:r4:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w129",
+      "text": "The Three-Fifths Compromise.",
+      "source_ref": "pdf:p5:r4:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w130",
+      "text": "Lactation.",
+      "source_ref": "pdf:p5:r4:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w131",
+      "text": "World peace.",
+      "source_ref": "pdf:p5:r4:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w132",
+      "text": "Shutting up so I can watch the game.",
+      "source_ref": "pdf:p5:r4:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w133",
+      "text": "Sweet, sweet vengeance.",
+      "source_ref": "pdf:p5:r5:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w134",
+      "text": "Republicans.",
+      "source_ref": "pdf:p5:r5:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w135",
+      "text": "Sniffing and kissing my feet.",
+      "source_ref": "pdf:p5:r5:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w136",
+      "text": "A much younger woman.",
+      "source_ref": "pdf:p5:r5:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w137",
+      "text": "Eating a hard boiled egg out of my husband’s asshole.",
+      "source_ref": "pdf:p5:r5:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w138",
+      "text": "RoboCop.",
+      "source_ref": "pdf:p5:r5:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w139",
+      "text": "One titty hanging out.",
+      "source_ref": "pdf:p5:r5:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w140",
+      "text": "Justin Bieber.",
+      "source_ref": "pdf:p5:r5:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w141",
+      "text": "Oompa-Loompas.",
+      "source_ref": "pdf:p6:r1:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w142",
+      "text": "Inappropriate yodeling.",
+      "source_ref": "pdf:p6:r1:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w143",
+      "text": "Puberty.",
+      "source_ref": "pdf:p6:r1:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w144",
+      "text": "Ghosts.",
+      "source_ref": "pdf:p6:r1:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w145",
+      "text": "Expecting a burp and vomiting on the floor.",
+      "source_ref": "pdf:p6:r1:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w146",
+      "text": "Adderall. ®",
+      "source_ref": "pdf:p6:r1:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w147",
+      "text": "The Red Hot Chili Peppers.",
+      "source_ref": "pdf:p6:r1:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w148",
+      "text": "Sideboob.",
+      "source_ref": "pdf:p6:r1:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w149",
+      "text": "50 mg of Zoloft daily.",
+      "source_ref": "pdf:p6:r2:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w150",
+      "text": "Fucking my sister.",
+      "source_ref": "pdf:p6:r2:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w151",
+      "text": "Braiding three penises into a Twizzler.",
+      "source_ref": "pdf:p6:r2:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w152",
+      "text": "Vigorous jazz hands.",
+      "source_ref": "pdf:p6:r2:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w153",
+      "text": "An octopus giving seven handjobs and smoking a cigarette.",
+      "source_ref": "pdf:p6:r2:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w154",
+      "text": "My neck, my back, my pussy, and my crack.",
+      "source_ref": "pdf:p6:r2:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w155",
+      "text": "J.D. Power and his associates.",
+      "source_ref": "pdf:p6:r2:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w156",
+      "text": "Mouth herpes.",
+      "source_ref": "pdf:p6:r2:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w157",
+      "text": "Getting fingered.",
+      "source_ref": "pdf:p6:r3:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w158",
+      "text": "My Uber driver, Pavel.",
+      "source_ref": "pdf:p6:r3:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w159",
+      "text": "GoGurt. ®",
+      "source_ref": "pdf:p6:r3:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w160",
+      "text": "Police brutality.",
+      "source_ref": "pdf:p6:r3:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w161",
+      "text": "Sperm whales.",
+      "source_ref": "pdf:p6:r3:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w162",
+      "text": "Women of color.",
+      "source_ref": "pdf:p6:r3:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w163",
+      "text": "Men discussing their feelings in an emotionally healthy way.",
+      "source_ref": "pdf:p6:r3:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w164",
+      "text": "Incest.",
+      "source_ref": "pdf:p6:r3:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w165",
+      "text": "Filling my briefcase with business stuff.",
+      "source_ref": "pdf:p6:r4:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w166",
+      "text": "Preteens.",
+      "source_ref": "pdf:p6:r4:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w167",
+      "text": "My fat daughter.",
+      "source_ref": "pdf:p6:r4:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w168",
+      "text": "Rap music.",
+      "source_ref": "pdf:p6:r4:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w169",
+      "text": "Pac-Man uncontrollably guzzling cum.",
+      "source_ref": "pdf:p6:r4:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w170",
+      "text": "Casually suggesting a threesome.",
+      "source_ref": "pdf:p6:r4:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w171",
+      "text": "Running out of semen.",
+      "source_ref": "pdf:p6:r4:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w172",
+      "text": "God.",
+      "source_ref": "pdf:p6:r4:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w173",
+      "text": "Fading away into nothingness.",
+      "source_ref": "pdf:p6:r5:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w174",
+      "text": "Darth Vader.",
+      "source_ref": "pdf:p6:r5:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w175",
+      "text": "A sad handjob.",
+      "source_ref": "pdf:p6:r5:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w176",
+      "text": "Exactly what you’d expect.",
+      "source_ref": "pdf:p6:r5:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w177",
+      "text": "The wonders of the Orient.",
+      "source_ref": "pdf:p6:r5:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w178",
+      "text": "Sexual peeing.",
+      "source_ref": "pdf:p6:r5:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w179",
+      "text": "Emotions.",
+      "source_ref": "pdf:p6:r5:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w180",
+      "text": "Licking things to claim them as your own.",
+      "source_ref": "pdf:p6:r5:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w181",
+      "text": "Jobs.",
+      "source_ref": "pdf:p7:r1:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w182",
+      "text": "The placenta.",
+      "source_ref": "pdf:p7:r1:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w183",
+      "text": "Spontaneous human combustion.",
+      "source_ref": "pdf:p7:r1:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w184",
+      "text": "The Bachelorette season finale.",
+      "source_ref": "pdf:p7:r1:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w185",
+      "text": "A tiny horse.",
+      "source_ref": "pdf:p7:r1:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w186",
+      "text": "William Shatner.",
+      "source_ref": "pdf:p7:r1:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w187",
+      "text": "Selling crack to children.",
+      "source_ref": "pdf:p7:r1:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w188",
+      "text": "An M. Night Shyamalan plot twist.",
+      "source_ref": "pdf:p7:r1:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w189",
+      "text": "Throwing grapes at a man until he loses touch with reality.",
+      "source_ref": "pdf:p7:r2:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w190",
+      "text": "Establishing dominance.",
+      "source_ref": "pdf:p7:r2:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w191",
+      "text": "Finger painting.",
+      "source_ref": "pdf:p7:r2:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w192",
+      "text": "Old-people smell.",
+      "source_ref": "pdf:p7:r2:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w193",
+      "text": "Brown people.",
+      "source_ref": "pdf:p7:r2:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w194",
+      "text": "Mutually assured destruction.",
+      "source_ref": "pdf:p7:r2:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w195",
+      "text": "Pedophiles.",
+      "source_ref": "pdf:p7:r2:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w196",
+      "text": "Yeast.",
+      "source_ref": "pdf:p7:r2:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w197",
+      "text": "Getting crushed by a vending machine.",
+      "source_ref": "pdf:p7:r3:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w198",
+      "text": "My inner demons.",
+      "source_ref": "pdf:p7:r3:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w199",
+      "text": "A Super Soaker ™ full of cat pee.",
+      "source_ref": "pdf:p7:r3:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w200",
+      "text": "Aaron Burr.",
+      "source_ref": "pdf:p7:r3:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w201",
+      "text": "How bad my daughter fucked up her dance recital.",
+      "source_ref": "pdf:p7:r3:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w202",
+      "text": "Rectangles.",
+      "source_ref": "pdf:p7:r3:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w203",
+      "text": "Catapults.",
+      "source_ref": "pdf:p7:r3:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w204",
+      "text": "Poor people.",
+      "source_ref": "pdf:p7:r3:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w205",
+      "text": "Cuddling.",
+      "source_ref": "pdf:p7:r4:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w206",
+      "text": "However much weed $20 can buy.",
+      "source_ref": "pdf:p7:r4:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w207",
+      "text": "Battlefield amputations.",
+      "source_ref": "pdf:p7:r4:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w208",
+      "text": "Spaghetti? Again?",
+      "source_ref": "pdf:p7:r4:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w209",
+      "text": "Only dating Asian women.",
+      "source_ref": "pdf:p7:r4:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w210",
+      "text": "The Hustle.",
+      "source_ref": "pdf:p7:r4:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w211",
+      "text": "The Force.",
+      "source_ref": "pdf:p7:r4:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w212",
+      "text": "How amazing it is to be on mushrooms.",
+      "source_ref": "pdf:p7:r4:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w213",
+      "text": "Ronald Reagan.",
+      "source_ref": "pdf:p7:r5:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w214",
+      "text": "A disappointing birthday party.",
+      "source_ref": "pdf:p7:r5:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w215",
+      "text": "Nachos for the table.",
+      "source_ref": "pdf:p7:r5:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w216",
+      "text": "Becoming a blueberry.",
+      "source_ref": "pdf:p7:r5:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w217",
+      "text": "Judging everyone.",
+      "source_ref": "pdf:p7:r5:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w218",
+      "text": "Kourtney, Kim, Khloe, Kendall, and Kylie.",
+      "source_ref": "pdf:p7:r5:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w219",
+      "text": "Getting married, having a few kids, buying some stuff, retiring to Florida, and dying.",
+      "source_ref": "pdf:p7:r5:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w220",
+      "text": "Some god damn peace and quiet.",
+      "source_ref": "pdf:p7:r5:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w221",
+      "text": "AIDS.",
+      "source_ref": "pdf:p8:r1:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w222",
+      "text": "Pictures of boobs.",
+      "source_ref": "pdf:p8:r1:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w223",
+      "text": "Strong female characters.",
+      "source_ref": "pdf:p8:r1:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w224",
+      "text": "Some foundation, mascara, and a touch of blush.",
+      "source_ref": "pdf:p8:r1:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w225",
+      "text": "Getting cummed on.",
+      "source_ref": "pdf:p8:r1:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w226",
+      "text": "Pixelated bukkake.",
+      "source_ref": "pdf:p8:r1:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w227",
+      "text": "A lifetime of sadness.",
+      "source_ref": "pdf:p8:r1:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w228",
+      "text": "Going an entire day without masturbating.",
+      "source_ref": "pdf:p8:r1:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w229",
+      "text": "Hospice care.",
+      "source_ref": "pdf:p8:r2:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w230",
+      "text": "Getting really high.",
+      "source_ref": "pdf:p8:r2:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w231",
+      "text": "The opiod epidemic.",
+      "source_ref": "pdf:p8:r2:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w232",
+      "text": "Penis envy.",
+      "source_ref": "pdf:p8:r2:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w233",
+      "text": "Dick pics.",
+      "source_ref": "pdf:p8:r2:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w234",
+      "text": "Racism.",
+      "source_ref": "pdf:p8:r2:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w235",
+      "text": "Menstrual rage.",
+      "source_ref": "pdf:p8:r2:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w236",
+      "text": "Sunshine and rainbows.",
+      "source_ref": "pdf:p8:r2:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w237",
+      "text": "Gay conversion therapy.",
+      "source_ref": "pdf:p8:r3:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w238",
+      "text": "Ruth Bader Ginsburg brutally gaveling your penis.",
+      "source_ref": "pdf:p8:r3:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w239",
+      "text": "German Chancellor Angela Merkel.",
+      "source_ref": "pdf:p8:r3:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w240",
+      "text": "The KKK.",
+      "source_ref": "pdf:p8:r3:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w241",
+      "text": "Radical Islamic terrorism.",
+      "source_ref": "pdf:p8:r3:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w242",
+      "text": "Huge biceps.",
+      "source_ref": "pdf:p8:r3:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w243",
+      "text": "My little boner.",
+      "source_ref": "pdf:p8:r3:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w244",
+      "text": "Dry heaving.",
+      "source_ref": "pdf:p8:r3:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w245",
+      "text": "A pangender octopus who roams the cosmos in search of love.",
+      "source_ref": "pdf:p8:r4:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w246",
+      "text": "Meth.",
+      "source_ref": "pdf:p8:r4:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w247",
+      "text": "Serfdom.",
+      "source_ref": "pdf:p8:r4:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w248",
+      "text": "Holding down a child and farting all over him.",
+      "source_ref": "pdf:p8:r4:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w249",
+      "text": "A gossamer stream of jizz that catches the light as it arcs through the morning air.",
+      "source_ref": "pdf:p8:r4:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w250",
+      "text": "Executing a hostage every hour.",
+      "source_ref": "pdf:p8:r4:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w251",
+      "text": "The rhythms of Africa.",
+      "source_ref": "pdf:p8:r4:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w252",
+      "text": "Breaking out into song and dance.",
+      "source_ref": "pdf:p8:r4:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w253",
+      "text": "A Bop It. ™",
+      "source_ref": "pdf:p8:r5:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w254",
+      "text": "A whole thing of butter.",
+      "source_ref": "pdf:p8:r5:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w255",
+      "text": "Still being a virgin.",
+      "source_ref": "pdf:p8:r5:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w256",
+      "text": "Solving problems with violence.",
+      "source_ref": "pdf:p8:r5:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w257",
+      "text": "Leprosy.",
+      "source_ref": "pdf:p8:r5:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w258",
+      "text": "Gloryholes.",
+      "source_ref": "pdf:p8:r5:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w259",
+      "text": "Nipple blades.",
+      "source_ref": "pdf:p8:r5:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w260",
+      "text": "The heart of a child.",
+      "source_ref": "pdf:p8:r5:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w261",
+      "text": "Puppies!",
+      "source_ref": "pdf:p9:r1:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w262",
+      "text": "Fellowship in Christ.",
+      "source_ref": "pdf:p9:r1:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w263",
+      "text": "Little boy penises.",
+      "source_ref": "pdf:p9:r1:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w264",
+      "text": "Waking up half-naked in a Denny’s parking lot.",
+      "source_ref": "pdf:p9:r1:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w265",
+      "text": "The Pope.",
+      "source_ref": "pdf:p9:r1:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w266",
+      "text": "White people.",
+      "source_ref": "pdf:p9:r1:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w267",
+      "text": "Tentacle porn.",
+      "source_ref": "pdf:p9:r1:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w268",
+      "text": "My bright pink fuckhole.",
+      "source_ref": "pdf:p9:r1:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w269",
+      "text": "An older woman who knows her way around the penis.",
+      "source_ref": "pdf:p9:r2:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w270",
+      "text": "Getting drugs off the street and into my body.",
+      "source_ref": "pdf:p9:r2:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w271",
+      "text": "Daniel Radcliffe’s delicious asshole.",
+      "source_ref": "pdf:p9:r2:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w272",
+      "text": "Active listening.",
+      "source_ref": "pdf:p9:r2:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w273",
+      "text": "How far I can get my own penis up my butt.",
+      "source_ref": "pdf:p9:r2:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w274",
+      "text": "Having anuses for eyes.",
+      "source_ref": "pdf:p9:r2:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w275",
+      "text": "The penny whistle solo from “My Heart Will Go On.”",
+      "source_ref": "pdf:p9:r2:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w276",
+      "text": "Seppuku.",
+      "source_ref": "pdf:p9:r2:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w277",
+      "text": "Ethnic cleansing.",
+      "source_ref": "pdf:p9:r3:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w278",
+      "text": "Itchy pussy.",
+      "source_ref": "pdf:p9:r3:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w279",
+      "text": "Blowing my boyfriend so hard he shits.",
+      "source_ref": "pdf:p9:r3:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w280",
+      "text": "A fuck-ton of almonds.",
+      "source_ref": "pdf:p9:r3:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w281",
+      "text": "Danny DeVito.",
+      "source_ref": "pdf:p9:r3:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w282",
+      "text": "The magic of live theatre.",
+      "source_ref": "pdf:p9:r3:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w283",
+      "text": "Throwing a virgin into a volcano.",
+      "source_ref": "pdf:p9:r3:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w284",
+      "text": "Dwayne “The Rock” Johnson.",
+      "source_ref": "pdf:p9:r3:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w285",
+      "text": "A salad for men that’s made of metal.",
+      "source_ref": "pdf:p9:r4:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w286",
+      "text": "Waiting till marriage.",
+      "source_ref": "pdf:p9:r4:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w287",
+      "text": "Unfathomable stupidity.",
+      "source_ref": "pdf:p9:r4:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w288",
+      "text": "Shiny objects.",
+      "source_ref": "pdf:p9:r4:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w289",
+      "text": "Accepting the way things are.",
+      "source_ref": "pdf:p9:r4:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w290",
+      "text": "NBA superstar LeBron James.",
+      "source_ref": "pdf:p9:r4:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w291",
+      "text": "Listening to her problems without trying to solve them.",
+      "source_ref": "pdf:p9:r4:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w292",
+      "text": "Therapy.",
+      "source_ref": "pdf:p9:r4:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w293",
+      "text": "The Devil himself.",
+      "source_ref": "pdf:p9:r5:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w294",
+      "text": "Autocannibalism.",
+      "source_ref": "pdf:p9:r5:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w295",
+      "text": "Erectile dysfunction.",
+      "source_ref": "pdf:p9:r5:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w296",
+      "text": "My collection of Japanese sex toys.",
+      "source_ref": "pdf:p9:r5:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w297",
+      "text": "Being fat and stupid.",
+      "source_ref": "pdf:p9:r5:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w298",
+      "text": "Pooping back and forth. Forever.",
+      "source_ref": "pdf:p9:r5:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w299",
+      "text": "Tearing that ass up like wrapping paper on Christmas morning.",
+      "source_ref": "pdf:p9:r5:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w300",
+      "text": "More elephant cock than I bargained for.",
+      "source_ref": "pdf:p9:r5:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w301",
+      "text": "A salty surprise.",
+      "source_ref": "pdf:p10:r1:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w302",
+      "text": "The South.",
+      "source_ref": "pdf:p10:r1:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w303",
+      "text": "The violation of our most basic human rights.",
+      "source_ref": "pdf:p10:r1:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w304",
+      "text": "Tap dancing like there’s no tomorrow.",
+      "source_ref": "pdf:p10:r1:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w305",
+      "text": "A bowl of mayonnaise and human teeth.",
+      "source_ref": "pdf:p10:r1:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w306",
+      "text": "Fiery poops.",
+      "source_ref": "pdf:p10:r1:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w307",
+      "text": "Saying “I love you.”",
+      "source_ref": "pdf:p10:r1:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w308",
+      "text": "Inserting a Mason jar into my anus.",
+      "source_ref": "pdf:p10:r1:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w309",
+      "text": "Consensual sex.",
+      "source_ref": "pdf:p10:r2:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w310",
+      "text": "Telling a shitty story that goes nowhere.",
+      "source_ref": "pdf:p10:r2:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w311",
+      "text": "A good, strong gorilla.",
+      "source_ref": "pdf:p10:r2:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w312",
+      "text": "Seeing my father cry.",
+      "source_ref": "pdf:p10:r2:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w313",
+      "text": "The true meaning of Christmas.",
+      "source_ref": "pdf:p10:r2:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w314",
+      "text": "Some of the best rappers in the game.",
+      "source_ref": "pdf:p10:r2:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w315",
+      "text": "Owning and operating a Chili’s franchise.",
+      "source_ref": "pdf:p10:r2:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w316",
+      "text": "Estrogen.",
+      "source_ref": "pdf:p10:r2:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w317",
+      "text": "Necrophilia.",
+      "source_ref": "pdf:p10:r3:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w318",
+      "text": "Being a woman.",
+      "source_ref": "pdf:p10:r3:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w319",
+      "text": "Getting into a pretty bad car accident.",
+      "source_ref": "pdf:p10:r3:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w320",
+      "text": "Bill Nye the Science Guy.",
+      "source_ref": "pdf:p10:r3:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w321",
+      "text": "Girls.",
+      "source_ref": "pdf:p10:r3:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w322",
+      "text": "The Russians.",
+      "source_ref": "pdf:p10:r3:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w323",
+      "text": "A bleached asshole.",
+      "source_ref": "pdf:p10:r3:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w324",
+      "text": "Fucking the weatherman on live television.",
+      "source_ref": "pdf:p10:r3:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w325",
+      "text": "Black people.",
+      "source_ref": "pdf:p10:r4:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w326",
+      "text": "The Boy Scouts of America.",
+      "source_ref": "pdf:p10:r4:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w327",
+      "text": "Lunchables. ™",
+      "source_ref": "pdf:p10:r4:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w328",
+      "text": "Bitches.",
+      "source_ref": "pdf:p10:r4:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w329",
+      "text": "PTSD.",
+      "source_ref": "pdf:p10:r4:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w330",
+      "text": "Dark and mysterious forces beyond our control.",
+      "source_ref": "pdf:p10:r4:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w331",
+      "text": "Smallpox blankets.",
+      "source_ref": "pdf:p10:r4:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w332",
+      "text": "Masturbating.",
+      "source_ref": "pdf:p10:r4:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w333",
+      "text": "Some punk kid who stole my turkey sandwich.",
+      "source_ref": "pdf:p10:r5:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w334",
+      "text": "Heartwarming orphans.",
+      "source_ref": "pdf:p10:r5:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w335",
+      "text": "Spirit Airlines.",
+      "source_ref": "pdf:p10:r5:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w336",
+      "text": "Bubble butt bottom boys.",
+      "source_ref": "pdf:p10:r5:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w337",
+      "text": "Hobos.",
+      "source_ref": "pdf:p10:r5:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w338",
+      "text": "Queefing.",
+      "source_ref": "pdf:p10:r5:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w339",
+      "text": "The guys from Queer Eye.",
+      "source_ref": "pdf:p10:r5:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w340",
+      "text": "Cardi B.",
+      "source_ref": "pdf:p10:r5:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w341",
+      "text": "Viagra. ®",
+      "source_ref": "pdf:p11:r1:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w342",
+      "text": "Soup that is too hot.",
+      "source_ref": "pdf:p11:r1:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w343",
+      "text": "Muhammad (Peace Be Upon Him).",
+      "source_ref": "pdf:p11:r1:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w344",
+      "text": "Explaining how vaginas work.",
+      "source_ref": "pdf:p11:r1:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w345",
+      "text": "Doin’ it in the butt.",
+      "source_ref": "pdf:p11:r1:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w346",
+      "text": "My ex-wife.",
+      "source_ref": "pdf:p11:r1:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w347",
+      "text": "Teaching a robot to love.",
+      "source_ref": "pdf:p11:r1:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w348",
+      "text": "Touching a pug right on his penis.",
+      "source_ref": "pdf:p11:r1:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w349",
+      "text": "Academy Award winner Meryl Streep.",
+      "source_ref": "pdf:p11:r2:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w350",
+      "text": "Drinking alone.",
+      "source_ref": "pdf:p11:r2:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w351",
+      "text": "Dick fingers.",
+      "source_ref": "pdf:p11:r2:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w352",
+      "text": "Multiple stab wounds.",
+      "source_ref": "pdf:p11:r2:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w353",
+      "text": "A windmill full of corpses.",
+      "source_ref": "pdf:p11:r2:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w354",
+      "text": "Count Chocula.",
+      "source_ref": "pdf:p11:r2:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w355",
+      "text": "Vladimir Putin.",
+      "source_ref": "pdf:p11:r2:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w356",
+      "text": "The Patriarchy.",
+      "source_ref": "pdf:p11:r2:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w357",
+      "text": "Poopy diapers.",
+      "source_ref": "pdf:p11:r3:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w358",
+      "text": "Child abuse.",
+      "source_ref": "pdf:p11:r3:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w359",
+      "text": "Anal beads.",
+      "source_ref": "pdf:p11:r3:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w360",
+      "text": "Slaughtering innocent civilians.",
+      "source_ref": "pdf:p11:r3:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w361",
+      "text": "The glass ceiling.",
+      "source_ref": "pdf:p11:r3:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w362",
+      "text": "Vomiting seafood and bleeding anally.",
+      "source_ref": "pdf:p11:r3:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w363",
+      "text": "The American Dream.",
+      "source_ref": "pdf:p11:r3:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w364",
+      "text": "Not wearing pants.",
+      "source_ref": "pdf:p11:r3:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w365",
+      "text": "Pulling out.",
+      "source_ref": "pdf:p11:r4:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w366",
+      "text": "Being able to talk to elephants.",
+      "source_ref": "pdf:p11:r4:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w367",
+      "text": "Horse meat.",
+      "source_ref": "pdf:p11:r4:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w368",
+      "text": "A really cool hat.",
+      "source_ref": "pdf:p11:r4:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w369",
+      "text": "My balls on your face.",
+      "source_ref": "pdf:p11:r4:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w370",
+      "text": "Pooping in a laptop and closing it.",
+      "source_ref": "pdf:p11:r4:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w371",
+      "text": "Dead babies.",
+      "source_ref": "pdf:p11:r4:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w372",
+      "text": "Foreskin.",
+      "source_ref": "pdf:p11:r4:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w373",
+      "text": "Stalin.",
+      "source_ref": "pdf:p11:r5:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w374",
+      "text": "A stray pube.",
+      "source_ref": "pdf:p11:r5:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w375",
+      "text": "Worshipping that pussy.",
+      "source_ref": "pdf:p11:r5:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w376",
+      "text": "Completely unwarranted confidence.",
+      "source_ref": "pdf:p11:r5:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w377",
+      "text": "A saxophone solo.",
+      "source_ref": "pdf:p11:r5:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w378",
+      "text": "Italians.",
+      "source_ref": "pdf:p11:r5:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w379",
+      "text": "A fetus.",
+      "source_ref": "pdf:p11:r5:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w380",
+      "text": "Firing a rifle into the air while balls deep in a squealing hog.",
+      "source_ref": "pdf:p11:r5:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w381",
+      "text": "Mike Pence.",
+      "source_ref": "pdf:p12:r1:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w382",
+      "text": "10,000 Syrian refugees.",
+      "source_ref": "pdf:p12:r1:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w383",
+      "text": "Forced sterilization.",
+      "source_ref": "pdf:p12:r1:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w384",
+      "text": "My relationship status.",
+      "source_ref": "pdf:p12:r1:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w385",
+      "text": "Nicolas Cage.",
+      "source_ref": "pdf:p12:r1:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w386",
+      "text": "Child beauty pageants.",
+      "source_ref": "pdf:p12:r1:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w387",
+      "text": "Explosions.",
+      "source_ref": "pdf:p12:r1:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w388",
+      "text": "Not vaccinating my children because I am stupid.",
+      "source_ref": "pdf:p12:r1:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w389",
+      "text": "An unwanted pregnancy.",
+      "source_ref": "pdf:p12:r2:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w390",
+      "text": "Diversity.",
+      "source_ref": "pdf:p12:r2:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w391",
+      "text": "A white ethnostate.",
+      "source_ref": "pdf:p12:r2:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w392",
+      "text": "Bees?",
+      "source_ref": "pdf:p12:r2:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w393",
+      "text": "Lena Dunham.",
+      "source_ref": "pdf:p12:r2:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w394",
+      "text": "Huffing spray paint.",
+      "source_ref": "pdf:p12:r2:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w395",
+      "text": "A man on the brink of orgasm.",
+      "source_ref": "pdf:p12:r2:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w396",
+      "text": "Repression.",
+      "source_ref": "pdf:p12:r2:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w397",
+      "text": "Harry Potter erotica.",
+      "source_ref": "pdf:p12:r3:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w398",
+      "text": "Giving birth to the Antichrist.",
+      "source_ref": "pdf:p12:r3:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w399",
+      "text": "Three dicks at the same time.",
+      "source_ref": "pdf:p12:r3:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w400",
+      "text": "Nazis.",
+      "source_ref": "pdf:p12:r3:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w401",
+      "text": "Invading Poland.",
+      "source_ref": "pdf:p12:r3:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w402",
+      "text": "My vagina.",
+      "source_ref": "pdf:p12:r3:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w403",
+      "text": "Assless chaps.",
+      "source_ref": "pdf:p12:r3:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w404",
+      "text": "Murder.",
+      "source_ref": "pdf:p12:r3:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w405",
+      "text": "8 oz. of sweet Mexican black-tar heroin.",
+      "source_ref": "pdf:p12:r4:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w406",
+      "text": "What that mouth do.",
+      "source_ref": "pdf:p12:r4:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w407",
+      "text": "Dead parents.",
+      "source_ref": "pdf:p12:r4:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w408",
+      "text": "Object permanence.",
+      "source_ref": "pdf:p12:r4:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w409",
+      "text": "Giving 110%.",
+      "source_ref": "pdf:p12:r4:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w410",
+      "text": "Her Majesty, Queen Elizabeth II.",
+      "source_ref": "pdf:p12:r4:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w411",
+      "text": "The Trail of Tears.",
+      "source_ref": "pdf:p12:r4:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w412",
+      "text": "Memes.",
+      "source_ref": "pdf:p12:r4:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w413",
+      "text": "Opposable thumbs.",
+      "source_ref": "pdf:p12:r5:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w414",
+      "text": "Racially-biased SAT questions.",
+      "source_ref": "pdf:p12:r5:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w415",
+      "text": "The Great Depression.",
+      "source_ref": "pdf:p12:r5:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w416",
+      "text": "Chainsaws for hands.",
+      "source_ref": "pdf:p12:r5:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w417",
+      "text": "Sex with animals.",
+      "source_ref": "pdf:p12:r5:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w418",
+      "text": "Being marginalized.",
+      "source_ref": "pdf:p12:r5:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w419",
+      "text": "Goblins.",
+      "source_ref": "pdf:p12:r5:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w420",
+      "text": "Hope.",
+      "source_ref": "pdf:p12:r5:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w421",
+      "text": "Liberals.",
+      "source_ref": "pdf:p13:r1:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w422",
+      "text": "A micropenis.",
+      "source_ref": "pdf:p13:r1:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w423",
+      "text": "My soul.",
+      "source_ref": "pdf:p13:r1:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w424",
+      "text": "A ball of earwax, semen, and toenail clippings.",
+      "source_ref": "pdf:p13:r1:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w425",
+      "text": "Illegal immigrants.",
+      "source_ref": "pdf:p13:r1:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w426",
+      "text": "Elderly Japanese men.",
+      "source_ref": "pdf:p13:r1:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w427",
+      "text": "The female orgasm.",
+      "source_ref": "pdf:p13:r1:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w428",
+      "text": "Heteronormativity.",
+      "source_ref": "pdf:p13:r1:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w429",
+      "text": "A horde of Vikings.",
+      "source_ref": "pdf:p13:r2:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w430",
+      "text": "Hot people.",
+      "source_ref": "pdf:p13:r2:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w431",
+      "text": "Seething with quiet resentment.",
+      "source_ref": "pdf:p13:r2:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w432",
+      "text": "An Oedipus complex.",
+      "source_ref": "pdf:p13:r2:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w433",
+      "text": "Crumbs all over the god damn carpet.",
+      "source_ref": "pdf:p13:r2:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w434",
+      "text": "Arnold Schwarzenegger.",
+      "source_ref": "pdf:p13:r2:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w435",
+      "text": "The wifi password.",
+      "source_ref": "pdf:p13:r2:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w436",
+      "text": "Spectacular abs.",
+      "source_ref": "pdf:p13:r2:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w437",
+      "text": "Geese.",
+      "source_ref": "pdf:p13:r3:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w438",
+      "text": "Extremely tight pants.",
+      "source_ref": "pdf:p13:r3:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w439",
+      "text": "Fox News.",
+      "source_ref": "pdf:p13:r3:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w440",
+      "text": "A little boy who won’t shut the fuck up about dinosaurs.",
+      "source_ref": "pdf:p13:r3:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w441",
+      "text": "A bird that shits human turds.",
+      "source_ref": "pdf:p13:r3:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w442",
+      "text": "A mopey zoo lion.",
+      "source_ref": "pdf:p13:r3:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w443",
+      "text": "A bag of magic beans.",
+      "source_ref": "pdf:p13:r3:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w444",
+      "text": "Poor life choices.",
+      "source_ref": "pdf:p13:r3:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w445",
+      "text": "Making a pouty face.",
+      "source_ref": "pdf:p13:r4:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w446",
+      "text": "Vehicular manslaughter.",
+      "source_ref": "pdf:p13:r4:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w447",
+      "text": "Women’s suffrage.",
+      "source_ref": "pdf:p13:r4:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w448",
+      "text": "Some guy.",
+      "source_ref": "pdf:p13:r4:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w449",
+      "text": "My sex life.",
+      "source_ref": "pdf:p13:r4:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w450",
+      "text": "Auschwitz.",
+      "source_ref": "pdf:p13:r4:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w451",
+      "text": "A snapping turtle biting the tip of your penis.",
+      "source_ref": "pdf:p13:r4:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w452",
+      "text": "All the dudes I’ve fucked.",
+      "source_ref": "pdf:p13:r4:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w453",
+      "text": "Judge Judy.",
+      "source_ref": "pdf:p13:r5:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w454",
+      "text": "African children.",
+      "source_ref": "pdf:p13:r5:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w455",
+      "text": "This month’s mass shooting.",
+      "source_ref": "pdf:p13:r5:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w456",
+      "text": "Barack Obama.",
+      "source_ref": "pdf:p13:r5:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w457",
+      "text": "The clitoris.",
+      "source_ref": "pdf:p13:r5:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w458",
+      "text": "The Big Bang.",
+      "source_ref": "pdf:p13:r5:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w459",
+      "text": "Land mines.",
+      "source_ref": "pdf:p13:r5:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w460",
+      "text": "The entire Mormon Tabernacle Choir.",
+      "source_ref": "pdf:p13:r5:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w461",
+      "text": "A micropig wearing a tiny raincoat and booties.",
+      "source_ref": "pdf:p14:r1:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w462",
+      "text": "Penis breath.",
+      "source_ref": "pdf:p14:r1:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w463",
+      "text": "Jerking off into a pool of children’s tears.",
+      "source_ref": "pdf:p14:r1:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w464",
+      "text": "Man meat.",
+      "source_ref": "pdf:p14:r1:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w465",
+      "text": "Farting and walking away.",
+      "source_ref": "pdf:p14:r1:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w466",
+      "text": "Being a dick to children.",
+      "source_ref": "pdf:p14:r1:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w467",
+      "text": "One trillion dollars.",
+      "source_ref": "pdf:p14:r1:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w468",
+      "text": "Drowning the kids in the bathtub.",
+      "source_ref": "pdf:p14:r1:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w469",
+      "text": "Me time.",
+      "source_ref": "pdf:p14:r2:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w470",
+      "text": "The Underground Railroad.",
+      "source_ref": "pdf:p14:r2:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w471",
+      "text": "Poorly-timed Holocaust jokes.",
+      "source_ref": "pdf:p14:r2:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w472",
+      "text": "A sea of troubles.",
+      "source_ref": "pdf:p14:r2:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w473",
+      "text": "Dying.",
+      "source_ref": "pdf:p14:r2:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w474",
+      "text": "Drinking out of the toilet and eating garbage.",
+      "source_ref": "pdf:p14:r2:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w475",
+      "text": "The gays.",
+      "source_ref": "pdf:p14:r2:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w476",
+      "text": "The screams... the terrible screams.",
+      "source_ref": "pdf:p14:r2:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w477",
+      "text": "Lumberjack fantasies.",
+      "source_ref": "pdf:p14:r3:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w478",
+      "text": "Morgan Freeman’s voice.",
+      "source_ref": "pdf:p14:r3:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w479",
+      "text": "Women in yogurt commercials.",
+      "source_ref": "pdf:p14:r3:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w480",
+      "text": "Natural male enhancement.",
+      "source_ref": "pdf:p14:r3:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w481",
+      "text": "Men.",
+      "source_ref": "pdf:p14:r3:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w482",
+      "text": "The bombing of Nagasaki.",
+      "source_ref": "pdf:p14:r3:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w483",
+      "text": "Fake tits.",
+      "source_ref": "pdf:p14:r3:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w484",
+      "text": "The Amish.",
+      "source_ref": "pdf:p14:r3:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w485",
+      "text": "Being a motherfucking sorcerer.",
+      "source_ref": "pdf:p14:r4:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w486",
+      "text": "My black ass.",
+      "source_ref": "pdf:p14:r4:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w487",
+      "text": "Genuine human connection.",
+      "source_ref": "pdf:p14:r4:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w488",
+      "text": "Announcing that I am about to cum.",
+      "source_ref": "pdf:p14:r4:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w489",
+      "text": "David Bowie flying in on a tiger made of lightning.",
+      "source_ref": "pdf:p14:r4:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w490",
+      "text": "My ugly face and bad personality.",
+      "source_ref": "pdf:p14:r4:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w491",
+      "text": "A bitch slap.",
+      "source_ref": "pdf:p14:r4:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w492",
+      "text": "A brain tumor.",
+      "source_ref": "pdf:p14:r4:c8",
+      "pack": "base"
+    },
+    {
+      "id": "w493",
+      "text": "Balls.",
+      "source_ref": "pdf:p14:r5:c1",
+      "pack": "base"
+    },
+    {
+      "id": "w494",
+      "text": "Grandma.",
+      "source_ref": "pdf:p14:r5:c2",
+      "pack": "base"
+    },
+    {
+      "id": "w495",
+      "text": "Friction.",
+      "source_ref": "pdf:p14:r5:c3",
+      "pack": "base"
+    },
+    {
+      "id": "w496",
+      "text": "Chunks of dead hitchhiker.",
+      "source_ref": "pdf:p14:r5:c4",
+      "pack": "base"
+    },
+    {
+      "id": "w497",
+      "text": "Fear itself.",
+      "source_ref": "pdf:p14:r5:c5",
+      "pack": "base"
+    },
+    {
+      "id": "w498",
+      "text": "Jews, gypsies, and homosexuals.",
+      "source_ref": "pdf:p14:r5:c6",
+      "pack": "base"
+    },
+    {
+      "id": "w499",
+      "text": "The milkman.",
+      "source_ref": "pdf:p14:r5:c7",
+      "pack": "base"
+    },
+    {
+      "id": "w500",
+      "text": "Cards Against Humanity.",
+      "source_ref": "pdf:p14:r5:c8",
+      "pack": "base"
+    }
+  ]
+}

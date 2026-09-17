@@ -1,0 +1,562 @@
+{
+  "schema_version": 1,
+  "metadata": {
+    "id": "maha",
+    "name": "MAHA Pack",
+    "description": "Custom health and wellness satire deck migrated from the original script.",
+    "version": "1.0.0",
+    "language": "en-US",
+    "custom": true,
+    "authors": [
+      "Project owner, with ChatGPT assistance"
+    ],
+    "attribution": "Custom MAHA deck by the project owner, created with ChatGPT assistance.",
+    "license_id": "CC-BY-SA-4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "license_notice": "Licensed under Creative Commons Attribution-ShareAlike 4.0 International; attribution and share-alike are required.",
+    "sources": [
+      {
+        "origin": "imports/original_cah_maha.py",
+        "edition": "Supplied legacy script",
+        "sha256": "5574dc6602617ad40aa68256919c1e2c4466e0177893d722b6b4fd81d892f029",
+        "retrieved": "2026-09-16",
+        "license_evidence": "Owner declaration in this project conversation on 2026-09-16; LICENSES/CC-BY-SA-4.0-legalcode.html."
+      }
+    ],
+    "modifications": [
+      "Added stable IDs, pack identifiers, source references, and metadata; card fields and ordering unchanged."
+    ]
+  },
+  "black": [
+    {
+      "id": "b001",
+      "repr": "The FDA has announced that _ is now approved to treat _.",
+      "template": "The FDA has announced that {} is now approved to treat {}.",
+      "slots": 2,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:1"
+    },
+    {
+      "id": "b002",
+      "repr": "RFK Jr. has promised to remove _ from the American food supply by 2028.",
+      "template": "RFK Jr. has promised to remove {} from the American food supply by 2028.",
+      "slots": 1,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:2"
+    },
+    {
+      "id": "b003",
+      "repr": "Doctors hate this one weird trick involving _.",
+      "template": "Doctors hate this one weird trick involving {}.",
+      "slots": 1,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:3"
+    },
+    {
+      "id": "b004",
+      "repr": "The CDC is investigating a multistate outbreak linked to _.",
+      "template": "The CDC is investigating a multistate outbreak linked to {}.",
+      "slots": 1,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:4"
+    },
+    {
+      "id": "b005",
+      "repr": "MAHA: Make America _ Again.",
+      "template": "MAHA: Make America {} Again.",
+      "slots": 1,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:5"
+    },
+    {
+      "id": "b006",
+      "repr": "Ask your doctor if _ is right for you.",
+      "template": "Ask your doctor if {} is right for you.",
+      "slots": 1,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:6"
+    },
+    {
+      "id": "b007",
+      "repr": "The Department of Health and Human Services recommends at least 30 minutes of _ every day.",
+      "template": "The Department of Health and Human Services recommends at least 30 minutes of {} every day.",
+      "slots": 1,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:7"
+    },
+    {
+      "id": "b008",
+      "repr": "After extensive clinical trials, researchers found that _ significantly reduces the risk of _.",
+      "template": "After extensive clinical trials, researchers found that {} significantly reduces the risk of {}.",
+      "slots": 2,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:8"
+    },
+    {
+      "id": "b009",
+      "repr": "The FDA would like to remind Americans that _ is not, technically speaking, medicine.",
+      "template": "The FDA would like to remind Americans that {} is not, technically speaking, medicine.",
+      "slots": 1,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:9"
+    },
+    {
+      "id": "b010",
+      "repr": "NEW STUDY: Scientists find a surprising connection between _ and _.",
+      "template": "NEW STUDY: Scientists find a surprising connection between {} and {}.",
+      "slots": 2,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:10"
+    },
+    {
+      "id": "b011",
+      "repr": "The Surgeon General has issued a warning about teenagers doing _ on TikTok.",
+      "template": "The Surgeon General has issued a warning about teenagers doing {} on TikTok.",
+      "slots": 1,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:11"
+    },
+    {
+      "id": "b012",
+      "repr": "Nine out of ten doctors recommend _. The tenth doctor recommends _.",
+      "template": "Nine out of ten doctors recommend {}. The tenth doctor recommends {}.",
+      "slots": 2,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:12"
+    },
+    {
+      "id": "b013",
+      "repr": "Side effects may include nausea, dizziness, and _.",
+      "template": "Side effects may include nausea, dizziness, and {}.",
+      "slots": 1,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:13"
+    },
+    {
+      "id": "b014",
+      "repr": "If _ lasts longer than four hours, seek immediate medical attention.",
+      "template": "If {} lasts longer than four hours, seek immediate medical attention.",
+      "slots": 1,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:14"
+    },
+    {
+      "id": "b015",
+      "repr": "Due to recent regulatory changes, _ may now legally be called \"cheese.\"",
+      "template": "Due to recent regulatory changes, {} may now legally be called \"cheese.\"",
+      "slots": 1,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:15"
+    },
+    {
+      "id": "b016",
+      "repr": "The wellness influencer assured me that _ would \"reset my mitochondria.\"",
+      "template": "The wellness influencer assured me that {} would \"reset my mitochondria.\"",
+      "slots": 1,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:16"
+    },
+    {
+      "id": "b017",
+      "repr": "My insurance denied _, but somehow approved _.",
+      "template": "My insurance denied {}, but somehow approved {}.",
+      "slots": 2,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:17"
+    },
+    {
+      "id": "b018",
+      "repr": "In lieu of universal healthcare, America offers you _.",
+      "template": "In lieu of universal healthcare, America offers you {}.",
+      "slots": 1,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:18"
+    },
+    {
+      "id": "b019",
+      "repr": "The clinical trial was terminated early after participants began _.",
+      "template": "The clinical trial was terminated early after participants began {}.",
+      "slots": 1,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:19"
+    },
+    {
+      "id": "b020",
+      "repr": "Health Canada has politely asked Americans to stop putting _ in _.",
+      "template": "Health Canada has politely asked Americans to stop putting {} in {}.",
+      "slots": 2,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:20"
+    },
+    {
+      "id": "b021",
+      "repr": "The label says \"all natural,\" so I'm choosing not to ask about _.",
+      "template": "The label says \"all natural,\" so I'm choosing not to ask about {}.",
+      "slots": 1,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:21"
+    },
+    {
+      "id": "b022",
+      "repr": "The placebo group received a sugar pill. The treatment group received _.",
+      "template": "The placebo group received a sugar pill. The treatment group received {}.",
+      "slots": 1,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:22"
+    },
+    {
+      "id": "b023",
+      "repr": "BREAKING: The food pyramid has been replaced with _.",
+      "template": "BREAKING: The food pyramid has been replaced with {}.",
+      "slots": 1,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:23"
+    },
+    {
+      "id": "b024",
+      "repr": "According to this podcast, the real cause of chronic disease is _.",
+      "template": "According to this podcast, the real cause of chronic disease is {}.",
+      "slots": 1,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:24"
+    },
+    {
+      "id": "b025",
+      "repr": "Talk to your healthcare provider before attempting _.",
+      "template": "Talk to your healthcare provider before attempting {}.",
+      "slots": 1,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:25"
+    },
+    {
+      "id": "b026",
+      "repr": "The FDA inspection went pretty well until they opened the door marked \"_.\"",
+      "template": "The FDA inspection went pretty well until they opened the door marked \"{}.\"",
+      "slots": 1,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:26"
+    },
+    {
+      "id": "b027",
+      "repr": "After eliminating _ from his diet, Brian was finally cured of _.",
+      "template": "After eliminating {} from his diet, Brian was finally cured of {}.",
+      "slots": 2,
+      "pack": "maha",
+      "source_ref": "legacy:BLACK_CARDS:27"
+    }
+  ],
+  "white": [
+    {
+      "id": "w001",
+      "text": "RFK's raspy voice",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:1"
+    },
+    {
+      "id": "w002",
+      "text": "The worm that ate part of RFK Jr.'s brain",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:2"
+    },
+    {
+      "id": "w003",
+      "text": "An irresponsible quantity of raw milk",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:3"
+    },
+    {
+      "id": "w004",
+      "text": "Beef tallow in places beef tallow should never be",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:4"
+    },
+    {
+      "id": "w005",
+      "text": "A suspiciously jacked 71-year-old",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:5"
+    },
+    {
+      "id": "w006",
+      "text": "One beautiful, glistening spoonful of cod liver oil",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:6"
+    },
+    {
+      "id": "w007",
+      "text": "Seed oils",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:7"
+    },
+    {
+      "id": "w008",
+      "text": "The healing power of being extremely online",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:8"
+    },
+    {
+      "id": "w009",
+      "text": "A podcast host with no relevant qualifications",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:9"
+    },
+    {
+      "id": "w010",
+      "text": "Doing your own research",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:10"
+    },
+    {
+      "id": "w011",
+      "text": "A Facebook post your aunt swears was written by a doctor",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:11"
+    },
+    {
+      "id": "w012",
+      "text": "An immune system with main-character syndrome",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:12"
+    },
+    {
+      "id": "w013",
+      "text": "Measles: the original essential oil",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:13"
+    },
+    {
+      "id": "w014",
+      "text": "A completely preventable Victorian disease",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:14"
+    },
+    {
+      "id": "w015",
+      "text": "Polio making an unexpected comeback tour",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:15"
+    },
+    {
+      "id": "w016",
+      "text": "A raw-milk cheese with a body count",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:16"
+    },
+    {
+      "id": "w017",
+      "text": "An artisanal case of listeria",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:17"
+    },
+    {
+      "id": "w018",
+      "text": "Farm-to-table tuberculosis",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:18"
+    },
+    {
+      "id": "w019",
+      "text": "Locally sourced E. coli",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:19"
+    },
+    {
+      "id": "w020",
+      "text": "A probiotic that has become self-aware",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:20"
+    },
+    {
+      "id": "w021",
+      "text": "Microplastics in my balls",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:21"
+    },
+    {
+      "id": "w022",
+      "text": "Macroplastics in my balls",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:22"
+    },
+    {
+      "id": "w023",
+      "text": "An amount of mercury usually associated with thermometers",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:23"
+    },
+    {
+      "id": "w024",
+      "text": "A single molecule of Red 40",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:24"
+    },
+    {
+      "id": "w025",
+      "text": "The sinister machinations of Big Vegetable",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:25"
+    },
+    {
+      "id": "w026",
+      "text": "The deep state putting canola oil in my mayonnaise",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:26"
+    },
+    {
+      "id": "w027",
+      "text": "A child absolutely fucking vibrating from food dye",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:27"
+    },
+    {
+      "id": "w028",
+      "text": "The forbidden pleasures of Yellow 5",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:28"
+    },
+    {
+      "id": "w029",
+      "text": "A pancreas fighting for its fucking life",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:29"
+    },
+    {
+      "id": "w030",
+      "text": "My last functioning mitochondrion",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:30"
+    },
+    {
+      "id": "w031",
+      "text": "Three supplements in a trench coat pretending to be medicine",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:31"
+    },
+    {
+      "id": "w032",
+      "text": "A supplement manufactured in a facility that also processes drywall",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:32"
+    },
+    {
+      "id": "w033",
+      "text": "An unregulated powder called ALPHA PATRIOT MAX",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:33"
+    },
+    {
+      "id": "w034",
+      "text": "A $79 bottle of capsules containing mostly optimism",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:34"
+    },
+    {
+      "id": "w035",
+      "text": "A peptide purchased from a website with a wolf logo",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:35"
+    },
+    {
+      "id": "w036",
+      "text": "A wellness influencer explaining endocrinology from a sauna",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:36"
+    },
+    {
+      "id": "w037",
+      "text": "Joe Rogan asking, \"But have they actually studied that?\"",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:37"
+    },
+    {
+      "id": "w038",
+      "text": "Six hours of podcast-based medical education",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:38"
+    },
+    {
+      "id": "w039",
+      "text": "A chiropractor getting dangerously ambitious",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:39"
+    },
+    {
+      "id": "w040",
+      "text": "The phrase \"toxins\" with absolutely no further clarification",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:40"
+    },
+    {
+      "id": "w041",
+      "text": "Detoxing something the liver was already handling",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:41"
+    },
+    {
+      "id": "w042",
+      "text": "Putting butter in coffee and calling it healthcare",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:42"
+    },
+    {
+      "id": "w043",
+      "text": "Sunlight directly on the perineum",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:43"
+    },
+    {
+      "id": "w044",
+      "text": "The ancestral human urge to lick a salt lamp",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:44"
+    },
+    {
+      "id": "w045",
+      "text": "Rejecting modernity; contracting dysentery",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:45"
+    },
+    {
+      "id": "w046",
+      "text": "The naturalistic fallacy, now available in gummy form",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:46"
+    },
+    {
+      "id": "w047",
+      "text": "The FDA's saddest employee",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:47"
+    },
+    {
+      "id": "w048",
+      "text": "A double-blind, placebo-controlled vibes check",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:48"
+    },
+    {
+      "id": "w049",
+      "text": "Statistically significant bullshit",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:49"
+    },
+    {
+      "id": "w050",
+      "text": "Peer review by three guys on X",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:50"
+    },
+    {
+      "id": "w051",
+      "text": "The placebo effect, but fucking committed",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:51"
+    },
+    {
+      "id": "w052",
+      "text": "A randomized controlled trial conducted entirely in a group chat",
+      "pack": "maha",
+      "source_ref": "legacy:WHITE_CARDS:52"
+    }
+  ]
+}

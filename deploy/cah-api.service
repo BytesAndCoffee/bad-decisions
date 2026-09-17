@@ -1,0 +1,27 @@
+[Unit]
+Description=Multi-pack card generation API
+After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=cah-api
+Group=cah-api
+WorkingDirectory=/opt/cah-api/current
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=/etc/cah-api.env
+ExecStart=/opt/cah-api/current/.venv/bin/uvicorn cah_engine.api:create_app --factory --host 127.0.0.1 --port 8000 --workers 2 --proxy-headers --forwarded-allow-ips=127.0.0.1
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+UMask=0027
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

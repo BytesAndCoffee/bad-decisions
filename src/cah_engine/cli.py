@@ -1,0 +1,113 @@
+from __future__ import annotations
+
+import argparse
+import math
+import signal
+import sys
+import time
+from typing import Sequence
+
+from .engine import generate_from_resolved, render_round
+from .errors import CahError, PackConfigurationError
+from .packs import load_registry, resolve_pools
+
+
+class CliArgumentError(ValueError):
+    pass
+
+
+def positive_finite(value: str) -> float:
+    try:
+        number = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a number") from exc
+    if not math.isfinite(number) or number <= 0:
+        raise argparse.ArgumentTypeError("must be finite and greater than zero")
+    return number
+
+
+def parser() -> argparse.ArgumentParser:
+    result = argparse.ArgumentParser(description="Generate random card rounds from independently selectable packs.")
+    mode = result.add_mutually_exclusive_group()
+    mode.add_argument("--oneshot", action="store_true", help="print one rendered round and exit")
+    mode.add_argument("--rapid", action="store_true", help="continuously print completed rounds")
+    result.add_argument("--delay", type=positive_finite, help="positive seconds between rapid rounds (default: 1.0)")
+    result.add_argument("--packs", default="base", help="comma-separated pack IDs for both colors (default: base)")
+    result.add_argument("--black-packs", help="override the black-card selector")
+    result.add_argument("--white-packs", help="override the white-card selector")
+    result.add_argument("--list-packs", action="store_true", help="list available packs and exit")
+    return result
+
+
+def _write(text: str = "", *, stream=sys.stdout, flush: bool = False) -> None:
+    print(text, file=stream, flush=flush)
+
+
+def _interactive(resolved, registry) -> int:
+    if not sys.stdin.isatty() or not sys.stdout.isatty():
+        _write("Interactive mode requires a terminal; use --oneshot or --rapid.", stream=sys.stderr)
+        return 2
+    while True:
+        generated = generate_from_resolved(resolved, registry)
+        _write()
+        _write("═" * 72)
+        _write(generated.black.repr)
+        try:
+            command = input("\nPress Enter to reveal, or q to quit: ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            _write()
+            return 0
+        if command == "q":
+            return 0
+        _write()
+        for answer in generated.white:
+            _write(f"⬜ {answer.text}")
+        _write(f"\n→ {generated.result}")
+        try:
+            command = input("\nPress Enter for another round, or q to quit: ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            _write()
+            return 0
+        if command == "q":
+            return 0
+
+
+def run(argv: Sequence[str] | None = None, *, sleep=time.sleep) -> int:
+    args = parser().parse_args(argv)
+    if args.delay is not None and not args.rapid:
+        parser().error("--delay may only be used with --rapid")
+    registry = load_registry()
+    if args.list_packs:
+        for pack_id, pack in registry.packs.items():
+            _write(f"{pack_id}\t{pack.metadata.name}\tblack={len(pack.black)}\twhite={len(pack.white)}")
+        return 0
+    resolved = resolve_pools(registry, packs=args.packs, black_packs=args.black_packs, white_packs=args.white_packs)
+    if args.oneshot:
+        _write(generate_from_resolved(resolved, registry).result)
+        return 0
+    if args.rapid:
+        delay = args.delay if args.delay is not None else 1.0
+        while True:
+            _write(generate_from_resolved(resolved, registry).result, flush=True)
+            sleep(delay)
+    return _interactive(resolved, registry)
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+    try:
+        return run(argv)
+    except KeyboardInterrupt:
+        return 0
+    except PackConfigurationError as exc:
+        _write(f"configuration error: {exc.message}", stream=sys.stderr)
+        return 1
+    except CahError as exc:
+        _write(f"{exc.code}: {exc.message}", stream=sys.stderr)
+        return 2
+    except BrokenPipeError:
+        return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

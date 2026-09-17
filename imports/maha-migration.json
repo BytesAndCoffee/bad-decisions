@@ -1,0 +1,7 @@
+{
+  "source": "imports/original_cah_maha.py",
+  "black_count": 27,
+  "white_count": 52,
+  "canonical_content_sha256": "2d13f1b5f5f4e51f5ec57186d34e5ab9cea7d703cda7766ea1ad4941a1b8c3fd",
+  "comparison": "Every repr/template/slots tuple and white text is compared by tests after removing migration-only fields."
+}

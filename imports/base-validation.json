@@ -1,0 +1,10 @@
+{
+  "source_sha256": "92c8a719c6d7f28b89a87ecbfae780e7d4cd7472c97c7cf1ffe3037c2af89f9b",
+  "pages": 17,
+  "white_pages": "2 (right half), 3-14",
+  "black_pages": "15-16",
+  "excluded_pages": "1 instructions, rules area on page 2, 17 terms",
+  "black_count": 80,
+  "white_count": 500,
+  "review_items": []
+}

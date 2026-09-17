@@ -1,0 +1,31 @@
+{
+  "manifest_version": 1,
+  "importer_version": "1.0.0",
+  "generated": "2026-09-16",
+  "packs": {
+    "base": {
+      "source_url": "https://s3.amazonaws.com/cah/CAH_MainGame.pdf",
+      "edition": "Official downloadable main game PDF, created 2019-12-02",
+      "retrieved": "2026-09-16",
+      "sha256": "92c8a719c6d7f28b89a87ecbfae780e7d4cd7472c97c7cf1ffe3037c2af89f9b",
+      "license_id": "CC-BY-NC-SA-2.0",
+      "license_evidence": "PDF page 17 and LICENSES/CC-BY-NC-SA-2.0-legalcode.html",
+      "attribution": "Cards Against Humanity by Cards Against Humanity LLC",
+      "counts": {"black": 80, "white": 500},
+      "transformations": ["layout-aware 8x5 grid extraction", "collapse visual line wraps", "normalize printed blank runs", "append answer placeholders to question prompts"],
+      "excluded": ["instructions", "rules", "terms", "commercial expansions", "unverified third-party collections"]
+    },
+    "maha": {
+      "source": "imports/original_cah_maha.py",
+      "retrieved": "2026-09-16",
+      "source_sha256": "5574dc6602617ad40aa68256919c1e2c4466e0177893d722b6b4fd81d892f029",
+      "canonical_content_sha256": "2d13f1b5f5f4e51f5ec57186d34e5ab9cea7d703cda7766ea1ad4941a1b8c3fd",
+      "license_id": "CC-BY-SA-4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "counts": {"black": 27, "white": 52},
+      "transformations": ["add stable IDs", "add pack fields", "add metadata and source references"],
+      "license_evidence": "Project owner declaration on 2026-09-16; LICENSES/CC-BY-SA-4.0-legalcode.html",
+      "deployment_authorization": "Project owner declared MAHA content is theirs and ChatGPT-assisted on 2026-09-16."
+    }
+  }
+}

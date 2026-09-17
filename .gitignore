@@ -1,0 +1,27 @@
+# Python environments and caches
+.venv/
+.pypi-venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Build and package artifacts
+dist/
+build/
+*.egg-info/
+client/dist/
+client/build/
+client/*.egg-info/
+
+# Local configuration and secrets
+.env
+.env.*
+*.env
+!.env.example
+*.pem
+*.key
+
+# Editor and operating-system metadata
+.DS_Store
+.vscode/
+.idea/

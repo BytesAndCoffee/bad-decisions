@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cards-against-coffee"
+version = "0.1.0"
+description = "A small terminal client for the Cards Against Coffee API"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Cards Against Coffee contributors" }]
+classifiers = ["Development Status :: 3 - Alpha", "Environment :: Console", "License :: OSI Approved :: MIT License", "Programming Language :: Python :: 3", "Programming Language :: Python :: 3 :: Only"]
+
+[project.scripts]
+coffee-cards = "cards_against_coffee.cli:main"
+
+[project.urls]
+Homepage = "https://bytes.coffee/cah/"
+Documentation = "https://bytes.coffee/cah/docs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cards_against_coffee"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
