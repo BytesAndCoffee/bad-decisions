@@ -17,10 +17,8 @@ from .errors import PackConfigurationError
 from .models import ID_PATTERN, Pack
 
 FORMAT = "carddeck"
-LEGACY_FORMAT = "cahpack"
 FORMAT_VERSION = 1
 CARDDECK_SUFFIX = ".carddeck"
-LEGACY_SUFFIX = ".cahpack"
 REQUIRED_MEMBERS = frozenset({"manifest.json", "pack.json", "LICENSE.txt", "ATTRIBUTION.md"})
 MAX_MEMBER_BYTES = 2 * 1024 * 1024
 MAX_ARCHIVE_BYTES = 5 * 1024 * 1024
@@ -43,9 +41,7 @@ def _error(message: str) -> PackConfigurationError:
 def _format_for_path(path: Path) -> str:
     if path.suffix == CARDDECK_SUFFIX:
         return FORMAT
-    if path.suffix == LEGACY_SUFFIX:
-        return LEGACY_FORMAT
-    raise _error("archive filename must end in .carddeck (or legacy .cahpack)")
+    raise _error("archive filename must end in .carddeck")
 
 
 def _canonical_json(value: object) -> bytes:

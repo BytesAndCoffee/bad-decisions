@@ -122,11 +122,3 @@ bad-decisions pack export example ./example.carddeck
 bad-decisions pack init-registry /absolute/pack/registry
 bad-decisions pack import example.carddeck /absolute/pack/registry
 ```
-
-## CAHPACK migration
-
-`.cahpack` archives are accepted as a legacy compatibility format when their
-manifest identifies `"format": "cahpack"` and version 1. Exporting to a
-`.cahpack` filename produces that legacy manifest deliberately. New archives
-SHOULD use `.carddeck` and `"format": "carddeck"`. The archive layout,
-validation rules, and checksum semantics are otherwise identical in version 1.

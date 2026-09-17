@@ -65,9 +65,6 @@ def test_initialize_registry_requires_empty_absolute_directory(tmp_path):
         initialize_registry(registry)
 
 
-def test_legacy_cahpack_remains_compatible(tmp_path):
-    archive = export_pack(load_registry().packs["maha"], tmp_path / "maha.cahpack")
-    with zipfile.ZipFile(archive) as contents:
-        manifest = json.loads(contents.read("manifest.json"))
-    assert manifest["format"] == "cahpack"
-    assert validate_archive(archive).metadata.id == "maha"
+def test_rejects_legacy_cahpack_filename(tmp_path):
+    with pytest.raises(PackConfigurationError, match=".carddeck"):
+        export_pack(load_registry().packs["maha"], tmp_path / "maha.cahpack")

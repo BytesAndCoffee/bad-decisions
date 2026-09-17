@@ -106,8 +106,7 @@ bad-decisions pack import ./maha.carddeck /absolute/pack/registry
 `init-registry` creates an empty complete registry containing the bundled packs.
 Import creates `<registry>/<pack-id>.json` atomically and refuses to overwrite
 an existing pack. Configure that complete registry through `CAH_PACK_DIR` and
-restart the service. Existing `.cahpack` archives remain accepted as a legacy
-format; new exports use `.carddeck`. The validator rejects malformed data, missing license or
+restart the service. The validator rejects malformed data, missing license or
 attribution text, path traversal, symlinks, unexpected members, oversized
 archives, high compression ratios, and checksum mismatches.
 
