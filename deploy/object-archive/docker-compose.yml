@@ -1,0 +1,20 @@
+services:
+  garage:
+    image: dxflrs/garage:v2.2.0
+    command: ["/garage", "server"]
+    restart: unless-stopped
+    ports:
+      - "${GARAGE_TAILNET_IP}:3900:3900"
+      - "${GARAGE_TAILNET_IP}:3901:3901"
+      - "${GARAGE_TAILNET_IP}:3902:3902"
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+      - ./secrets:/run/secrets:ro
+      - garage-meta:/var/lib/garage/meta
+      - garage-data:/var/lib/garage/data
+      - garage-snapshots:/var/lib/garage/snapshots
+
+volumes:
+  garage-meta:
+  garage-data:
+  garage-snapshots:

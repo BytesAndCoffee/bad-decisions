@@ -1,0 +1,29 @@
+# Install this as a separate nginx server block on the public edge host.
+# Render the two @...@ placeholders before installing it.
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ~^(?<archive_bucket>[a-z0-9][a-z0-9-]*)\.@OBJECT_ARCHIVE_DOMAIN@$;
+
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name ~^(?<archive_bucket>[a-z0-9][a-z0-9-]*)\.@OBJECT_ARCHIVE_DOMAIN@$;
+
+    # Supply a wildcard certificate for *.@OBJECT_ARCHIVE_DOMAIN@ here.
+    client_max_body_size 0;
+
+    location / {
+        # Keep the original Host header: Garage derives the bucket from it.
+        proxy_pass http://@GARAGE_WEB_UPSTREAM@;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300s;
+    }
+}

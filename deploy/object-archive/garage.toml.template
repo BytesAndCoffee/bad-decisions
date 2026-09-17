@@ -1,0 +1,28 @@
+# Render this file outside Git before starting Docker Compose.
+# Secrets are mounted from ./secrets and are never committed.
+replication_factor = 1
+consistency_mode = "consistent"
+
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+metadata_snapshots_dir = "/var/lib/garage/snapshots"
+metadata_auto_snapshot_interval = "6h"
+db_engine = "sqlite"
+
+rpc_secret_file = "/run/secrets/rpc_secret"
+rpc_bind_addr = "0.0.0.0:3901"
+rpc_public_addr = "@GARAGE_TAILNET_IP@:3901"
+
+[s3_api]
+api_bind_addr = "0.0.0.0:3900"
+s3_region = "@OBJECT_ARCHIVE_REGION@"
+
+[s3_web]
+bind_addr = "0.0.0.0:3902"
+root_domain = ".@OBJECT_ARCHIVE_DOMAIN@"
+
+[admin]
+api_bind_addr = "127.0.0.1:3903"
+admin_token_file = "/run/secrets/admin_token"
+metrics_require_token = true
+metrics_token_file = "/run/secrets/metrics_token"
