@@ -10,7 +10,7 @@ from typing import Annotated
 
 from fastapi import FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import __version__
@@ -122,8 +122,11 @@ For people and robots:
 
     @app.get("/web", include_in_schema=False)
     @app.get("/web/", include_in_schema=False)
-    def web_index():
-        return web_asset("index.html")
+    def web_index(request: Request):
+        root_path = request.scope.get("root_path", "").rstrip("/")
+        asset_base = f"{root_path}/web/" or "/web/"
+        document = files("cah_engine").joinpath("web", "index.html").read_text(encoding="utf-8")
+        return HTMLResponse(document.replace("__WEB_BASE__", asset_base))
 
     @app.get("/web/{asset:path}", include_in_schema=False)
     def web_file(asset: str):

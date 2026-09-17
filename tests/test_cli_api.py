@@ -37,9 +37,10 @@ def test_api_success_metadata_and_cache():
         assert "/cah/v1/round" in howto.text
         assert "/cah/web/" in howto.text
         assert "CAHPACK.md" in howto.text
-        assert client.get("/healthz").json() == {"status": "ok", "version": "1.0.8", "pack_count": 2}
+        assert client.get("/healthz").json() == {"status": "ok", "version": "1.0.9", "pack_count": 2}
         web = client.get("/web/")
         assert web.status_code == 200 and "Cards Against Coffee" in web.text
+        assert '<base href="/web/">' in web.text
         assert client.get("/web", follow_redirects=False).status_code == 200
         assert client.get("/web/app.js").status_code == 200
         packs = client.get("/v1/packs").json()
@@ -58,6 +59,7 @@ def test_web_client_works_with_proxy_root_path(monkeypatch):
     monkeypatch.setenv("CAH_ROOT_PATH", "/cah")
     with TestClient(create_app()) as client:
         assert client.get("/web/").status_code == 200
+        assert '<base href="/cah/web/">' in client.get("/web").text
         assert client.get("/web/style.css").status_code == 200
         assert client.get("/web/../api.py").status_code == 404
 
