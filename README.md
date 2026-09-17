@@ -42,6 +42,20 @@ bad-decisions pack import example.carddeck /absolute/pack/registry
 rejects traversal, symlinks, unexpected members, checksum mismatches,
 oversized content, and dangerous compression ratios before any pack is written.
 
+### Pretend You're Xyzzy imports
+
+The distribution does not bundle Pretend You're Xyzzy card data. If you have a
+lawfully acquired `cah_cards.sql` dump, the separate importer emits one
+attributed `.carddeck` archive per active card set and records the supplied
+source URL and SHA-256. Those generated packs are CC BY-NC-SA 3.0 and must stay
+non-commercial and share-alike.
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/import_pyx.py /path/to/cah_cards.sql ./pyx-carddecks \
+  --source-url 'https://raw.githubusercontent.com/ajanata/PretendYoureXyzzy/<commit>/cah_cards.sql' \
+  --retrieved 2026-09-17
+```
+
 Bundled content retains its own provenance and licensing. The `coffee` pack is
 owner-authorized material based on IRC messages, distributed under CC BY-SA
 4.0; its raw source-message corpus is not included. The `base` pack is licensed
