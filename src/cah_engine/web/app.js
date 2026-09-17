@@ -5,6 +5,11 @@ const roundElement = document.querySelector("#round");
 const blackElement = document.querySelector("#black");
 const answersElement = document.querySelector("#answers");
 const resultElement = document.querySelector("#result");
+const apiBase = window.location.pathname.replace(/\/web\/?$/, "/v1");
+
+function apiUrl(path) {
+  return `${apiBase}/${path}`;
+}
 
 function setStatus(message) {
   statusElement.textContent = message;
@@ -16,7 +21,7 @@ function selectedPacks() {
 
 async function loadPacks() {
   try {
-    const response = await fetch("../v1/packs", { headers: { Accept: "application/json" } });
+    const response = await fetch(apiUrl("packs"), { headers: { Accept: "application/json" } });
     if (!response.ok) throw new Error("Could not load packs");
     const packs = await response.json();
     packsElement.replaceChildren(...packs.map((pack) => {
@@ -48,7 +53,7 @@ async function deal() {
   dealButton.disabled = true;
   setStatus("Consulting the machine…");
   try {
-    const response = await fetch(`../v1/round?packs=${encodeURIComponent(packs.join(","))}`, { headers: { Accept: "application/json" } });
+    const response = await fetch(`${apiUrl("round")}?packs=${encodeURIComponent(packs.join(","))}`, { headers: { Accept: "application/json" } });
     const body = await response.json();
     if (!response.ok) throw new Error(body.error?.message || "Round failed");
     blackElement.textContent = body.black.repr;
