@@ -5,6 +5,8 @@ const roundElement = document.querySelector("#round");
 const blackElement = document.querySelector("#black");
 const answersElement = document.querySelector("#answers");
 const resultElement = document.querySelector("#result");
+const emptyRoundElement = document.querySelector("#empty-round");
+const packSummaryElement = document.querySelector("#pack-summary");
 const apiBase = window.location.pathname.replace(/\/web\/?$/, "/v1");
 
 function apiUrl(path) {
@@ -17,6 +19,11 @@ function setStatus(message) {
 
 function selectedPacks() {
   return [...document.querySelectorAll("input[name=pack]:checked")].map((input) => input.value);
+}
+
+function updatePackSummary() {
+  const selected = selectedPacks();
+  packSummaryElement.textContent = selected.length ? `${selected.length} pack${selected.length === 1 ? "" : "s"} selected. Taste is optional.` : "No packs selected. Bold strategy.";
 }
 
 async function loadPacks() {
@@ -35,8 +42,10 @@ async function loadPacks() {
       const text = document.createElement("span");
       text.textContent = `${pack.name} (${pack.counts.black}/${pack.counts.white})`;
       label.append(input, text);
+      input.addEventListener("change", updatePackSummary);
       return label;
     }));
+    updatePackSummary();
     setStatus("");
   } catch (error) {
     setStatus("The API declined to provide bad decisions. Try refreshing.");
@@ -64,6 +73,7 @@ async function deal() {
     }));
     resultElement.textContent = body.result;
     roundElement.hidden = false;
+    emptyRoundElement.hidden = true;
     setStatus("");
   } catch (error) {
     setStatus(error.message || "Something went terribly, professionally wrong.");
@@ -74,6 +84,7 @@ async function deal() {
 
 document.querySelector("#all-packs").addEventListener("click", () => {
   document.querySelectorAll("input[name=pack]").forEach((input) => { input.checked = true; });
+  updatePackSummary();
 });
 dealButton.addEventListener("click", deal);
 loadPacks();

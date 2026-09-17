@@ -3,39 +3,77 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="A small browser client for Cards Against Coffee.">
+    <meta name="description" content="Deal a beautifully terrible hand with Cards Against Coffee.">
     <base href="__WEB_BASE__">
-    <title>Cards Against Coffee</title>
+    <title>Cards Against Coffee — deal badly, professionally</title>
     <link rel="stylesheet" href="style.css">
   </head>
   <body>
-    <main>
-      <p class="eyebrow">PRODUCTION-GRADE BAD DECISIONS</p>
-      <h1>Cards Against<br><span>Coffee</span></h1>
-      <p class="lede">A completely unnecessary browser client for a suspiciously well-engineered card API.</p>
+    <main class="shell">
+      <header class="masthead">
+        <a class="wordmark" href="./" aria-label="Cards Against Coffee home">
+          <span class="wordmark-mark">C</span>
+          <span>Cards Against<br><strong>Coffee</strong></span>
+        </a>
+        <p class="build-note"><span></span> API online. Regrets pending.</p>
+      </header>
 
-      <section class="controls" aria-labelledby="deck-heading">
-        <div class="section-head">
-          <h2 id="deck-heading">Choose your bad decisions</h2>
-          <button id="all-packs" class="text-button" type="button">select all</button>
-        </div>
-        <div id="packs" class="packs" aria-live="polite">Loading packs…</div>
+      <section class="intro" aria-labelledby="page-title">
+        <p class="kicker">A very serious card engine</p>
+        <h1 id="page-title">Make a <em>terrible</em><br>decision.</h1>
+        <p>Choose the packs, deal a round, and let a suspiciously well-engineered API do the rest.</p>
       </section>
 
-      <button id="deal" class="deal" type="button">Deal a terrible hand</button>
-      <p id="status" class="status" role="status"></p>
+      <section class="table" aria-label="Card round table">
+        <aside class="deck-panel" aria-labelledby="deck-heading">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">THE DECK</p>
+              <h2 id="deck-heading">Choose your packs</h2>
+            </div>
+            <button id="all-packs" class="quiet-button" type="button">All in</button>
+          </div>
+          <div id="packs" class="packs" aria-live="polite">Loading packs…</div>
+          <p id="pack-summary" class="pack-summary">Finding the bad decisions…</p>
+          <button id="deal" class="deal" type="button">
+            <span>Deal a terrible hand</span>
+            <b aria-hidden="true">→</b>
+          </button>
+          <p id="status" class="status" role="status"></p>
+        </aside>
 
-      <section id="round" class="round" hidden aria-live="polite">
-        <p class="label">BLACK CARD</p>
-        <blockquote id="black"></blockquote>
-        <div id="answers" class="answers"></div>
-        <p class="label result-label">THE DAMAGE</p>
-        <p id="result" class="result"></p>
+        <section id="round" class="round" hidden aria-live="polite" aria-labelledby="round-heading">
+          <div class="round-heading">
+            <p class="eyebrow">CURRENT ROUND</p>
+            <p id="round-heading" class="round-state">Freshly regrettable</p>
+          </div>
+          <article class="black-card">
+            <p class="card-type">BLACK CARD</p>
+            <blockquote id="black"></blockquote>
+            <span class="card-mark">C</span>
+          </article>
+          <div class="answer-area">
+            <p class="answer-label">THE ANSWERS</p>
+            <div id="answers" class="answers"></div>
+          </div>
+          <p id="result" class="result"></p>
+        </section>
+
+        <section id="empty-round" class="empty-round" aria-label="Round preview">
+          <div class="fan fan-one"></div>
+          <div class="fan fan-two"></div>
+          <div class="empty-card">
+            <span>?</span>
+            <p>Your questionable<br>future awaits.</p>
+          </div>
+        </section>
       </section>
 
       <footer>
-        Unofficial, unaffiliated fan project. No endorsements were harmed in the making of this page.
+        <span>From joke to prod, in hours.</span>
+        <a href="../docs">API docs</a>
         <a href="https://github.com/BytesAndCoffee/cards-against-coffee">Source</a>
+        <span>Unofficial fan project.</span>
       </footer>
     </main>
     <script src="app.js" defer></script>
