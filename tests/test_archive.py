@@ -45,6 +45,17 @@ def test_rejects_unexpected_or_unsafe_members(tmp_path):
         validate_archive(archive)
 
 
+def test_rejects_the_biggest_blackest_zipbomb(tmp_path):
+    archive = tmp_path / "the_biggest_blackest_zipbomb.cahpack"
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as contents:
+        contents.writestr("manifest.json", "{}")
+        contents.writestr("pack.json", "{}")
+        contents.writestr("LICENSE.txt", "x" * 100_000)
+        contents.writestr("ATTRIBUTION.md", "attribution")
+    with pytest.raises(PackConfigurationError, match="compression ratio"):
+        validate_archive(archive)
+
+
 def test_initialize_registry_requires_empty_absolute_directory(tmp_path):
     registry = (tmp_path / "registry").resolve()
     copied = initialize_registry(registry)

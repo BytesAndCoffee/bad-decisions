@@ -1,8 +1,19 @@
 # Cards Against Coffee server
 
+> Production-grade infrastructure for an extremely non-production-grade problem.
+
 Python 3.12 engine, CLI, and FastAPI service for generating random completed
 card rounds. Content is adult/offensive satire. This is not a multiplayer game
 and has no accounts, database, uploads, runtime downloads, or mutable API state.
+
+**Unofficial fan project.** Cards Against Coffee is not affiliated with,
+endorsed by, or sponsored by Cards Against Humanity LLC. It does not use that
+company's logos, trade dress, or visual identity. Imported content retains its
+own provenance and license terms.
+
+38 automated tests cover generation, API behavior, pack migration, portable
+archives, and hostile ZIP handling—because the dick-joke archive format has
+ZIP-bomb protection.
 
 ## PyPI packages
 
