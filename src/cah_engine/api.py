@@ -5,11 +5,13 @@ import re
 import time
 import uuid
 from contextlib import asynccontextmanager
+from importlib.resources import files
 from typing import Annotated
 
 from fastapi import FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import __version__
@@ -39,6 +41,7 @@ def create_app() -> FastAPI:
         app.state.ready = False
 
     app = FastAPI(title="Card Round API", version=__version__, lifespan=lifespan, root_path=settings.root_path)
+    app.mount("/web", StaticFiles(directory=str(files("cah_engine").joinpath("web")), html=True), name="web")
 
     @app.middleware("http")
     async def request_context(request: Request, call_next):
@@ -102,6 +105,7 @@ Inspect available packs:
 Service health: GET /cah/healthz
 Interactive API docs: /cah/docs
 OpenAPI schema: /cah/openapi.json
+Browser client: /cah/web/
 """
 
     def metadata(pack):

@@ -37,6 +37,8 @@ python -m pip install cards-against-coffee
 coffee-cards
 ```
 
+The hosted browser client is available at [`/cah/web/`](https://bytes.coffee/cah/web/).
+
 The immutable registry loads and validates once at startup. `base` is the
 default; `--packs maha` restores the original MAHA-only behavior. Black and
 white selectors are independent and use the same resolver in the CLI/API.

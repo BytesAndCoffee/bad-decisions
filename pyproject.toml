@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cards-against-coffee-server"
-version = "1.0.3"
+version = "1.0.4"
 description = "Multi-pack random card round engine, CLI, and REST API"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -27,6 +27,7 @@ cah = "cah_engine.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/cah_engine"]
+include = ["src/cah_engine/web/**"]
 
 [tool.hatch.build.targets.sdist]
 include = ["src", "tests", "scripts", "deploy", "imports", "LICENSES", "*.md", "*.py", "pyproject.toml", "requirements*.lock"]
