@@ -42,9 +42,10 @@ bad-decisions pack import example.carddeck /absolute/pack/registry
 rejects traversal, symlinks, unexpected members, checksum mismatches,
 oversized content, and dangerous compression ratios before any pack is written.
 
-Bundled content retains its own provenance and licensing. In particular, the
-`base` pack is licensed CC BY-NC-SA 2.0; operators distributing it must honor
-those terms.
+Bundled content retains its own provenance and licensing. The `coffee` pack is
+owner-authorized material based on IRC messages, distributed under CC BY-SA
+4.0; its raw source-message corpus is not included. The `base` pack is licensed
+CC BY-NC-SA 2.0; operators distributing it must honor those terms.
 
 ## API
 

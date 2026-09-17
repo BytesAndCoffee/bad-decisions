@@ -1,0 +1,1035 @@
+{
+  "schema_version": 1,
+  "metadata": {
+    "id": "coffee",
+    "name": "Cards Against Coffee",
+    "description": "Owner-authorized card deck adapted from the owner's IRC messages; raw message corpus excluded.",
+    "version": "2",
+    "language": "en",
+    "custom": true,
+    "authors": [
+      "Michael Yazdani"
+    ],
+    "attribution": "Cards Against Coffee by Michael Yazdani, based on the author's IRC messages.",
+    "license_id": "CC-BY-SA-4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "license_notice": "Licensed under Creative Commons Attribution-ShareAlike 4.0 International; attribution and share-alike are required.",
+    "sources": [
+      {
+        "origin": "bytesandcoffee-pack-v2.json",
+        "edition": "Legacy edition 2",
+        "sha256": "181ba544132c521e3bb4d20e6c388ce96a1beea68ea6cc4fd444d8ca371cd56f",
+        "retrieved": null,
+        "license_evidence": "Owner declaration in this project conversation; CC BY-SA 4.0 designation."
+      }
+    ],
+    "modifications": [
+      "Converted legacy underscores to explicit template placeholders and assigned stable portable IDs.",
+      "Raw IRC message corpus and source-message bodies intentionally excluded; only compact source references remain."
+    ]
+  },
+  "black": [
+    {
+      "id": "coffee-black-001",
+      "repr": "My expectations are in the floor, and corporate still surprises me with ____.",
+      "template": "My expectations are in the floor, and corporate still surprises me with {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B001;source-ids:36034449"
+    },
+    {
+      "id": "coffee-black-002",
+      "repr": "Weird. Something I made at work got export restricted. Apparently the problem was ____.",
+      "template": "Weird. Something I made at work got export restricted. Apparently the problem was {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B002;source-ids:36310719"
+    },
+    {
+      "id": "coffee-black-003",
+      "repr": "Why is my computer asking me to contact my administrator? I AM ____.",
+      "template": "Why is my computer asking me to contact my administrator? I AM {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B003;source-ids:16837035"
+    },
+    {
+      "id": "coffee-black-004",
+      "repr": "We didn't just lose access to the network. Thanks to ____, we also lost access to the physical office.",
+      "template": "We didn't just lose access to the network. Thanks to {}, we also lost access to the physical office.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B004;source-ids:13052963"
+    },
+    {
+      "id": "coffee-black-005",
+      "repr": "At the end of the day, all this infrastructure is for ____.",
+      "template": "At the end of the day, all this infrastructure is for {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B005;source-ids:34165120"
+    },
+    {
+      "id": "coffee-black-006",
+      "repr": "But really, what's wrong with using MySQL for ____?",
+      "template": "But really, what's wrong with using MySQL for {}?",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B006;source-ids:32161880"
+    },
+    {
+      "id": "coffee-black-007",
+      "repr": "Fuck. I can't remember where I left ____ running.",
+      "template": "Fuck. I can't remember where I left {} running.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B007;source-ids:7052545"
+    },
+    {
+      "id": "coffee-black-008",
+      "repr": "In my defense, it was an intentional shitpost in the form of ____.",
+      "template": "In my defense, it was an intentional shitpost in the form of {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B008;source-ids:3549120"
+    },
+    {
+      "id": "coffee-black-009",
+      "repr": "The customer is NOT always right. Today the customer wanted ____.",
+      "template": "The customer is NOT always right. Today the customer wanted {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B009;source-ids:34863266"
+    },
+    {
+      "id": "coffee-black-010",
+      "repr": "I'm done wrangling electrons that only sometimes do what I say. My next career: ____.",
+      "template": "I'm done wrangling electrons that only sometimes do what I say. My next career: {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B010;source-ids:1106859"
+    },
+    {
+      "id": "coffee-black-011",
+      "repr": "D&D, but make it ____.",
+      "template": "D&D, but make it {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B011;source-ids:7111798"
+    },
+    {
+      "id": "coffee-black-012",
+      "repr": "Oh god. Why did I have to bring up ____?",
+      "template": "Oh god. Why did I have to bring up {}?",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B012;source-ids:34413824"
+    },
+    {
+      "id": "coffee-black-013",
+      "repr": "I started by talking about workplace accommodations. Somehow the channel is now discussing ____.",
+      "template": "I started by talking about workplace accommodations. Somehow the channel is now discussing {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B013;source-ids:16806327"
+    },
+    {
+      "id": "coffee-black-014",
+      "repr": "Giving Bucket access to ____ may have been a mistake.",
+      "template": "Giving Bucket access to {} may have been a mistake.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B014;source-ids:23250950"
+    },
+    {
+      "id": "coffee-black-015",
+      "repr": "We've achieved artificial general intelligence. Unfortunately, it also developed ____.",
+      "template": "We've achieved artificial general intelligence. Unfortunately, it also developed {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B015;source-ids:23803362"
+    },
+    {
+      "id": "coffee-black-016",
+      "repr": "Under my Sexuality Level Agreement, you're entitled to ____.",
+      "template": "Under my Sexuality Level Agreement, you're entitled to {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B016;source-ids:7505753"
+    },
+    {
+      "id": "coffee-black-017",
+      "repr": "My personality is ____, but my body is ____.",
+      "template": "My personality is {}, but my body is {}.",
+      "slots": 2,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B017;source-ids:29280204"
+    },
+    {
+      "id": "coffee-black-018",
+      "repr": "I'm so gay, even ____ can't stay straight.",
+      "template": "I'm so gay, even {} can't stay straight.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B018;source-ids:4184384"
+    },
+    {
+      "id": "coffee-black-019",
+      "repr": "Everyone knows Big Gay is secretly responsible for ____.",
+      "template": "Everyone knows Big Gay is secretly responsible for {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B019;source-ids:7518207"
+    },
+    {
+      "id": "coffee-black-020",
+      "repr": "All the housemates are gay. For drama, we've told them one of them is ____.",
+      "template": "All the housemates are gay. For drama, we've told them one of them is {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B020;source-ids:7568906"
+    },
+    {
+      "id": "coffee-black-021",
+      "repr": "I called the wrong necromancer. All I got was ____.",
+      "template": "I called the wrong necromancer. All I got was {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B021;source-ids:23379735"
+    },
+    {
+      "id": "coffee-black-022",
+      "repr": "I like my dicks below the belt. I like my personalities with ____.",
+      "template": "I like my dicks below the belt. I like my personalities with {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B022;source-ids:4201370"
+    },
+    {
+      "id": "coffee-black-023",
+      "repr": "Is your ass full of important files? Because it needs ____.",
+      "template": "Is your ass full of important files? Because it needs {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B023;source-ids:386797"
+    },
+    {
+      "id": "coffee-black-024",
+      "repr": "“That's what he said” hits differently after ____.",
+      "template": "“That's what he said” hits differently after {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B024;source-ids:31371669"
+    },
+    {
+      "id": "coffee-black-025",
+      "repr": "I changed my work Slack picture to my fursona. My new status: ____.",
+      "template": "I changed my work Slack picture to my fursona. My new status: {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B025;source-ids:35918024"
+    },
+    {
+      "id": "coffee-black-026",
+      "repr": "A soy vanilla latte is a three-bean soup. By the same logic, ____ is ____.",
+      "template": "A soy vanilla latte is a three-bean soup. By the same logic, {} is {}.",
+      "slots": 2,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B026;source-ids:6660183"
+    },
+    {
+      "id": "coffee-black-027",
+      "repr": "Trifle is just a sweet British ____.",
+      "template": "Trifle is just a sweet British {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B027;source-ids:24467881"
+    },
+    {
+      "id": "coffee-black-028",
+      "repr": "Semi-cursed pasta fact: Alfredo is just ____.",
+      "template": "Semi-cursed pasta fact: Alfredo is just {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B028;source-ids:29381016"
+    },
+    {
+      "id": "coffee-black-029",
+      "repr": "We've made the opposite of an Uncrustable. It's entirely ____.",
+      "template": "We've made the opposite of an Uncrustable. It's entirely {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B029;source-ids:29745096"
+    },
+    {
+      "id": "coffee-black-030",
+      "repr": "I used ____ to destroy ____.",
+      "template": "I used {} to destroy {}.",
+      "slots": 2,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B030;source-ids:30279994"
+    },
+    {
+      "id": "coffee-black-031",
+      "repr": "Tonight's dinner: ____ baked in a pie shell.",
+      "template": "Tonight's dinner: {} baked in a pie shell.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B031;source-ids:29279179"
+    },
+    {
+      "id": "coffee-black-032",
+      "repr": "The recipe called for two tablespoons of butter. I added ____.",
+      "template": "The recipe called for two tablespoons of butter. I added {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B032;source-ids:31303991"
+    },
+    {
+      "id": "coffee-black-033",
+      "repr": "I bought a big fucking bag of ____. Time to make everything amazing.",
+      "template": "I bought a big fucking bag of {}. Time to make everything amazing.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B033;source-ids:4678488"
+    },
+    {
+      "id": "coffee-black-034",
+      "repr": "You know what's a real pizza crime? ____.",
+      "template": "You know what's a real pizza crime? {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B034;source-ids:23069485"
+    },
+    {
+      "id": "coffee-black-035",
+      "repr": "I only go to Subway when I'm craving ____.",
+      "template": "I only go to Subway when I'm craving {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B035;source-ids:33214620"
+    },
+    {
+      "id": "coffee-black-036",
+      "repr": "It's illegal to be sad when you have ____.",
+      "template": "It's illegal to be sad when you have {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B036;source-ids:32966823"
+    },
+    {
+      "id": "coffee-black-037",
+      "repr": "Goodnight. Time to pass out and vividly hallucinate about ____.",
+      "template": "Goodnight. Time to pass out and vividly hallucinate about {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B037;source-ids:30187463"
+    },
+    {
+      "id": "coffee-black-038",
+      "repr": "My summer bod is whatever I fucking give summer. This year: ____.",
+      "template": "My summer bod is whatever I fucking give summer. This year: {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B038;source-ids:2241521"
+    },
+    {
+      "id": "coffee-black-039",
+      "repr": "I'd love to live in a literal castle, but then there's the problem of ____.",
+      "template": "I'd love to live in a literal castle, but then there's the problem of {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B039;source-ids:3845774"
+    },
+    {
+      "id": "coffee-black-040",
+      "repr": "Instructions unclear. Used ____. Received multiple lacerations to the face.",
+      "template": "Instructions unclear. Used {}. Received multiple lacerations to the face.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B040;source-ids:28691339"
+    },
+    {
+      "id": "coffee-black-041",
+      "repr": "Use it wrong enough and any ____ becomes a smoke machine.",
+      "template": "Use it wrong enough and any {} becomes a smoke machine.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B041;source-ids:24853743"
+    },
+    {
+      "id": "coffee-black-042",
+      "repr": "For some reason, I imagined surgically inserting ____ into a piece of KFC.",
+      "template": "For some reason, I imagined surgically inserting {} into a piece of KFC.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B042;source-ids:4297489"
+    },
+    {
+      "id": "coffee-black-043",
+      "repr": "Behold, the ____-inator! It gives people a second butt.",
+      "template": "Behold, the {}-inator! It gives people a second butt.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B043;source-ids:8157480"
+    },
+    {
+      "id": "coffee-black-044",
+      "repr": "Right question. Right channel. Wrong ____.",
+      "template": "Right question. Right channel. Wrong {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B044;source-ids:4151895"
+    },
+    {
+      "id": "coffee-black-045",
+      "repr": "I heard someone was stirring up shit, so I came for ____.",
+      "template": "I heard someone was stirring up shit, so I came for {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B045;source-ids:7517721"
+    },
+    {
+      "id": "coffee-black-046",
+      "repr": "Bucket has been put in the timeout bucket for ____.",
+      "template": "Bucket has been put in the timeout bucket for {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B046;source-ids:6815212"
+    },
+    {
+      "id": "coffee-black-047",
+      "repr": "The situation now calls for a strike team of ____.",
+      "template": "The situation now calls for a strike team of {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B047;source-ids:30094039"
+    },
+    {
+      "id": "coffee-black-048",
+      "repr": "Today's agenda: find a warm sunbeam, then ____.",
+      "template": "Today's agenda: find a warm sunbeam, then {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B048;source-ids:33010912"
+    },
+    {
+      "id": "coffee-black-049",
+      "repr": "Quebecers don't fuck around with ____.",
+      "template": "Quebecers don't fuck around with {}.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B049;source-ids:5218054"
+    },
+    {
+      "id": "coffee-black-050",
+      "repr": "I arrived at my hotel to find two kilos of ____ waiting for me.",
+      "template": "I arrived at my hotel to find two kilos of {} waiting for me.",
+      "slots": 1,
+      "pack": "coffee",
+      "source_ref": "legacy-card:B050;source-ids:34693697"
+    }
+  ],
+  "white": [
+    {
+      "id": "coffee-white-001",
+      "text": "Constant Fucking Disbelief",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W001;source-ids:36034449"
+    },
+    {
+      "id": "coffee-white-002",
+      "text": "A tanktop-gay personality in a flannel-gay body.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W002;source-ids:29280204"
+    },
+    {
+      "id": "coffee-white-003",
+      "text": "Being so gay even your joints can't keep themselves straight.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W003;source-ids:4184384"
+    },
+    {
+      "id": "coffee-white-004",
+      "text": "Big Gay",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W004;source-ids:7518207"
+    },
+    {
+      "id": "coffee-white-005",
+      "text": "knowledge about America's gay men",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W005;source-ids:7518199"
+    },
+    {
+      "id": "coffee-white-006",
+      "text": "Sexuality Level Agreement",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W006;source-ids:7505753"
+    },
+    {
+      "id": "coffee-white-007",
+      "text": "Five-nines gay.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W007;source-ids:7505539"
+    },
+    {
+      "id": "coffee-white-008",
+      "text": "A house full of gay men, all told there's one straight guy.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W008;source-ids:7568906"
+    },
+    {
+      "id": "coffee-white-009",
+      "text": "a bisexual transistor",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W009;source-ids:31479798"
+    },
+    {
+      "id": "coffee-white-010",
+      "text": "an asymmetric ass",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W010;source-ids:23399408"
+    },
+    {
+      "id": "coffee-white-011",
+      "text": "magic sex fluid",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W011;source-ids:3843347"
+    },
+    {
+      "id": "coffee-white-012",
+      "text": "horny fishermen",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W012;source-ids:5219511"
+    },
+    {
+      "id": "coffee-white-013",
+      "text": "Dicks below the belt, not in someone's personality.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W013;source-ids:4201370"
+    },
+    {
+      "id": "coffee-white-014",
+      "text": "Backing that ass up because it's full of important files.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W014;source-ids:386797"
+    },
+    {
+      "id": "coffee-white-015",
+      "text": "Going and fucking yourself, just to spite someone.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W015;source-ids:5669159"
+    },
+    {
+      "id": "coffee-white-016",
+      "text": "a gay BDSM fetish scenario for anything",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W016;source-ids:2613797"
+    },
+    {
+      "id": "coffee-white-017",
+      "text": "The wrong necromancer.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W017;source-ids:23379735"
+    },
+    {
+      "id": "coffee-white-018",
+      "text": "sparkling vore",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W018;source-ids:8586435"
+    },
+    {
+      "id": "coffee-white-019",
+      "text": "Usually gay, but persuadable.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W019;source-ids:32987330"
+    },
+    {
+      "id": "coffee-white-020",
+      "text": "thats what *he* said",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W020;source-ids:31371669"
+    },
+    {
+      "id": "coffee-white-021",
+      "text": "massive evil ecommerce megacorp",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W021;source-ids:31498090"
+    },
+    {
+      "id": "coffee-white-022",
+      "text": "corporate ass-kissery language",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W022;source-ids:710836"
+    },
+    {
+      "id": "coffee-white-023",
+      "text": "D&D but make it corporate hell",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W023;source-ids:7111798"
+    },
+    {
+      "id": "coffee-white-024",
+      "text": "THE FUCKING ADMIN OF ALL OF WINDOWS",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W024;source-ids:16837035"
+    },
+    {
+      "id": "coffee-white-025",
+      "text": "Locking yourself out of the network AND the physical office.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W025;source-ids:13052963"
+    },
+    {
+      "id": "coffee-white-026",
+      "text": "one hell of a robustly deployed pastebin",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W026;source-ids:34165120"
+    },
+    {
+      "id": "coffee-white-027",
+      "text": "Using MySQL for a message queue.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W027;source-ids:32161880"
+    },
+    {
+      "id": "coffee-white-028",
+      "text": "Deleting the wrong folder.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W028;source-ids:32169006"
+    },
+    {
+      "id": "coffee-white-029",
+      "text": "thousands upon thousands of streams of electrons that only sometimes do what i say",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W029;source-ids:1106859"
+    },
+    {
+      "id": "coffee-white-030",
+      "text": "one big fucking stream that melts fucking metal",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W030;source-ids:1106862"
+    },
+    {
+      "id": "coffee-white-031",
+      "text": "an intentional shitpost in the form of code",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W031;source-ids:3549120"
+    },
+    {
+      "id": "coffee-white-032",
+      "text": "Selecting the right drive in the installer.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W032;source-ids:9271942"
+    },
+    {
+      "id": "coffee-white-033",
+      "text": "A fucked-up trigger definition.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W033;source-ids:27339485"
+    },
+    {
+      "id": "coffee-white-034",
+      "text": "Accidentally making something export restricted at work.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W034;source-ids:36310719"
+    },
+    {
+      "id": "coffee-white-035",
+      "text": "Giving Bucket access to the OpenAI API.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W035;source-ids:23250950"
+    },
+    {
+      "id": "coffee-white-036",
+      "text": "Artificial General Anxiety",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W036;source-ids:23803362"
+    },
+    {
+      "id": "coffee-white-037",
+      "text": "Artificial General Imposter Syndrome",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W037;source-ids:23803371"
+    },
+    {
+      "id": "coffee-white-038",
+      "text": "Outlook archives.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W038;source-ids:32956563"
+    },
+    {
+      "id": "coffee-white-039",
+      "text": "The customer being very frequently VERY wrong.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W039;source-ids:34863266"
+    },
+    {
+      "id": "coffee-white-040",
+      "text": "Forgetting where your Flask app is running.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W040;source-ids:7052545"
+    },
+    {
+      "id": "coffee-white-041",
+      "text": "A soy vanilla latte: three-bean soup.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W041;source-ids:6660183"
+    },
+    {
+      "id": "coffee-white-042",
+      "text": "a sweet british lasagne",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W042;source-ids:24467881"
+    },
+    {
+      "id": "coffee-white-043",
+      "text": "adult Mac n cheese",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W043;source-ids:29381016"
+    },
+    {
+      "id": "coffee-white-044",
+      "text": "Cheesecake classified as a custard pie.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W044;source-ids:10157220"
+    },
+    {
+      "id": "coffee-white-045",
+      "text": "Cold brew and gazpacho: both cold soups.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W045;source-ids:30836481"
+    },
+    {
+      "id": "coffee-white-046",
+      "text": "All pizza being technically pizza funghi.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W046;source-ids:34543125"
+    },
+    {
+      "id": "coffee-white-047",
+      "text": "An Uncrustable made exclusively from bread butts.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W047;source-ids:29745096"
+    },
+    {
+      "id": "coffee-white-048",
+      "text": "Using the cheese to destroy the cheese.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W048;source-ids:30279994"
+    },
+    {
+      "id": "coffee-white-049",
+      "text": "Being absolutely a cheese bag.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W049;source-ids:30831767"
+    },
+    {
+      "id": "coffee-white-050",
+      "text": "Kraft dinner baked in a pie shell.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W050;source-ids:29279179"
+    },
+    {
+      "id": "coffee-white-051",
+      "text": "cheese powder crusted steak",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W051;source-ids:19565970"
+    },
+    {
+      "id": "coffee-white-052",
+      "text": "banana curry pizza",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W052;source-ids:23069485"
+    },
+    {
+      "id": "coffee-white-053",
+      "text": "a pickle and peanut butter sandwich",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W053;source-ids:20216636"
+    },
+    {
+      "id": "coffee-white-054",
+      "text": "Nutella and Special K on a tortilla.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W054;source-ids:20218515"
+    },
+    {
+      "id": "coffee-white-055",
+      "text": "Doubling the butter because two tablespoons is never enough.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W055;source-ids:31303991"
+    },
+    {
+      "id": "coffee-white-056",
+      "text": "a big fucking bag of MSG",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W056;source-ids:4678488"
+    },
+    {
+      "id": "coffee-white-057",
+      "text": "A pound of cheese sauce powder.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W057;source-ids:31092399"
+    },
+    {
+      "id": "coffee-white-058",
+      "text": "a giant chicken nugget as a taco shell",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W058;source-ids:30836250"
+    },
+    {
+      "id": "coffee-white-059",
+      "text": "a mediocre sandwich that is guaranteed to overfill me",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W059;source-ids:33214620"
+    },
+    {
+      "id": "coffee-white-060",
+      "text": "Four string cheeses disguised as mozzarella sticks.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W060;source-ids:35798600"
+    },
+    {
+      "id": "coffee-white-061",
+      "text": "Passing out and vividly hallucinating for a few hours.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W061;source-ids:30187463"
+    },
+    {
+      "id": "coffee-white-062",
+      "text": "Whatever I fucking give summer.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W062;source-ids:2241521"
+    },
+    {
+      "id": "coffee-white-063",
+      "text": "Being legally required to be happy by a Happy Meal.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W063;source-ids:32966823"
+    },
+    {
+      "id": "coffee-white-064",
+      "text": "Guilt-free ice cream because you didn't assign guilt to it.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W064;source-ids:33007461"
+    },
+    {
+      "id": "coffee-white-065",
+      "text": "A literal castle with terrible Wi-Fi coverage.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W065;source-ids:3845774"
+    },
+    {
+      "id": "coffee-white-066",
+      "text": "A big mauve button of unknown purpose.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W066;source-ids:3702926"
+    },
+    {
+      "id": "coffee-white-067",
+      "text": "Whistling and backing away from the big shiny red button.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W067;source-ids:13052576"
+    },
+    {
+      "id": "coffee-white-068",
+      "text": "A moist owlette and multiple facial lacerations.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W068;source-ids:28691339"
+    },
+    {
+      "id": "coffee-white-069",
+      "text": "Using a laser wrong enough that it becomes a smoke machine.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W069;source-ids:24853743"
+    },
+    {
+      "id": "coffee-white-070",
+      "text": "Surgically inserting an accelerometer into KFC.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W070;source-ids:4297489"
+    },
+    {
+      "id": "coffee-white-071",
+      "text": "Fucking Colossal Collider",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W071;source-ids:4966386"
+    },
+    {
+      "id": "coffee-white-072",
+      "text": "An assassinator that gives people a second butt.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W072;source-ids:8157480"
+    },
+    {
+      "id": "coffee-white-073",
+      "text": "Showing up specifically to see the drama.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W073;source-ids:7517721"
+    },
+    {
+      "id": "coffee-white-074",
+      "text": "The right question in the right channel, just the wrong timeline.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W074;source-ids:4151895"
+    },
+    {
+      "id": "coffee-white-075",
+      "text": "A gas station at 2AM.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W075;source-ids:19716911"
+    },
+    {
+      "id": "coffee-white-076",
+      "text": "Bringing up AI and immediately regretting it.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W076;source-ids:34413824"
+    },
+    {
+      "id": "coffee-white-077",
+      "text": "Changing your work Slack picture to your fursona.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W077;source-ids:35918024"
+    },
+    {
+      "id": "coffee-white-078",
+      "text": "fined for awoo",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W078;source-ids:35918032"
+    },
+    {
+      "id": "coffee-white-079",
+      "text": "Finding a warm sunbeam and loafing.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W079;source-ids:33010912"
+    },
+    {
+      "id": "coffee-white-080",
+      "text": "A puma with a distinct ham-and-butter scent.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W080;source-ids:33066772"
+    },
+    {
+      "id": "coffee-white-081",
+      "text": "Compiling tokie with a Makefile.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W081;source-ids:35783601"
+    },
+    {
+      "id": "coffee-white-082",
+      "text": "Speaking Dutch by coughing while speaking English.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W082;source-ids:36365854,36365855"
+    },
+    {
+      "id": "coffee-white-083",
+      "text": "Hooking the Frenchman up to a generator.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W083;source-ids:32567244"
+    },
+    {
+      "id": "coffee-white-084",
+      "text": "Quebecers not fucking around with maple.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W084;source-ids:5218054"
+    },
+    {
+      "id": "coffee-white-085",
+      "text": "Two kilos of Chex mix waiting at the hotel.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W085;source-ids:34693697"
+    },
+    {
+      "id": "coffee-white-086",
+      "text": "a coffee-based superacid",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W086;source-ids:4151667"
+    },
+    {
+      "id": "coffee-white-087",
+      "text": "a class-K ketamine-based fire extinguisher",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W087;source-ids:4087256"
+    },
+    {
+      "id": "coffee-white-088",
+      "text": "DSLoIN (Digital Subscriber Line over Instant Noodle)",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W088;source-ids:5545514"
+    },
+    {
+      "id": "coffee-white-089",
+      "text": "Error Correcting Chocolate",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W089;source-ids:32497188"
+    },
+    {
+      "id": "coffee-white-090",
+      "text": "a strike team of tactical clowns",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W090;source-ids:30094052"
+    },
+    {
+      "id": "coffee-white-091",
+      "text": "an unsolicited penguin",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W091;source-ids:30453635"
+    },
+    {
+      "id": "coffee-white-092",
+      "text": "a tuna full of coffee",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W092;source-ids:32847810"
+    },
+    {
+      "id": "coffee-white-093",
+      "text": "about 1 cup of sql",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W093;source-ids:2262733"
+    },
+    {
+      "id": "coffee-white-094",
+      "text": "a 5ml bottle of mouse bites",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W094;source-ids:2613941"
+    },
+    {
+      "id": "coffee-white-095",
+      "text": "a Vogons vs Daleks poetry competition",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W095;source-ids:3369595"
+    },
+    {
+      "id": "coffee-white-096",
+      "text": "a Morse Code to Norse Code translator",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W096;source-ids:20188564"
+    },
+    {
+      "id": "coffee-white-097",
+      "text": "a CAT scan of a cat's can",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W097;source-ids:8586319"
+    },
+    {
+      "id": "coffee-white-098",
+      "text": "quantum election interference",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W098;source-ids:30432749"
+    },
+    {
+      "id": "coffee-white-099",
+      "text": "22-pin USB",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W099;source-ids:7569103"
+    },
+    {
+      "id": "coffee-white-100",
+      "text": "Putting Bucket in the timeout bucket.",
+      "pack": "coffee",
+      "source_ref": "legacy-card:W100;source-ids:6815212"
+    }
+  ]
+}

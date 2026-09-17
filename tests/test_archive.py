@@ -59,8 +59,8 @@ def test_rejects_the_biggest_blackest_zipbomb(tmp_path):
 def test_initialize_registry_requires_empty_absolute_directory(tmp_path):
     registry = (tmp_path / "registry").resolve()
     copied = initialize_registry(registry)
-    assert [path.name for path in copied] == ["base.json", "maha.json"]
-    assert load_registry(registry).ids == ("base", "maha")
+    assert [path.name for path in copied] == ["base.json", "coffee.json", "maha.json"]
+    assert load_registry(registry).ids == ("base", "coffee", "maha")
     with pytest.raises(PackConfigurationError, match="non-empty"):
         initialize_registry(registry)
 

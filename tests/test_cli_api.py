@@ -36,14 +36,15 @@ def test_api_success_metadata_and_cache():
         assert howto.headers["content-type"].startswith("text/plain")
         assert "/v1/round" in howto.text
         assert "CARDDECK.md" in howto.text
-        assert client.get("/healthz").json() == {"status": "ok", "version": "1.0.6", "pack_count": 2}
+        assert client.get("/healthz").json() == {"status": "ok", "version": "1.0.7", "pack_count": 3}
         web = client.get("/web/")
         assert web.status_code == 200 and "Bad Decisions" in web.text
         assert '<base href="/web/">' in web.text
         assert client.get("/web", follow_redirects=False).status_code == 200
         assert client.get("/web/app.js").status_code == 200
         packs = client.get("/v1/packs").json()
-        assert [p["id"] for p in packs] == ["base", "maha"]
+        assert [p["id"] for p in packs] == ["base", "coffee", "maha"]
+        assert client.get("/v1/packs/coffee").json()["counts"] == {"black": 50, "white": 100}
         assert client.get("/v1/packs/maha").json()["counts"] == {"black": 27, "white": 52}
         response = client.get("/v1/round", params={"black_packs": "maha", "white_packs": "base,maha"})
         assert response.status_code == 200
