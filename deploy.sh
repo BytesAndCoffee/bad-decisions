@@ -180,9 +180,13 @@ systemctl enable "${SERVICE_NAME}"
 systemctl restart "${SERVICE_NAME}"
 curl --fail --silent --show-error --retry 10 --retry-connrefused "http://${BIND_HOST}:${PORT}/healthz"
 curl --fail --silent --show-error --get "http://${BIND_HOST}:${PORT}/v1/round" --data-urlencode 'packs=base'
+curl --fail --silent --show-error "http://${BIND_HOST}:${PORT}/web/" | grep -Fq '<base href='
+curl --fail --silent --show-error "http://${BIND_HOST}:${PORT}/web/app.js" | grep -Fq 'loadPacks'
 if [[ ${CONFIGURE_NGINX} == 1 ]]; then
   systemctl reload nginx
   curl --fail --silent --show-error "${PUBLIC_BASE_URL}/healthz"
+  curl --fail --silent --show-error "${PUBLIC_BASE_URL}/web/" | grep -Fq '<base href='
+  curl --fail --silent --show-error "${PUBLIC_BASE_URL}/web/app.js" | grep -Fq 'loadPacks'
 fi
 
 trap - ERR

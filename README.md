@@ -38,6 +38,9 @@ coffee-cards
 ```
 
 The hosted browser client is available at [`/cah/web/`](https://bytes.coffee/cah/web/).
+Its dependency-free source lives in `src/cah_engine/web/` and is bundled into
+the server wheel. It uses the same-origin API, so the deployed client works
+behind any configured `ROOT_PATH` without CORS or a separate frontend service.
 
 The immutable registry loads and validates once at startup. `base` is the
 default; `--packs maha` restores the original MAHA-only behavior. Black and
@@ -170,5 +173,6 @@ The defaults are `APP_NAME=cards-against-coffee-server`, a `/cah` route, a
 loopback listener on port 8000, and two workers. Override them through the
 environment when needed; see `DEPLOYMENT.md` for every setting. The deployer
 backs up only the files it changes, validates nginx before reloading it, tests
-both local and public health endpoints, and restores the prior healthy release
-if activation fails.
+the local API, browser page, and JavaScript asset (and their public equivalents
+when nginx is configured), and restores the prior healthy release if activation
+fails.
