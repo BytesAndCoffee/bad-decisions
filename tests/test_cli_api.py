@@ -35,7 +35,7 @@ def test_api_success_metadata_and_cache():
         assert howto.status_code == 200
         assert howto.headers["content-type"].startswith("text/plain")
         assert "/cah/v1/round" in howto.text
-        assert client.get("/healthz").json() == {"status": "ok", "version": "1.0.4", "pack_count": 2}
+        assert client.get("/healthz").json() == {"status": "ok", "version": "1.0.5", "pack_count": 2}
         web = client.get("/web/")
         assert web.status_code == 200 and "Cards Against Coffee" in web.text
         assert client.get("/web/app.js").status_code == 200
@@ -49,6 +49,14 @@ def test_api_success_metadata_and_cache():
         assert body["selection"] == {"black_packs": ["maha"], "white_packs": ["base", "maha"]}
         assert response.headers["cache-control"] == "no-store"
         assert response.headers["x-request-id"]
+
+
+def test_web_client_works_with_proxy_root_path(monkeypatch):
+    monkeypatch.setenv("CAH_ROOT_PATH", "/cah")
+    with TestClient(create_app()) as client:
+        assert client.get("/web/").status_code == 200
+        assert client.get("/web/style.css").status_code == 200
+        assert client.get("/web/../api.py").status_code == 404
 
 
 def test_api_normalized_errors():

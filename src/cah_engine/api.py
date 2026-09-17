@@ -10,8 +10,7 @@ from typing import Annotated
 
 from fastapi import FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, PlainTextResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import __version__
@@ -22,6 +21,7 @@ from .packs import Registry, load_registry, resolve_pools
 from .settings import Settings
 
 REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
+WEB_ASSETS = {"index.html": "text/html; charset=utf-8", "app.js": "application/javascript; charset=utf-8", "style.css": "text/css; charset=utf-8"}
 
 
 def envelope(code: str, message: str, details: dict | None = None) -> dict:
@@ -41,7 +41,6 @@ def create_app() -> FastAPI:
         app.state.ready = False
 
     app = FastAPI(title="Card Round API", version=__version__, lifespan=lifespan, root_path=settings.root_path)
-    app.mount("/web", StaticFiles(directory=str(files("cah_engine").joinpath("web")), html=True), name="web")
 
     @app.middleware("http")
     async def request_context(request: Request, call_next):
@@ -107,6 +106,20 @@ Interactive API docs: /cah/docs
 OpenAPI schema: /cah/openapi.json
 Browser client: /cah/web/
 """
+
+    def web_asset(name: str):
+        media_type = WEB_ASSETS.get(name)
+        if media_type is None:
+            return JSONResponse(envelope("path_not_found", "Path not found"), status_code=404)
+        return FileResponse(str(files("cah_engine").joinpath("web", name)), media_type=media_type)
+
+    @app.get("/web/", include_in_schema=False)
+    def web_index():
+        return web_asset("index.html")
+
+    @app.get("/web/{asset:path}", include_in_schema=False)
+    def web_file(asset: str):
+        return web_asset(asset)
 
     def metadata(pack):
         result = pack.metadata.model_dump(mode="json")
