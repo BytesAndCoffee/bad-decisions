@@ -6,21 +6,21 @@ body { min-width: 320px; margin: 0; background: linear-gradient(115deg, #eee7dc 
 button { font: inherit; }
 .shell { width: min(1180px, calc(100% - 3rem)); margin: 0 auto; padding: 1.25rem 0 2rem; }
 .masthead { display: flex; align-items: center; justify-content: space-between; padding-bottom: 1.25rem; border-bottom: 1px solid #cfc4b4; }
-.wordmark { display: inline-flex; align-items: center; gap: .65rem; color: var(--ink); font-size: .76rem; font-weight: 800; letter-spacing: -.03em; line-height: .9; text-decoration: none; text-transform: uppercase; }
-.wordmark strong { color: var(--orange); font-size: 1.12rem; }
+.wordmark { display: inline-flex; align-items: center; gap: .65rem; color: var(--ink); font-size: .76rem; font-weight: 800; letter-spacing: -.015em; line-height: .9; text-decoration: none; text-transform: uppercase; }
+.wordmark strong { color: var(--orange); font-size: 1.12rem; letter-spacing: -.02em; }
 .wordmark-mark { display: grid; place-items: center; width: 2.25rem; aspect-ratio: 1; border-radius: .3rem; background: var(--ink); color: var(--paper); font-family: Fraunces, Georgia, serif; font-size: 1.45rem; text-transform: none; }
 .build-note { display: flex; align-items: center; gap: .45rem; margin: 0; color: var(--muted); font-family: "DM Mono", monospace; font-size: .68rem; }
 .build-note span { width: .48rem; height: .48rem; border-radius: 50%; background: #4c9b59; box-shadow: 0 0 0 .2rem #4c9b5926; }
 .intro { padding: clamp(3.5rem, 9vw, 7.5rem) 0 clamp(2.7rem, 6vw, 5rem); }
 .kicker, .eyebrow, .answer-label, .card-type { margin: 0; color: var(--orange-dark); font-family: "DM Mono", monospace; font-size: .68rem; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; }
-h1 { max-width: 760px; margin: .65rem 0 1.3rem; font-family: Fraunces, Georgia, serif; font-size: clamp(3.5rem, 8.3vw, 7.2rem); font-weight: 700; letter-spacing: -.075em; line-height: .84; }
+h1 { max-width: 760px; margin: .65rem 0 1.3rem; font-family: Fraunces, Georgia, serif; font-size: clamp(3.5rem, 8.3vw, 7.2rem); font-weight: 700; letter-spacing: -.045em; line-height: .84; }
 h1 em { color: var(--orange); font-style: italic; }
 .intro > p:last-child { max-width: 500px; margin: 0; color: #565149; font-size: 1.03rem; line-height: 1.65; }
 .table { display: grid; grid-template-columns: minmax(290px, .82fr) minmax(0, 1.18fr); overflow: hidden; border: 1px solid #cfc4b4; border-radius: 1.1rem; box-shadow: 0 1.25rem 3.5rem #5f49321c; background: var(--paper); }
 .deck-panel { display: flex; flex-direction: column; min-height: 500px; padding: clamp(1.5rem, 3vw, 2.4rem); border-right: 1px solid #d9d0c4; background: #f8f4ec; }
 .indexed-picker { display: grid; gap: .45rem; margin-top: .8rem; color: var(--orange-dark); font-family: "DM Mono", monospace; font-size: .64rem; font-weight: 500; letter-spacing: .1em; } .indexed-picker select { width: 100%; border: 1px solid var(--line); border-radius: .45rem; padding: .8rem .85rem; color: var(--ink); background: var(--cream); font: 700 .78rem/1.25 Manrope, ui-sans-serif, system-ui, sans-serif; letter-spacing: 0; cursor: pointer; } .indexed-picker select:disabled { cursor: wait; opacity: .65; }
 .section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
-h2 { margin: .3rem 0 0; font-family: Fraunces, Georgia, serif; font-size: 1.65rem; letter-spacing: -.045em; }
+h2 { margin: .3rem 0 0; font-family: Fraunces, Georgia, serif; font-size: 1.65rem; letter-spacing: -.025em; }
 .quiet-button { border: 0; border-bottom: 1px solid currentColor; padding: .1rem 0; color: var(--orange-dark); background: transparent; cursor: pointer; font-size: .75rem; font-weight: 800; }
 .quiet-button:hover { color: var(--ink); }
 .packs { display: grid; gap: .55rem; margin-top: 1.75rem; }
@@ -38,7 +38,7 @@ h2 { margin: .3rem 0 0; font-family: Fraunces, Georgia, serif; font-size: 1.65re
 .round, .empty-round { min-height: 500px; padding: clamp(1.5rem, 3vw, 2.4rem); background: #ede5d9; }
 .round-heading { display: flex; justify-content: space-between; align-items: baseline; }.round-state { margin: 0; color: var(--muted); font-family: "DM Mono", monospace; font-size: .64rem; }
 .black-card { position: relative; min-height: 210px; margin: 1.25rem 0 1.35rem; overflow: hidden; border-radius: .7rem; padding: 1.35rem; background: var(--ink); color: #fcf8ee; box-shadow: .45rem .55rem 0 #c9bbab; }
-.card-type { color: #f9c1aa; }.black-card blockquote { max-width: 27rem; margin: 1.35rem 0 0; font-family: Fraunces, Georgia, serif; font-size: clamp(1.55rem, 3vw, 2.6rem); font-weight: 600; letter-spacing: -.055em; line-height: 1.02; }.card-mark { position: absolute; right: 1.1rem; bottom: .7rem; color: #ffffff35; font-family: Fraunces, Georgia, serif; font-size: 3.4rem; font-weight: 800; }
+.card-type { color: #f9c1aa; }.black-card blockquote { max-width: 27rem; margin: 1.35rem 0 0; font-family: Fraunces, Georgia, serif; font-size: clamp(1.55rem, 3vw, 2.6rem); font-weight: 600; letter-spacing: -.035em; line-height: 1.02; }.card-mark { position: absolute; right: 1.1rem; bottom: .7rem; color: #ffffff35; font-family: Fraunces, Georgia, serif; font-size: 3.4rem; font-weight: 800; }
 .answer-area { padding-top: .1rem; }.answers { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: .55rem; margin-top: .7rem; }.answers p { display: flex; align-items: center; min-height: 5rem; margin: 0; border: 1px solid #d2c6b7; border-radius: .4rem; padding: .75rem; background: var(--cream); box-shadow: .17rem .2rem 0 #d0c3b3; font-size: .76rem; font-weight: 700; line-height: 1.35; }
 .result { margin: 1.4rem 0 0; color: #514b43; font-family: Fraunces, Georgia, serif; font-size: 1.1rem; font-style: italic; line-height: 1.4; }
 .empty-round { position: relative; display: grid; place-items: center; overflow: hidden; }.empty-card { position: relative; z-index: 2; display: grid; place-items: center; width: min(230px, 72%); aspect-ratio: .72; border-radius: .7rem; background: var(--ink); color: var(--paper); box-shadow: .75rem .85rem 0 #cabbaa; text-align: center; transform: rotate(3deg); }.empty-card span { color: var(--orange); font-family: Fraunces, Georgia, serif; font-size: 4.5rem; line-height: 1; }.empty-card p { margin: .7rem 0 0; font-family: Fraunces, Georgia, serif; font-size: 1.2rem; line-height: 1.1; }.fan { position: absolute; width: 190px; aspect-ratio: .72; border: 1px solid #cbbfae; border-radius: .7rem; background: #f7f2e9; }.fan-one { transform: translate(-4.8rem, .25rem) rotate(-12deg); }.fan-two { transform: translate(4.8rem, .3rem) rotate(13deg); }
