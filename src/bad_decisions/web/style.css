@@ -18,6 +18,7 @@ h1 em { color: var(--orange); font-style: italic; }
 .intro > p:last-child { max-width: 500px; margin: 0; color: #565149; font-size: 1.03rem; line-height: 1.65; }
 .table { display: grid; grid-template-columns: minmax(290px, .82fr) minmax(0, 1.18fr); overflow: hidden; border: 1px solid #cfc4b4; border-radius: 1.1rem; box-shadow: 0 1.25rem 3.5rem #5f49321c; background: var(--paper); }
 .deck-panel { display: flex; flex-direction: column; min-height: 500px; padding: clamp(1.5rem, 3vw, 2.4rem); border-right: 1px solid #d9d0c4; background: #f8f4ec; }
+.indexed-picker { display: grid; gap: .45rem; margin-top: .8rem; color: var(--orange-dark); font-family: "DM Mono", monospace; font-size: .64rem; font-weight: 500; letter-spacing: .1em; } .indexed-picker select { width: 100%; border: 1px solid var(--line); border-radius: .45rem; padding: .8rem .85rem; color: var(--ink); background: var(--cream); font: 700 .78rem/1.25 Manrope, ui-sans-serif, system-ui, sans-serif; letter-spacing: 0; cursor: pointer; } .indexed-picker select:disabled { cursor: wait; opacity: .65; }
 .section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
 h2 { margin: .3rem 0 0; font-family: Fraunces, Georgia, serif; font-size: 1.65rem; letter-spacing: -.045em; }
 .quiet-button { border: 0; border-bottom: 1px solid currentColor; padding: .1rem 0; color: var(--orange-dark); background: transparent; cursor: pointer; font-size: .75rem; font-weight: 800; }

@@ -7,6 +7,8 @@ const answersElement = document.querySelector("#answers");
 const resultElement = document.querySelector("#result");
 const emptyRoundElement = document.querySelector("#empty-round");
 const packSummaryElement = document.querySelector("#pack-summary");
+const indexedPacksElement = document.querySelector("#indexed-packs");
+let indexedPackIds = [];
 const apiBase = window.location.pathname.replace(/\/web\/?$/, "/v1");
 
 function apiUrl(path) {
@@ -18,7 +20,10 @@ function setStatus(message) {
 }
 
 function selectedPacks() {
-  return [...document.querySelectorAll("input[name=pack]:checked")].map((input) => input.value);
+  const selected = [...document.querySelectorAll("input[name=pack]:checked")].map((input) => input.value);
+  if (indexedPacksElement.value === "__all_indexed__") return [...selected, ...indexedPackIds];
+  if (indexedPacksElement.value) selected.push(indexedPacksElement.value);
+  return selected;
 }
 
 function updatePackSummary() {
@@ -31,7 +36,10 @@ async function loadPacks() {
     const response = await fetch(apiUrl("packs"), { headers: { Accept: "application/json" } });
     if (!response.ok) throw new Error("Could not load packs");
     const packs = await response.json();
-    packsElement.replaceChildren(...packs.map((pack) => {
+    const indexedPacks = packs.filter((pack) => pack.id.startsWith("pyx-"));
+    const regularPacks = packs.filter((pack) => !pack.id.startsWith("pyx-"));
+    indexedPackIds = indexedPacks.map((pack) => pack.id);
+    packsElement.replaceChildren(...regularPacks.map((pack) => {
       const label = document.createElement("label");
       label.className = "pack";
       const input = document.createElement("input");
@@ -45,6 +53,29 @@ async function loadPacks() {
       input.addEventListener("change", updatePackSummary);
       return label;
     }));
+    const choices = [];
+    const none = document.createElement("option");
+    none.value = "";
+    none.textContent = indexedPacks.length ? "No indexed pack" : "No indexed packs available";
+    choices.push(none);
+    if (indexedPacks.length) {
+      const all = document.createElement("option");
+      all.value = "__all_indexed__";
+      all.textContent = `All indexed packs (${indexedPacks.length})`;
+      choices.push(all);
+      const group = document.createElement("optgroup");
+      group.label = "Choose one imported expansion";
+      indexedPacks.forEach((pack) => {
+        const option = document.createElement("option");
+        option.value = pack.id;
+        option.textContent = `${pack.name} (${pack.counts.black}/${pack.counts.white})`;
+        group.append(option);
+      });
+      choices.push(group);
+    }
+    indexedPacksElement.replaceChildren(...choices);
+    indexedPacksElement.disabled = !indexedPacks.length;
+    indexedPacksElement.addEventListener("change", updatePackSummary);
     updatePackSummary();
     setStatus("");
   } catch (error) {
@@ -85,6 +116,7 @@ async function deal() {
 document.querySelector("#all-packs").addEventListener("click", () => {
   document.querySelectorAll("input[name=pack]").forEach((input) => { input.checked = true; });
   updatePackSummary();
+  indexedPacksElement.value = indexedPackIds.length ? "__all_indexed__" : "";
 });
 dealButton.addEventListener("click", deal);
 loadPacks();
