@@ -32,7 +32,7 @@ h2 { margin: .3rem 0 0; font-family: Fraunces, Georgia, serif; font-size: 1.65re
 .pack span::before { content: ""; display: inline-block; width: .8rem; height: .8rem; margin-right: .6rem; border: 1px solid #a59b8d; border-radius: 50%; vertical-align: -.1rem; background: var(--cream); }
 .pack:has(input:checked) span::before { border: .27rem solid var(--orange); }
 .pack-summary { min-height: 1.4rem; margin: 1rem 0; color: var(--muted); font-family: "DM Mono", monospace; font-size: .68rem; }
-.deal { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: auto; border: 0; border-radius: .45rem; padding: 1rem 1.1rem; background: var(--orange); color: #fff9ed; cursor: pointer; font-size: .84rem; font-weight: 800; letter-spacing: .01em; transition: background .15s ease, transform .15s ease; }
+.deal { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 1.5rem; border: 0; border-radius: .45rem; padding: 1rem 1.1rem; background: var(--orange); color: #fff9ed; cursor: pointer; font-size: .84rem; font-weight: 800; letter-spacing: .01em; transition: background .15s ease, transform .15s ease; }
 .deal b { font-size: 1.4rem; line-height: .6; }.deal:hover { background: var(--orange-dark); transform: translateY(-2px); }.deal:disabled { cursor: wait; opacity: .6; transform: none; }
 .status { min-height: 1.2rem; margin: .7rem 0 0; color: var(--orange-dark); font-size: .73rem; font-weight: 700; text-align: center; }
 .round, .empty-round { min-height: 500px; padding: clamp(1.5rem, 3vw, 2.4rem); background: #ede5d9; }
