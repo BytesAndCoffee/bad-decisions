@@ -43,6 +43,8 @@ def test_api_success_metadata_and_cache():
         assert '<base href="/web/">' in web.text
         assert client.get("/web", follow_redirects=False).status_code == 200
         assert client.get("/web/app.js").status_code == 200
+        favicon = client.get("/web/favicon.svg")
+        assert favicon.headers["content-type"].startswith("image/svg+xml")
         packs = client.get("/v1/packs").json()
         assert [p["id"] for p in packs] == ["base", "coffee", "maha"]
         assert client.get("/v1/packs/coffee").json()["counts"] == {"black": 50, "white": 100}

@@ -21,7 +21,7 @@ from .packs import Registry, load_registry, resolve_pools
 from .settings import Settings
 
 REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
-WEB_ASSETS = {"index.html": "text/html; charset=utf-8", "app.js": "application/javascript; charset=utf-8", "style.css": "text/css; charset=utf-8"}
+WEB_ASSETS = {"index.html": "text/html; charset=utf-8", "app.js": "application/javascript; charset=utf-8", "style.css": "text/css; charset=utf-8", "favicon.svg": "image/svg+xml"}
 
 
 def envelope(code: str, message: str, details: dict | None = None) -> dict:
