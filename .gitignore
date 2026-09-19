@@ -26,3 +26,6 @@ exports/
 .DS_Store
 .vscode/
 .idea/
+
+# Local machine-specific agent notes
+AGENTS.local.md
