@@ -93,8 +93,12 @@ CC BY-NC-SA 2.0; operators distributing it must honor those terms.
 uvicorn bad_decisions.api:create_app --factory --host 127.0.0.1 --port 8000
 curl http://127.0.0.1:8000/healthz
 curl http://127.0.0.1:8000/v1/packs
-curl 'http://127.0.0.1:8000/v1/round?packs=base'
+curl http://127.0.0.1:8000/v1/round
+curl 'http://127.0.0.1:8000/v1/round?packs=maha'
 ```
+
+Without a `packs` parameter (or `--packs` in the CLI), rounds draw from every pack
+in the loaded registry, so custom `BAD_DECISIONS_PACK_DIR` registries need no `base`.
 
 `/docs` exposes OpenAPI documentation. Errors use a stable JSON envelope and
 request responses include a request ID.

@@ -149,7 +149,7 @@ Service interfaces:
     @app.get("/v1/round", response_model=Round)
     def round_endpoint(
         request: Request,
-        packs: Annotated[str, Query()] = "base",
+        packs: Annotated[str | None, Query()] = None,
         black_packs: Annotated[str | None, Query()] = None,
         white_packs: Annotated[str | None, Query()] = None,
     ):

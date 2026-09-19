@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import json
 import os
@@ -144,8 +145,58 @@ def export_pack(pack: Pack, destination: str | Path) -> Path:
     return target
 
 
+# Errors from os.link() that mean "this filesystem cannot hard-link" (FAT/exFAT, some SMB/NFS/FUSE mounts).
+_LINK_UNSUPPORTED = frozenset(
+    code
+    for code in (
+        errno.EPERM,
+        errno.ENOSYS,
+        errno.EMLINK,
+        getattr(errno, "ENOTSUP", None),
+        getattr(errno, "EOPNOTSUPP", None),
+    )
+    if code is not None
+)
+
+
+def _fsync_directory(path: Path) -> None:
+    """Best-effort durability for a directory entry; unsupported on Windows and some filesystems."""
+
+    if os.name == "nt":
+        return
+    try:
+        descriptor = os.open(path, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(descriptor)
+    except OSError:
+        pass
+    finally:
+        os.close(descriptor)
+
+
+def _create_exclusive(destination: Path, payload: bytes) -> None:
+    """Fallback for filesystems without hard links: O_EXCL never overwrites, and a partial file is removed."""
+
+    descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+    except BaseException:
+        destination.unlink(missing_ok=True)
+        raise
+
+
 def import_pack(archive_path: str | Path, registry_dir: str | Path) -> Path:
-    """Atomically install an archive's JSON pack into an absolute registry directory."""
+    """Install an archive's JSON pack into an absolute registry directory.
+
+    The pack is written and fsynced to a temporary file, then published with ``os.link``, which fails
+    if the destination exists.  Concurrent importers therefore cannot overwrite each other, and readers
+    never see a partial file.
+    """
 
     _, pack, payload, _, _ = _read_archive(Path(archive_path))
     destination_dir = Path(registry_dir)
@@ -155,20 +206,32 @@ def import_pack(archive_path: str | Path, registry_dir: str | Path) -> Path:
     if not destination_dir.is_dir():
         raise _error(f"registry path is not a directory: {destination_dir}")
     destination = destination_dir / f"{pack.metadata.id}.json"
-    if destination.exists():
-        raise _error(f"refusing to overwrite existing pack: {destination}")
+    temporary: Path | None = None
     try:
-        with tempfile.NamedTemporaryFile("wb", dir=destination_dir, prefix=".carddeck-", delete=False) as handle:
-            temporary = Path(handle.name)
+        descriptor, name = tempfile.mkstemp(dir=destination_dir, prefix=".carddeck-")
+        temporary = Path(name)
+        with os.fdopen(descriptor, "wb") as handle:
             handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
         os.chmod(temporary, 0o644)
-        os.replace(temporary, destination)
-    except OSError as exc:
         try:
-            temporary.unlink(missing_ok=True)
-        except UnboundLocalError:
-            pass
+            os.link(temporary, destination)
+        except FileExistsError:
+            raise _error(f"refusing to overwrite existing pack: {destination}") from None
+        except OSError as exc:
+            if exc.errno not in _LINK_UNSUPPORTED:
+                raise
+            try:
+                _create_exclusive(destination, payload)
+            except FileExistsError:
+                raise _error(f"refusing to overwrite existing pack: {destination}") from None
+        _fsync_directory(destination_dir)
+    except OSError as exc:
         raise _error(f"cannot import pack: {exc}") from exc
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
     return destination
 
 

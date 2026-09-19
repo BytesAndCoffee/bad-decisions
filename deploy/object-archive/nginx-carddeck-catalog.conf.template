@@ -1,5 +1,7 @@
 # Render and install this exact-name server block on the public nginx edge.
 # It wins over the generic archive-host regex in nginx.
+# Install nginx-carddeck-catalog.http.conf.template (http context) first: it
+# defines the carddeck_catalog_rl and carddeck_catalog_cache zones used below.
 
 server {
     listen 80;
@@ -16,6 +18,14 @@ server {
     # Supply the wildcard certificate for *.@OBJECT_ARCHIVE_DOMAIN@ here.
 
     location = /packs/index {
+        limit_req zone=carddeck_catalog_rl burst=5 nodelay;
+        limit_req_status 429;
+
+        proxy_cache carddeck_catalog_cache;
+        proxy_cache_valid 200 60s;
+        proxy_cache_lock on;
+        proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+
         proxy_pass http://@CATALOG_UPSTREAM@;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

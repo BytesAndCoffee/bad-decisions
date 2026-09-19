@@ -80,3 +80,48 @@ def test_api_normalized_errors():
             response = client.get(path)
             assert response.status_code == status
             assert response.json()["error"]["code"] == code
+
+
+def custom_registry_without_base(tmp_path):
+    from importlib.resources import files
+
+    directory = tmp_path / "registry"
+    directory.mkdir()
+    source = files("bad_decisions").joinpath("data/packs/maha.json")
+    (directory / "maha.json").write_bytes(source.read_bytes())
+    return directory
+
+
+def test_default_packs_work_without_base_in_custom_registry(tmp_path, monkeypatch):
+    directory = custom_registry_without_base(tmp_path)
+    monkeypatch.setenv("BAD_DECISIONS_PACK_DIR", str(directory))
+    with TestClient(create_app()) as client:
+        response = client.get("/v1/round")
+        assert response.status_code == 200
+        assert response.json()["selection"] == {"black_packs": ["maha"], "white_packs": ["maha"]}
+        missing = client.get("/v1/round", params={"packs": "base"})
+        assert missing.status_code == 400
+        assert missing.json()["error"]["code"] == "unknown_pack"
+    result = run_cli_env({"BAD_DECISIONS_PACK_DIR": str(directory)}, "--oneshot")
+    assert result.returncode == 0
+    assert result.stdout.strip() and result.stderr == ""
+
+
+def run_cli_env(env, *args):
+    import os
+
+    return subprocess.run(
+        [sys.executable, "-m", "bad_decisions.cli", *args],
+        text=True,
+        capture_output=True,
+        env={**os.environ, **env},
+    )
+
+
+def test_api_default_selects_every_bundled_pack():
+    with TestClient(create_app()) as client:
+        selection = client.get("/v1/round").json()["selection"]
+        assert selection == {
+            "black_packs": ["base", "coffee", "maha"],
+            "white_packs": ["base", "coffee", "maha"],
+        }

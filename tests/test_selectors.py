@@ -11,8 +11,11 @@ def identities(cards):
 
 
 def test_default_and_independent_overrides(registry):
+    default = resolve_pools(registry)
+    assert default.selection.black_packs == ("a", "b")
+    assert default.selection.white_packs == ("a", "b")
     with pytest.raises(UnknownPackError):
-        resolve_pools(registry)
+        resolve_pools(registry, packs="base")
     resolved = resolve_pools(registry, packs="a", black_packs="b", white_packs=" a, b,a ")
     assert identities(resolved.black) == [("b", "b1")]
     assert identities(resolved.white) == [("a", "w1"), ("a", "w2"), ("b", "w1"), ("b", "w2"), ("b", "w3")]

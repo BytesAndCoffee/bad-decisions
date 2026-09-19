@@ -36,7 +36,7 @@ def parser() -> argparse.ArgumentParser:
     mode.add_argument("--oneshot", action="store_true", help="print one rendered round and exit")
     mode.add_argument("--rapid", action="store_true", help="continuously print completed rounds")
     result.add_argument("--delay", type=positive_finite, help="positive seconds between rapid rounds (default: 1.0)")
-    result.add_argument("--packs", default="base", help="comma-separated pack IDs for both colors (default: base)")
+    result.add_argument("--packs", help="comma-separated pack IDs for both colors (default: all packs)")
     result.add_argument("--black-packs", help="override the black-card selector")
     result.add_argument("--white-packs", help="override the white-card selector")
     result.add_argument("--list-packs", action="store_true", help="list available packs and exit")

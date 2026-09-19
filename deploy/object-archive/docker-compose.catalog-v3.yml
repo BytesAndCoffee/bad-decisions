@@ -13,6 +13,7 @@ services:
       CATALOG_REGION: ${OBJECT_ARCHIVE_REGION:-us-west-1}
       CATALOG_BUCKETS: ${CATALOG_BUCKETS:-bad-decisions-native,bad-decisions-pyx}
       CATALOG_PUBLIC_OBJECT_DOMAIN: ${CATALOG_PUBLIC_OBJECT_DOMAIN:?set the archive object domain}
+      CATALOG_CACHE_TTL: ${CATALOG_CACHE_TTL:-60}
       CATALOG_CREDENTIALS_FILE: /run/secrets/indexer_key
     volumes:
       - ./secrets/archive-indexer-key.txt:/run/secrets/indexer_key:ro

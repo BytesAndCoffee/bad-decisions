@@ -66,3 +66,56 @@ def test_rejects_missing_provenance_or_unsupported_black_card():
     )
     with pytest.raises(PackConfigurationError, match="missing draw"):
         convert(missing, source_url="https://example.test/pyx/cah_cards.sql")
+
+
+URL = "https://example.test/pyx/cah_cards.sql"
+
+
+def _white_text(escaped: str, *, sql: bytes = SQL) -> str:
+    edited = sql.replace(b"A response\\twith a tab.", escaped.encode("utf-8"))
+    return convert(edited, source_url=URL)[0].white[0].text
+
+
+@pytest.mark.parametrize(
+    ("escaped", "expected"),
+    [
+        (r"end\101", "endA"),  # three-digit octal flush against the end of the value
+        (r"\101nd", "And"),
+        (r"a\7b", "a\x07b"),  # one-digit octal
+        (r"a\12b", "a\nb"),  # two-digit octal
+        (r"\1011", "A1"),  # octal takes at most three digits
+        (r"\189", "\x01" "89"),  # 8 and 9 are not octal digits
+        (r"\8\9", "89"),
+        (r"\x41 and \x4a", "A and J"),
+        (r"\x4", "\x04"),  # one-digit hex
+        (r"\xZZ", "xZZ"),  # no hex digits: literal x
+        (r"tail\x", "tailx"),
+        (r"\x414", "A4"),  # hex takes at most two digits
+        ("\\٣٣٣", "٣٣٣"),  # non-ASCII digits are never octal
+    ],
+)
+def test_copy_escapes_octal_and_hex(escaped, expected):
+    assert _white_text(escaped) == expected
+
+
+def test_out_of_range_octal_escape_is_rejected():
+    with pytest.raises(PackConfigurationError, match="out of range"):
+        _white_text(r"\777")
+
+
+@pytest.mark.parametrize("separator", [" ", " ", "\u0085", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e"])
+def test_raw_unicode_line_separators_stay_inside_card_text(separator):
+    assert _white_text(f"before{separator}after") == f"before{separator}after"
+
+
+def test_crlf_dump_is_accepted():
+    crlf = SQL.replace(b"\n", b"\r\n")
+    pack = convert(crlf, source_url=URL)[0]
+    assert pack.white[0].text == "A response\twith a tab."
+    assert pack.black[0].repr == "Prompt with ____ and {braces}."
+
+
+def test_only_one_trailing_carriage_return_is_stripped():
+    doubled = SQL.replace(b"20\tA response\\twith a tab.\tTST\n", b"20\tA response\\twith a tab.\tTST\r\r\n")
+    pack = convert(doubled, source_url=URL)[0]
+    assert pack.white[0].source_ref == "pyx-card:20;watermark:TST\r"

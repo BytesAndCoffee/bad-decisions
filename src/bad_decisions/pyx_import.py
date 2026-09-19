@@ -24,6 +24,8 @@ LICENSE_NOTICE = (
     f"License: {LICENSE_URL}"
 )
 COPY_START = re.compile(r"^COPY (?P<table>[a-z_]+) \((?P<columns>[a-z_, ]+)\) FROM stdin;$")
+OCTAL_ESCAPE = re.compile(r"[0-7]{1,3}", re.ASCII)
+HEX_ESCAPE = re.compile(r"x(?P<digits>[0-9A-Fa-f]{1,2})", re.ASCII)
 REQUIRED_TABLES = frozenset(
     {"black_cards", "white_cards", "card_set", "card_set_black_card", "card_set_white_card"}
 )
@@ -62,9 +64,18 @@ def _decode_copy_value(value: str) -> str | None:
             output.append(simple[escaped])
             index += 2
             continue
-        if escaped.isdigit() and index + 3 < len(value) and value[index + 1 : index + 4].isdigit():
-            output.append(chr(int(value[index + 1 : index + 4], 8)))
-            index += 4
+        octal = OCTAL_ESCAPE.match(value, index + 1)
+        if octal:
+            code = int(octal.group(), 8)
+            if code > 0o377:
+                raise _error(f"octal COPY escape out of range: \\{octal.group()}")
+            output.append(chr(code))
+            index += 1 + octal.end() - octal.start()
+            continue
+        hexadecimal = HEX_ESCAPE.match(value, index + 1)
+        if hexadecimal:
+            output.append(chr(int(hexadecimal.group("digits"), 16)))
+            index += 1 + hexadecimal.end() - hexadecimal.start()
             continue
         output.append(escaped)
         index += 2
@@ -75,7 +86,9 @@ def parse_copy_tables(payload: str) -> dict[str, tuple[dict[str, str | None], ..
     """Read the COPY sections needed from a PostgreSQL text dump strictly."""
 
     tables: dict[str, list[dict[str, str | None]]] = {}
-    lines = iter(payload.splitlines())
+    # Split on "\n" only: str.splitlines() would also break rows on U+2028, U+0085, \x0b, \x0c and
+    # \x1c-\x1e, which PostgreSQL COPY leaves raw inside card text. One trailing "\r" (CRLF dump) is dropped.
+    lines = iter(line[:-1] if line.endswith("\r") else line for line in payload.split("\n"))
     for line in lines:
         match = COPY_START.fullmatch(line)
         if not match or match.group("table") not in REQUIRED_TABLES:

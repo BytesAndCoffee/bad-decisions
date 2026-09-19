@@ -83,9 +83,9 @@ def _parse_selector(value: str, registry: Registry, side: str) -> tuple[str, ...
 
 
 def resolve_pools(
-    registry: Registry, *, packs: str = "base", black_packs: str | None = None, white_packs: str | None = None
+    registry: Registry, *, packs: str | None = None, black_packs: str | None = None, white_packs: str | None = None
 ) -> ResolvedPools:
-    base_ids = _parse_selector(packs, registry, "packs")
+    base_ids = registry.ids if packs is None else _parse_selector(packs, registry, "packs")
     black_ids = _parse_selector(black_packs, registry, "black") if black_packs is not None else base_ids
     white_ids = _parse_selector(white_packs, registry, "white") if white_packs is not None else base_ids
     black = tuple(card for pack_id in black_ids for card in registry.packs[pack_id].black)

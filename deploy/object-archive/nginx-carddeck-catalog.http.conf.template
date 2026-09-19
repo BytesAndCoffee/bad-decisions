@@ -1,0 +1,7 @@
+# Render and install in the nginx http context (for example
+# /etc/nginx/conf.d/bad-decisions-catalog.conf), outside any server block, and
+# reload nginx BEFORE installing nginx-carddeck-catalog.conf.template, which
+# references these two names.
+
+limit_req_zone $binary_remote_addr zone=carddeck_catalog_rl:10m rate=2r/s;
+proxy_cache_path @CATALOG_CACHE_DIR@ levels=1:2 keys_zone=carddeck_catalog_cache:1m max_size=16m inactive=10m use_temp_path=off;

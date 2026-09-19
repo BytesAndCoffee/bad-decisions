@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import tempfile
 from collections.abc import Iterable
@@ -56,15 +57,21 @@ def _read_url(url: str, *, limit: int, carddeck: bool = False) -> bytes:
     return data
 
 
-def _import_download(url: str, registry_dir: str | Path, *, expected_id: str | None = None) -> Path:
+def _download_archive(url: str, directory: Path, name: str, *, expected_id: str | None = None) -> Path:
+    """Download and fully validate one archive into ``directory`` without touching a registry."""
+
     data = _read_url(url, limit=MAX_ARCHIVE_BYTES, carddeck=True)
+    archive = directory / f"{name}{CARDDECK_SUFFIX}"
+    archive.write_bytes(data)
+    pack = validate_archive(archive)
+    if expected_id is not None and pack.metadata.id != expected_id:
+        raise _error(f"catalog pack ID {expected_id!r} does not match downloaded archive {pack.metadata.id!r}")
+    return archive
+
+
+def _import_download(url: str, registry_dir: str | Path, *, expected_id: str | None = None) -> Path:
     with tempfile.TemporaryDirectory(prefix="bad-decisions-carddeck-") as directory:
-        archive = Path(directory) / f"download{CARDDECK_SUFFIX}"
-        archive.write_bytes(data)
-        pack = validate_archive(archive)
-        if expected_id is not None and pack.metadata.id != expected_id:
-            raise _error(f"catalog pack ID {expected_id!r} does not match downloaded archive {pack.metadata.id!r}")
-        return import_pack(archive, registry_dir)
+        return import_pack(_download_archive(url, Path(directory), "download", expected_id=expected_id), registry_dir)
 
 
 def import_url(url: str, registry_dir: str | Path) -> Path:
@@ -108,4 +115,21 @@ def import_index(url: str, registry_dir: str | Path, *, pack_ids: Iterable[str])
     missing = sorted(set(requested) - entries.keys())
     if missing:
         raise _error(f"catalog does not contain requested pack IDs: {', '.join(missing)}")
-    return tuple(_import_download(entries[pack_id], registry_dir, expected_id=pack_id) for pack_id in requested)
+    # Download and validate every archive before installing any, then install all-or-nothing: if one
+    # install fails, the packs this call already created are removed (import_pack never overwrites, so
+    # every installed path is ours).  A process crash mid-install can still leave a partial set.
+    with tempfile.TemporaryDirectory(prefix="bad-decisions-carddeck-") as directory:
+        archives = [
+            _download_archive(entries[pack_id], Path(directory), f"download-{number}", expected_id=pack_id)
+            for number, pack_id in enumerate(requested)
+        ]
+        installed: list[Path] = []
+        try:
+            for archive in archives:
+                installed.append(import_pack(archive, registry_dir))
+        except BaseException:
+            for path in installed:
+                with contextlib.suppress(OSError):
+                    path.unlink(missing_ok=True)
+            raise
+    return tuple(installed)

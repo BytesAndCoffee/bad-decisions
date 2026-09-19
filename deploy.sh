@@ -43,6 +43,13 @@ if [[ ! ${PORT} =~ ^[0-9]+$ ]] || [[ ! ${WORKERS} =~ ^[1-9][0-9]*$ ]] || [[ ! ${
   echo "PORT, WORKERS, or NGINX_ZONE is invalid." >&2
   exit 1
 fi
+if [[ ${1:-} == rollback ]]; then
+  export APP_NAME SERVICE_NAME APP_ROOT BIND_HOST PORT
+  exec bash "${SCRIPT_DIR}/deploy/rollback.sh" "${@:2}"
+elif [[ $# -gt 0 ]]; then
+  echo "Usage: deploy.sh [rollback [RELEASE_ID]]" >&2
+  exit 1
+fi
 if [[ ! -x ${PYTHON} ]] || [[ ! -x ${BUILD_PYTHON} ]]; then
   echo "Missing required Python interpreter or project build environment." >&2
   exit 1
@@ -188,8 +195,8 @@ ACTIVATED=true
 systemctl daemon-reload
 systemctl enable "${SERVICE_NAME}"
 systemctl restart "${SERVICE_NAME}"
-curl --fail --silent --show-error --retry 10 --retry-connrefused "http://${BIND_HOST}:${PORT}/healthz"
-curl --fail --silent --show-error --get "http://${BIND_HOST}:${PORT}/v1/round" --data-urlencode 'packs=base'
+curl --fail --silent --show-error --retry 10 --retry-delay 1 --retry-max-time 60 --retry-connrefused "http://${BIND_HOST}:${PORT}/healthz"
+curl --fail --silent --show-error "http://${BIND_HOST}:${PORT}/v1/round"
 curl --fail --silent --show-error "http://${BIND_HOST}:${PORT}/web/" | grep -Fq '<base href='
 curl --fail --silent --show-error "http://${BIND_HOST}:${PORT}/web/app.js" | grep -Fq 'loadPacks'
 if [[ ${CONFIGURE_NGINX} == 1 ]]; then
@@ -200,5 +207,16 @@ if [[ ${CONFIGURE_NGINX} == 1 ]]; then
 fi
 
 trap - ERR
+# Watermark for `deploy.sh rollback`: releases that passed every check above, oldest first.
+GOOD_FILE=${APP_ROOT}/good-releases
+{
+  if [[ -f ${GOOD_FILE} ]]; then
+    grep -Fxv "${RELEASE_ID}" "${GOOD_FILE}" || true
+  elif [[ -n ${PREVIOUS_RELEASE} ]]; then
+    basename "${PREVIOUS_RELEASE}"
+  fi
+  echo "${RELEASE_ID}"
+} | tail -n 20 > "${GOOD_FILE}.new" && mv -f "${GOOD_FILE}.new" "${GOOD_FILE}" \
+  || echo "warning: could not update ${GOOD_FILE}; rollback will lack a watermark" >&2
 echo "Deployment complete: ${APP_NAME} ${VERSION}"
 echo "Logs: journalctl -u ${SERVICE_NAME} -n 100 --no-pager"

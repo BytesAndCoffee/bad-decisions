@@ -51,3 +51,28 @@ For an update, rerun the same command. The script builds a wheel, stages an
 immutable release, atomically switches `current`, restarts the service, and
 retains the prior healthy release for rollback. Inspect service logs with
 `journalctl -u <APP_NAME> -n 100 --no-pager`.
+
+## Rollback
+
+A failed deploy rolls itself back automatically (config backups, then the
+previous release). To go back on demand after a deploy that passed its checks:
+
+```bash
+sudo ./deploy.sh rollback                    # the last good release
+sudo ./deploy.sh rollback 20260102T000000Z   # a specific release under $APP_ROOT/releases
+```
+
+`$APP_ROOT/good-releases` is the watermark: release IDs, oldest first, that
+passed every `deploy.sh` health check (the last 20; a first deploy after
+upgrading seeds it with the release that was serving). The default target is the
+newest listed release that is not current, so a release that failed its deploy
+is never chosen. A successful rollback removes the release it left, so running
+it again steps further back instead of rolling forward. Hosts without the file
+fall back to the newest older release, with a warning that it is not verified.
+
+Rollback atomically repoints `current`, restarts the service, and waits for
+`/healthz`. If the target fails that check, the release that was serving is
+restored and the command exits non-zero. Only the release changes: the env
+file, unit, and nginx files are not restored (backups are in
+`$APP_ROOT/backups/<release>`). Rerunning `deploy.sh` builds a new release from
+the source tree, so fix or revert the code first.
