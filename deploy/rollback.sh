@@ -7,8 +7,10 @@
 #
 # APP_ROOT/good-releases lists release IDs, oldest first, that passed every
 # deploy.sh health check; its last line is the watermark. The default target is
-# the newest listed release that is not current. A successful rollback drops the
-# release it left, so a second rollback cannot roll forward into it.
+# the newest listed release that is not current. Release IDs are UTC timestamps,
+# so the file is kept ID-sorted. A successful rollback to T keeps only entries
+# <= T, dropping every listed release newer than the target, so a second
+# rollback cannot roll forward into a release it left.
 set -euo pipefail
 
 APP_NAME=${APP_NAME:-bad-decisions}
@@ -70,10 +72,12 @@ if [[ ${TARGET_ID} == "${CURRENT_ID}" ]]; then
   exit 1
 fi
 
+# Runs inside `if ... && ...` (set -e is off there), so every step must return 1 itself.
 activate() {
-  ln -sfn "$1" "${APP_ROOT}/current.new"
-  mv -Tf "${APP_ROOT}/current.new" "${CURRENT_LINK}"
-  systemctl restart "${SERVICE_NAME}"
+  rm -f -- "${APP_ROOT}/current.new" || return 1
+  ln -sfn "$1" "${APP_ROOT}/current.new" || return 1
+  mv -Tf "${APP_ROOT}/current.new" "${CURRENT_LINK}" || return 1
+  systemctl restart "${SERVICE_NAME}" || return 1
 }
 
 healthy() {
@@ -81,13 +85,13 @@ healthy() {
     "http://${BIND_HOST}:${PORT}/healthz" >/dev/null
 }
 
-# Drop the release we left and make sure the one we landed on is listed.
+# Keep valid IDs only, sorted, up to and including the target: everything newer is dropped.
 update_watermark() {
   {
-    if [[ -f ${GOOD_FILE} ]]; then grep -Fxv -e "${CURRENT_ID}" -e "${TARGET_ID}" "${GOOD_FILE}" || true; fi
+    grep -E "${ID_PATTERN}" "${GOOD_FILE}" 2>/dev/null || true
     echo "${TARGET_ID}"
-  } | tail -n 20 > "${GOOD_FILE}.new"
-  mv -f "${GOOD_FILE}.new" "${GOOD_FILE}"
+  } | LC_ALL=C sort -u | LC_ALL=C awk -v t="${TARGET_ID}" '$0 <= t' | tail -n 20 > "${GOOD_FILE}.new" || return 1
+  mv -f "${GOOD_FILE}.new" "${GOOD_FILE}" || return 1
 }
 
 echo "Rolling back ${SERVICE_NAME}: ${CURRENT_ID} -> ${TARGET_ID}"
@@ -98,6 +102,8 @@ if activate "${RELEASES_DIR}/${TARGET_ID}" && healthy; then
   exit 0
 fi
 
-echo "Release ${TARGET_ID} failed its health check; restoring ${CURRENT_ID}." >&2
-activate "${CURRENT_DIR}" || true
+echo "Release ${TARGET_ID} could not be activated or failed its health check; restoring ${CURRENT_ID}." >&2
+if ! activate "${CURRENT_DIR}"; then
+  echo "RESTORE FAILED: ${SERVICE_NAME} may be on the wrong release; check ${CURRENT_LINK} and run systemctl status ${SERVICE_NAME}." >&2
+fi
 exit 1

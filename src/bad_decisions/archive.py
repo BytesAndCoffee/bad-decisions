@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import errno
 import hashlib
 import json
@@ -176,18 +177,40 @@ def _fsync_directory(path: Path) -> None:
         os.close(descriptor)
 
 
-def _create_exclusive(destination: Path, payload: bytes) -> None:
-    """Fallback for filesystems without hard links: O_EXCL never overwrites, and a partial file is removed."""
+def _lock_path(destination: Path) -> Path:
+    """Name the publish lock so that it can never be mistaken for a pack.
 
-    descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+    ``load_registry`` globs ``*.json``, so the suffix must stay ``.lock``: ``maha.json`` locks on
+    ``.maha.json.lock``.
+    """
+
+    return destination.parent / f".{destination.name}.lock"
+
+
+def _publish_without_links(temporary: Path, destination: Path) -> None:
+    """Publish the already fsynced temporary file on a filesystem without hard links.
+
+    ``os.replace`` is atomic, so a reader sees either no file or the complete pack, but on its own it
+    would happily overwrite an existing pack.  An ``O_EXCL`` lock file keeps importers from racing
+    between the existence check and the replace.  The lock is never broken by age: a leftover lock is
+    reported so a human can decide.  A writer that is not an importer takes no lock, so it can still
+    slip a file in between the check and the replace; only importers coordinate here.
+    """
+
+    lock = _lock_path(destination)
     try:
-        with os.fdopen(descriptor, "wb") as handle:
-            handle.write(payload)
-            handle.flush()
-            os.fsync(handle.fileno())
-    except BaseException:
-        destination.unlink(missing_ok=True)
-        raise
+        descriptor = os.open(lock, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        raise _error(f"another import is in progress or a stale lock remains: remove {lock} if none is running") from None
+    try:
+        os.close(descriptor)
+        if os.path.lexists(destination):
+            raise _error(f"refusing to overwrite existing pack: {destination}")
+        os.replace(temporary, destination)
+    finally:
+        # Only this call created the lock, so only this call removes it, even on KeyboardInterrupt.
+        with contextlib.suppress(OSError):
+            os.unlink(lock)
 
 
 def import_pack(archive_path: str | Path, registry_dir: str | Path) -> Path:
@@ -195,7 +218,22 @@ def import_pack(archive_path: str | Path, registry_dir: str | Path) -> Path:
 
     The pack is written and fsynced to a temporary file, then published with ``os.link``, which fails
     if the destination exists.  Concurrent importers therefore cannot overwrite each other, and readers
-    never see a partial file.
+    never see a partial file.  Where hard links are unavailable the same guarantees come from a lock
+    file plus ``os.replace``; see :func:`_publish_without_links`.
+    """
+
+    return _import_pack(archive_path, registry_dir)
+
+
+def _import_pack(
+    archive_path: str | Path,
+    registry_dir: str | Path,
+    created: list[tuple[Path, int, int]] | None = None,
+) -> Path:
+    """Implement :func:`import_pack`, optionally recording what it published for a caller's rollback.
+
+    Each published pack is appended to ``created`` as ``(destination, st_dev, st_ino)`` as soon as it
+    exists, so a caller can tell its own file apart from one another writer has since replaced.
     """
 
     _, pack, payload, _, _ = _read_archive(Path(archive_path))
@@ -214,6 +252,7 @@ def import_pack(archive_path: str | Path, registry_dir: str | Path) -> Path:
             handle.write(payload)
             handle.flush()
             os.fsync(handle.fileno())
+            status = os.fstat(handle.fileno())  # the published pack keeps this inode, whether linked or replaced
         os.chmod(temporary, 0o644)
         try:
             os.link(temporary, destination)
@@ -222,16 +261,18 @@ def import_pack(archive_path: str | Path, registry_dir: str | Path) -> Path:
         except OSError as exc:
             if exc.errno not in _LINK_UNSUPPORTED:
                 raise
-            try:
-                _create_exclusive(destination, payload)
-            except FileExistsError:
-                raise _error(f"refusing to overwrite existing pack: {destination}") from None
+            _publish_without_links(temporary, destination)
+            temporary = None  # os.replace consumed it; nothing left to clean up
+        if created is not None:
+            created.append((destination, status.st_dev, status.st_ino))
         _fsync_directory(destination_dir)
     except OSError as exc:
         raise _error(f"cannot import pack: {exc}") from exc
     finally:
         if temporary is not None:
-            temporary.unlink(missing_ok=True)
+            # A failed cleanup leaves a dotted temp file that no glob picks up; it must not mask the result.
+            with contextlib.suppress(OSError):
+                temporary.unlink(missing_ok=True)
     return destination
 
 

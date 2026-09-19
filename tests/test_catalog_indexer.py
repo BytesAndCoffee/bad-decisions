@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+import http.client
 import importlib.util
 import io
 import json
+import logging
 import re
 import stat
 import threading
 import zipfile
 import zlib
+from contextlib import contextmanager
 from datetime import datetime, timezone
+from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
@@ -166,7 +170,7 @@ def test_total_uncompressed_size_is_capped():
         catalog.read_members(body)
 
 
-@pytest.mark.parametrize("error", [zlib.error("bad"), RuntimeError("bad"), TypeError("bad"), OSError("bad")])
+@pytest.mark.parametrize("error", [zlib.error("bad"), RuntimeError("bad"), TypeError("bad"), EOFError("truncated deflate")])
 def test_unexpected_per_archive_errors_do_not_fail_the_catalog(error):
     class Flaky(catalog.Catalog):
         def pack(self, bucket, key, listed):
@@ -179,6 +183,42 @@ def test_unexpected_per_archive_errors_do_not_fail_the_catalog(error):
     payload = instance.payload()
     assert payload["pack_count"] == 1
     assert payload["rejected_archives"][0]["object_key"] == "a-bad.carddeck"
+
+
+class ClientError(Exception):
+    """Stands in for botocore.exceptions.ClientError (boto3 is not a test dependency)."""
+
+
+@pytest.mark.parametrize("error", [OSError("bad"), ConnectionResetError("reset"), TimeoutError("slow"), ClientError("SlowDown")])
+def test_storage_errors_propagate_instead_of_rejecting_archives(error):
+    instance = make_catalog({"a.carddeck": build_archive(), "b.carddeck": build_archive()}, fail=error)
+    with pytest.raises(type(error)):
+        instance.payload()
+    assert not issubclass(type(error), catalog.ARCHIVE_ERRORS)
+
+
+def test_truncated_archive_is_rejected_not_fatal():
+    good = build_archive({"pack.json": b"{" + b'"a":1,' * 200 + b'"z":1}'})
+    with zipfile.ZipFile(io.BytesIO(good)) as archive:
+        info = archive.getinfo("pack.json")
+    end = info.header_offset + 30 + len(info.filename) + len(info.extra) + info.compress_size // 2
+    # Cut the archive mid-member: the central directory is lost, so this must be a clean rejection.
+    payload = make_catalog({"a-cut.carddeck": good[:end], "b-good.carddeck": build_archive()}).payload()
+    assert [pack["object_key"] for pack in payload["packs"]] == ["b-good.carddeck"]
+    assert payload["rejected_archives"][0]["object_key"] == "a-cut.carddeck"
+
+
+def test_storage_outage_serves_the_stale_catalog_not_a_rejection_list():
+    clock = Clock()
+    instance = make_catalog({"good.carddeck": build_archive()})
+    cache = catalog.PayloadCache(instance.payload, 60, clock)
+    good, _ = cache.get()
+    assert json.loads(good)["pack_count"] == 1
+    instance.client.fail = ClientError("AccessDenied")
+    clock.now = 61
+    body, remaining = cache.get()
+    assert body == good and remaining == 0
+    assert json.loads(body)["rejected_archives"] == []
 
 
 def test_archive_over_the_shared_size_limit_is_rejected():
@@ -203,11 +243,13 @@ def test_cache_serves_within_ttl_and_refreshes_after():
         return {"n": len(calls)}
 
     cache = catalog.PayloadCache(build, 60, clock)
-    assert json.loads(cache.get()) == {"n": 1}
+    body, remaining = cache.get()
+    assert (json.loads(body), remaining) == ({"n": 1}, 60)
     clock.now = 59
-    assert json.loads(cache.get()) == {"n": 1}
+    body, remaining = cache.get()
+    assert (json.loads(body), remaining) == ({"n": 1}, 1)
     clock.now = 61
-    assert json.loads(cache.get()) == {"n": 2}
+    assert json.loads(cache.get()[0]) == {"n": 2}
     assert len(calls) == 2
 
 
@@ -221,15 +263,15 @@ def test_cache_serves_stale_when_refresh_fails_and_retries_soon():
         return {"ok": True}
 
     cache = catalog.PayloadCache(build, 60, clock)
-    good = cache.get()
+    good, _ = cache.get()
     state["fail"] = True
     clock.now = 61
-    assert cache.get() == good
-    assert cache.get() == good
+    assert cache.get() == (good, 0)
+    assert cache.get() == (good, 0)  # still stale inside the hold-off window
     assert state["calls"] == 2  # one failed refresh, then held off
     clock.now = 61 + catalog.STALE_RETRY_SECONDS
     state["fail"] = False
-    assert cache.get() == good
+    assert cache.get() == (good, 60)
     assert state["calls"] == 3
 
 
@@ -239,6 +281,83 @@ def test_cache_propagates_failure_when_nothing_is_cached():
 
     with pytest.raises(OSError):
         catalog.PayloadCache(build, 60, Clock()).get()
+
+
+def test_cold_failure_is_negative_cached_across_threads_then_retried():
+    clock, calls = Clock(), []
+    barrier = threading.Barrier(8)
+
+    def build():
+        calls.append(1)
+        raise ConnectionError("storage down")
+
+    cache = catalog.PayloadCache(build, 60, clock)
+    outcomes = []
+
+    def request():
+        barrier.wait(5)
+        try:
+            cache.get()
+        except ConnectionError as exc:
+            outcomes.append(exc)
+
+    threads = [threading.Thread(target=request) for _ in range(8)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(5)
+    assert len(outcomes) == 8
+    assert len(calls) == 1
+    clock.now = catalog.STALE_RETRY_SECONDS - 1
+    with pytest.raises(ConnectionError):
+        cache.get()
+    assert len(calls) == 1
+    clock.now = catalog.STALE_RETRY_SECONDS
+    with pytest.raises(ConnectionError):
+        cache.get()
+    assert len(calls) == 2
+
+
+def test_cold_failure_hold_off_is_capped_by_a_short_ttl_and_clears_on_success():
+    clock, state = Clock(), {"fail": True, "calls": 0}
+
+    def build():
+        state["calls"] += 1
+        if state["fail"]:
+            raise OSError("down")
+        return {"ok": True}
+
+    cache = catalog.PayloadCache(build, 3, clock)
+    with pytest.raises(OSError):
+        cache.get()
+    clock.now = 3
+    state["fail"] = False
+    body, remaining = cache.get()  # retried after min(ttl, retry), not after 10s
+    assert (json.loads(body), remaining, state["calls"]) == ({"ok": True}, 3, 2)
+
+
+def test_expiry_is_measured_from_the_end_of_a_slow_build():
+    clock = Clock()
+
+    def slow_build():
+        clock.now += 30
+        return {"ok": True}
+
+    cache = catalog.PayloadCache(slow_build, 60, clock)
+    cache.get()
+    assert cache._expires_at == 90
+    clock.now = 89
+    _, remaining = cache.get()
+    assert remaining == 1
+
+    def slow_failure():
+        clock.now += 30
+        raise OSError("down")
+
+    cache._build = slow_failure
+    clock.now = 91
+    assert cache.get()[1] == 0
+    assert cache._expires_at == 121 + catalog.STALE_RETRY_SECONDS
 
 
 def test_concurrent_requests_share_one_scan():
@@ -260,7 +379,137 @@ def test_concurrent_requests_share_one_scan():
     for thread in threads:
         thread.join(5)
     assert len(calls) == 1
-    assert len(results) == 8 and len(set(results)) == 1
+    assert len(results) == 8 and len({body for body, _ in results}) == 1
+
+
+def test_cache_ttl_default_and_valid_values(monkeypatch):
+    monkeypatch.delenv("CATALOG_CACHE_TTL", raising=False)
+    assert catalog.cache_ttl() == catalog.DEFAULT_CACHE_TTL
+    monkeypatch.setenv("CATALOG_CACHE_TTL", "30")
+    assert catalog.cache_ttl() == 30
+    monkeypatch.setenv("CATALOG_CACHE_TTL", "0")
+    assert catalog.cache_ttl() == 0
+
+
+@pytest.mark.parametrize("value", ["abc", "-1", "nan", "inf", "-inf", "1e999", "6o"])
+def test_cache_ttl_rejects_bad_values(monkeypatch, value):
+    monkeypatch.setenv("CATALOG_CACHE_TTL", value)
+    with pytest.raises(RuntimeError, match="CATALOG_CACHE_TTL"):
+        catalog.cache_ttl()
+
+
+@contextmanager
+def serve(cache):
+    handler = type("TestHandler", (catalog.Handler,), {"cache": cache})
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+
+    def fetch(path="/packs/index"):
+        connection = http.client.HTTPConnection("127.0.0.1", server.server_port, timeout=5)
+        try:
+            connection.request("GET", path)
+            response = connection.getresponse()
+            return response.status, response.getheader("Cache-Control"), response.read()
+        finally:
+            connection.close()
+
+    try:
+        yield fetch
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(5)
+
+
+def test_cache_control_reflects_remaining_freshness_and_stale_is_no_cache():
+    clock, state = Clock(), {"fail": False}
+
+    def build():
+        if state["fail"]:
+            raise OSError("storage down")
+        return {"ok": True}
+
+    with serve(catalog.PayloadCache(build, 60, clock)) as fetch:
+        status, cache_control, body = fetch()
+        assert (status, cache_control, json.loads(body)) == (200, "public, max-age=60", {"ok": True})
+        clock.now = 20
+        assert fetch()[1] == "public, max-age=40"
+        clock.now = 59.5  # under one second left must not advertise a lifetime
+        assert fetch()[1] == "no-cache"
+        state["fail"] = True
+        clock.now = 61
+        status, cache_control, body = fetch()
+        assert (status, cache_control, json.loads(body)) == (200, "no-cache", {"ok": True})
+        clock.now = 65  # still inside the stale hold-off window
+        assert fetch()[1] == "no-cache"
+        assert fetch("/other")[0] == 404
+
+
+def test_zero_ttl_is_never_cached_downstream():
+    with serve(catalog.PayloadCache(lambda: {"ok": True}, 0, Clock())) as fetch:
+        assert fetch()[:2] == (200, "no-cache")
+
+
+def test_cold_failure_is_503_and_logged(caplog):
+    def build():
+        raise ClientError("storage down")
+
+    with serve(catalog.PayloadCache(build, 60, Clock())) as fetch, caplog.at_level(logging.ERROR, logger="catalog"):
+        assert fetch()[0] == 503
+    assert any(record.exc_info and record.exc_info[0] is ClientError for record in caplog.records)
+
+
+def test_startup_fails_fast_on_bad_configuration(monkeypatch):
+    def unreachable(*_args, **_kwargs):
+        raise AssertionError("must not get past configuration validation")
+
+    monkeypatch.setattr(catalog, "Catalog", unreachable)
+    monkeypatch.setattr(catalog, "ThreadingHTTPServer", unreachable)
+    monkeypatch.setenv("CATALOG_BIND_HOST", "127.0.0.1")
+    monkeypatch.setenv("CATALOG_BIND_PORT", "8080")
+    monkeypatch.setenv("CATALOG_CACHE_TTL", "abc")
+    with pytest.raises(RuntimeError, match="CATALOG_CACHE_TTL"):
+        catalog.main()
+    monkeypatch.setenv("CATALOG_CACHE_TTL", "-1")
+    with pytest.raises(RuntimeError, match="CATALOG_CACHE_TTL"):
+        catalog.main()
+    monkeypatch.setenv("CATALOG_CACHE_TTL", "30")
+    monkeypatch.delenv("CATALOG_BIND_HOST")
+    with pytest.raises(RuntimeError, match="CATALOG_BIND_HOST"):
+        catalog.main()
+
+
+def test_main_wires_the_validated_ttl_into_the_handler_cache(monkeypatch):
+    seen = {}
+
+    class FakeCatalog:
+        def payload(self):
+            return {"ok": True}
+
+    class FakeServer:
+        def __init__(self, address, handler):
+            seen["address"], seen["handler"] = address, handler
+
+        def serve_forever(self):
+            seen["served"] = True
+
+    monkeypatch.setattr(catalog, "Catalog", FakeCatalog)
+    monkeypatch.setattr(catalog, "ThreadingHTTPServer", FakeServer)
+    monkeypatch.setattr(catalog.Handler, "cache", None, raising=False)
+    monkeypatch.setenv("CATALOG_BIND_HOST", "127.0.0.1")
+    monkeypatch.setenv("CATALOG_BIND_PORT", "8080")
+    monkeypatch.setenv("CATALOG_CACHE_TTL", "30")
+    catalog.main()
+    assert seen["address"] == ("127.0.0.1", 8080) and seen["served"]
+    assert catalog.Handler.cache._ttl == 30
+    assert json.loads(catalog.Handler.cache.get()[0]) == {"ok": True}
+
+
+def test_module_imports_without_boto3_or_bad_decisions():
+    source = (ARCHIVE_DIR / "indexer" / "catalog.py").read_text()
+    top_level = [line for line in source.splitlines() if line.startswith(("import ", "from "))]
+    assert not any("boto" in line or "bad_decisions" in line for line in top_level)
 
 
 def render(path: Path) -> str:

@@ -4,7 +4,9 @@ import errno
 import json
 import os
 import threading
+import time
 import zipfile
+from pathlib import Path
 
 import pytest
 
@@ -156,18 +158,165 @@ def test_import_falls_back_to_exclusive_create_without_hard_links(tmp_path, monk
     assert _registry_files(registry) == ["maha.json"]
 
 
-def test_fallback_never_overwrites_and_removes_its_partial_file(tmp_path, monkeypatch):
-    destination = tmp_path / "maha.json"
-    destination.write_text("precious", encoding="utf-8")
-    with pytest.raises(FileExistsError):
-        archive_module._create_exclusive(destination, b"new")
-    assert destination.read_text(encoding="utf-8") == "precious"
+def _without_hard_links(monkeypatch):
+    def no_links(*_args, **_kwargs):
+        raise OSError(errno.EPERM, "hard links are not supported")
 
-    partial = tmp_path / "partial.json"
-    monkeypatch.setattr(os, "fsync", lambda _descriptor: (_ for _ in ()).throw(OSError(errno.EIO, "disk on fire")))
-    with pytest.raises(OSError, match="disk on fire"):
-        archive_module._create_exclusive(partial, b"new")
-    assert not partial.exists()
+    monkeypatch.setattr(os, "link", no_links)
+
+
+def _maha(tmp_path):
+    return export_pack(load_registry().packs["maha"], tmp_path / "maha.carddeck"), (tmp_path / "registry").resolve()
+
+
+def test_fallback_refuses_an_existing_pack_and_leaves_no_lock(tmp_path, monkeypatch):
+    archive, registry = _maha(tmp_path)
+    registry.mkdir()
+    (registry / "maha.json").write_text("precious", encoding="utf-8")
+    _without_hard_links(monkeypatch)
+    with pytest.raises(PackConfigurationError, match="overwrite"):
+        import_pack(archive, registry)
+    assert (registry / "maha.json").read_text(encoding="utf-8") == "precious"
+    assert _registry_files(registry) == ["maha.json"]  # no lock, no temporary file
+
+
+def test_fallback_refuses_a_dangling_symlink_destination(tmp_path, monkeypatch):
+    archive, registry = _maha(tmp_path)
+    registry.mkdir()
+    victim = tmp_path / "victim.json"
+    (registry / "maha.json").symlink_to(victim)
+    _without_hard_links(monkeypatch)
+    with pytest.raises(PackConfigurationError, match="overwrite"):
+        import_pack(archive, registry)
+    assert not victim.exists()
+    assert _registry_files(registry) == ["maha.json"]
+
+
+def test_fallback_leaves_no_lock_or_pack_when_the_replace_fails(tmp_path, monkeypatch):
+    archive, registry = _maha(tmp_path)
+    _without_hard_links(monkeypatch)
+
+    def broken(*_args, **_kwargs):
+        raise OSError(errno.EIO, "disk on fire")
+
+    monkeypatch.setattr(os, "replace", broken)
+    with pytest.raises(PackConfigurationError, match="cannot import pack"):
+        import_pack(archive, registry)
+    assert _registry_files(registry) == []
+
+
+def test_fallback_leaves_no_lock_when_the_publish_is_interrupted(tmp_path, monkeypatch):
+    archive, registry = _maha(tmp_path)
+    _without_hard_links(monkeypatch)
+
+    def interrupted(*_args, **_kwargs):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(os, "replace", interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        import_pack(archive, registry)
+    assert _registry_files(registry) == []
+
+
+def test_a_pre_existing_lock_stops_the_fallback_without_breaking_it(tmp_path, monkeypatch):
+    archive, registry = _maha(tmp_path)
+    registry.mkdir()
+    lock = registry / ".maha.json.lock"
+    lock.write_text("held by another importer", encoding="utf-8")
+    _without_hard_links(monkeypatch)
+    with pytest.raises(PackConfigurationError, match="stale lock") as failure:
+        import_pack(archive, registry)
+    assert "overwrite" not in str(failure.value)  # a distinct diagnosis, not a phantom overwrite
+    assert lock.read_text(encoding="utf-8") == "held by another importer"  # age never breaks a lock
+    assert _registry_files(registry) == [".maha.json.lock"]
+
+
+def test_a_leftover_lock_is_never_loaded_as_a_pack(tmp_path, monkeypatch):
+    archive, registry = _maha(tmp_path)
+    _without_hard_links(monkeypatch)
+    import_pack(archive, registry)
+    lock = registry / ".maha.json.lock"
+    lock.write_text('{"hostile": true}', encoding="utf-8")  # as a crashed importer would leave it
+    assert not lock.name.endswith(".json")
+    assert load_registry(registry).ids == ("maha",)
+
+
+def test_fallback_readers_never_see_a_partial_pack(tmp_path, monkeypatch):
+    archive, registry = _maha(tmp_path)
+    registry.mkdir()
+    _without_hard_links(monkeypatch)
+    expected = load_registry().packs["maha"].model_dump(mode="json")
+    seen: list[object] = []
+    stop = threading.Event()
+
+    def reader():
+        while not stop.is_set():
+            for path in registry.glob("*.json"):
+                try:
+                    seen.append(json.loads(path.read_text(encoding="utf-8")))
+                except (OSError, ValueError) as exc:  # a partial file would land here
+                    seen.append(exc)
+
+    watcher = threading.Thread(target=reader)
+    watcher.start()
+    try:
+        import_pack(archive, registry)
+        deadline = time.monotonic() + 5
+        while not seen and time.monotonic() < deadline:
+            time.sleep(0.01)
+    finally:
+        stop.set()
+        watcher.join()
+    assert seen  # the reader really did observe the published pack
+    assert all(document == expected for document in seen)
+
+
+def test_concurrent_fallback_imports_yield_exactly_one_winner(tmp_path, monkeypatch):
+    archive, registry = _maha(tmp_path)
+    _without_hard_links(monkeypatch)
+    workers = 8
+    barrier = threading.Barrier(workers)
+    outcomes: list[object] = []
+
+    def race():
+        barrier.wait()
+        try:
+            outcomes.append(import_pack(archive, registry))
+        except PackConfigurationError as exc:
+            outcomes.append(exc)
+
+    threads = [threading.Thread(target=race) for _ in range(workers)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    winners = [outcome for outcome in outcomes if not isinstance(outcome, Exception)]
+    losers = [outcome for outcome in outcomes if isinstance(outcome, Exception)]
+    assert len(winners) == 1 and len(losers) == workers - 1
+    assert all("overwrite" in str(loser) or "stale lock" in str(loser) for loser in losers)
+    assert _registry_files(registry) == ["maha.json"]  # no leftover locks or temp files
+    assert load_registry(registry).packs["maha"] == load_registry().packs["maha"]
+
+
+def test_a_failing_temporary_cleanup_does_not_fail_the_import(tmp_path, monkeypatch):
+    archive, registry = _maha(tmp_path)
+    real_unlink = Path.unlink
+
+    def flaky(self, *args, **kwargs):
+        if self.name.startswith(".carddeck-"):
+            raise OSError(errno.EIO, "disk on fire")
+        return real_unlink(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "unlink", flaky)
+    imported = import_pack(archive, registry)
+    assert imported.exists()
+    assert load_registry(registry).ids == ("maha",)  # the stranded temporary file is not a pack
+
+
+def test_the_publish_lock_name_cannot_be_mistaken_for_a_pack(tmp_path):
+    lock = archive_module._lock_path(tmp_path / "maha.json")
+    assert lock.name == ".maha.json.lock" and not lock.match("*.json")
 
 
 def test_other_link_errors_are_reported_and_leave_no_files(tmp_path, monkeypatch):

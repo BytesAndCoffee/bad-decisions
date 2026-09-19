@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import stat
 import tempfile
 from collections.abc import Iterable
 from pathlib import Path
@@ -12,7 +13,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
-from .archive import CARDDECK_SUFFIX, MAX_ARCHIVE_BYTES, import_pack, validate_archive
+from .archive import CARDDECK_SUFFIX, MAX_ARCHIVE_BYTES, _import_pack, import_pack, validate_archive
 from .errors import PackConfigurationError
 
 MAX_INDEX_BYTES = 2 * 1024 * 1024
@@ -115,21 +116,26 @@ def import_index(url: str, registry_dir: str | Path, *, pack_ids: Iterable[str])
     missing = sorted(set(requested) - entries.keys())
     if missing:
         raise _error(f"catalog does not contain requested pack IDs: {', '.join(missing)}")
-    # Download and validate every archive before installing any, then install all-or-nothing: if one
-    # install fails, the packs this call already created are removed (import_pack never overwrites, so
-    # every installed path is ours).  A process crash mid-install can still leave a partial set.
+    # Download and validate every archive before installing any, then install all-or-nothing.  The
+    # importer records every pack it publishes as (path, device, inode) before doing anything else, so
+    # a failure after a file appeared -- not just one the installer returned from -- is rolled back, and
+    # a file another writer has since replaced is left alone.  A process crash mid-install can still
+    # leave a partial set.
     with tempfile.TemporaryDirectory(prefix="bad-decisions-carddeck-") as directory:
         archives = [
             _download_archive(entries[pack_id], Path(directory), f"download-{number}", expected_id=pack_id)
             for number, pack_id in enumerate(requested)
         ]
+        created: list[tuple[Path, int, int]] = []
         installed: list[Path] = []
         try:
             for archive in archives:
-                installed.append(import_pack(archive, registry_dir))
+                installed.append(_import_pack(archive, registry_dir, created))
         except BaseException:
-            for path in installed:
+            for path, device, inode in created:
                 with contextlib.suppress(OSError):
-                    path.unlink(missing_ok=True)
+                    status = path.lstat()
+                    if stat.S_ISREG(status.st_mode) and (status.st_dev, status.st_ino) == (device, inode):
+                        path.unlink()
             raise
     return tuple(installed)

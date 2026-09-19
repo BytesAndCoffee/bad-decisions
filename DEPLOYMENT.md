@@ -66,7 +66,8 @@ sudo ./deploy.sh rollback 20260102T000000Z   # a specific release under $APP_ROO
 passed every `deploy.sh` health check (the last 20; a first deploy after
 upgrading seeds it with the release that was serving). The default target is the
 newest listed release that is not current, so a release that failed its deploy
-is never chosen. A successful rollback removes the release it left, so running
+is never chosen. The file is kept sorted by release ID (UTC timestamps). A
+successful rollback drops every listed release newer than the target, so running
 it again steps further back instead of rolling forward. Hosts without the file
 fall back to the newest older release, with a warning that it is not verified.
 

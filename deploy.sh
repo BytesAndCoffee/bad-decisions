@@ -196,7 +196,7 @@ systemctl daemon-reload
 systemctl enable "${SERVICE_NAME}"
 systemctl restart "${SERVICE_NAME}"
 curl --fail --silent --show-error --retry 10 --retry-delay 1 --retry-max-time 60 --retry-connrefused "http://${BIND_HOST}:${PORT}/healthz"
-curl --fail --silent --show-error "http://${BIND_HOST}:${PORT}/v1/round"
+curl --fail --silent --show-error "http://${BIND_HOST}:${PORT}/v1/round" >/dev/null
 curl --fail --silent --show-error "http://${BIND_HOST}:${PORT}/web/" | grep -Fq '<base href='
 curl --fail --silent --show-error "http://${BIND_HOST}:${PORT}/web/app.js" | grep -Fq 'loadPacks'
 if [[ ${CONFIGURE_NGINX} == 1 ]]; then

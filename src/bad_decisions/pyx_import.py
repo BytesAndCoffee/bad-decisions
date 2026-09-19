@@ -48,11 +48,28 @@ def _error(message: str) -> PackConfigurationError:
 def _decode_copy_value(value: str) -> str | None:
     if value == r"\N":
         return None
+    if "\\" not in value:
+        return value
     output: list[str] = []
+    # PostgreSQL COPY writes non-ASCII text as byte escapes (\303\251), so consecutive octal/hex escapes are
+    # collected as bytes and decoded together as strict UTF-8 whenever any other output is appended.
+    pending = bytearray()
+
+    def flush() -> None:
+        if not pending:
+            return
+        try:
+            output.append(pending.decode("utf-8"))
+        except UnicodeDecodeError as exc:
+            # Raised here rather than propagated: convert() reports UnicodeDecodeError as a bad dump encoding.
+            raise _error(f"invalid UTF-8 in COPY byte escapes: {bytes(pending)!r}") from exc
+        pending.clear()
+
     index = 0
     while index < len(value):
         char = value[index]
         if char != "\\":
+            flush()
             output.append(char)
             index += 1
             continue
@@ -61,24 +78,29 @@ def _decode_copy_value(value: str) -> str | None:
         escaped = value[index + 1]
         simple = {"b": "\b", "f": "\f", "n": "\n", "r": "\r", "t": "\t", "v": "\v", "\\": "\\"}
         if escaped in simple:
+            flush()
             output.append(simple[escaped])
             index += 2
             continue
         octal = OCTAL_ESCAPE.match(value, index + 1)
         if octal:
             code = int(octal.group(), 8)
+            # Deliberately stricter than PostgreSQL, which wraps values above \377 to a single byte: wrapping
+            # would silently coerce malformed data, so it is rejected instead.
             if code > 0o377:
                 raise _error(f"octal COPY escape out of range: \\{octal.group()}")
-            output.append(chr(code))
+            pending.append(code)
             index += 1 + octal.end() - octal.start()
             continue
         hexadecimal = HEX_ESCAPE.match(value, index + 1)
         if hexadecimal:
-            output.append(chr(int(hexadecimal.group("digits"), 16)))
+            pending.append(int(hexadecimal.group("digits"), 16))
             index += 1 + hexadecimal.end() - hexadecimal.start()
             continue
+        flush()
         output.append(escaped)
         index += 2
+    flush()
     return "".join(output)
 
 

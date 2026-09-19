@@ -98,6 +98,40 @@ def test_copy_escapes_octal_and_hex(escaped, expected):
     assert _white_text(escaped) == expected
 
 
+@pytest.mark.parametrize(
+    ("escaped", "expected"),
+    [
+        (r"\303\251", "\u00e9"),
+        (r"\xc3\xa9", "\u00e9"),
+        (r"\360\237\230\200", "\U0001f600"),
+        (r"\xf0\x9f\x98\x80", "\U0001f600"),
+        (r"caf\303\251 au lait", "caf\u00e9 au lait"),
+        (r"\303\251\101\303\251", "\u00e9A\u00e9"),  # run, ASCII escape, run
+    ],
+)
+def test_copy_byte_escapes_decode_as_utf8(escaped, expected):
+    assert _white_text(escaped) == expected
+
+
+@pytest.mark.parametrize(
+    "escaped",
+    [
+        r"\351",  # lone Latin-1 byte
+        r"\xe9",
+        r"\360\237",  # truncated 4-byte sequence
+        r"\303\n\251",  # a simple escape splits the run
+        "\\303\u00e9",  # literal character after a lead byte
+        r"\303\101",  # lead byte followed by an ASCII byte escape
+        r"\251",  # bare continuation byte
+    ],
+)
+def test_invalid_utf8_byte_escapes_are_rejected_as_configuration_errors(escaped):
+    with pytest.raises(PackConfigurationError) as caught:
+        _white_text(escaped)
+    assert "invalid UTF-8 in COPY byte escapes" in str(caught.value)
+    assert "SQL dump must be UTF-8" not in str(caught.value)
+
+
 def test_out_of_range_octal_escape_is_rejected():
     with pytest.raises(PackConfigurationError, match="out of range"):
         _white_text(r"\777")

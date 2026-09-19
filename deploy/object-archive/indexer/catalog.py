@@ -5,6 +5,8 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import logging
+import math
 import os
 import stat
 import threading
@@ -26,8 +28,12 @@ MAX_COMPRESSION_RATIO = 100
 REQUIRED_MEMBERS = frozenset({"ATTRIBUTION.md", "LICENSE.txt", "manifest.json", "pack.json"})
 DEFAULT_CACHE_TTL = 60.0
 STALE_RETRY_SECONDS = 10.0
-# One malformed object must be reported in rejected_archives, never fail the catalog.
-ARCHIVE_ERRORS = (BadZipFile, KeyError, UnicodeDecodeError, ValueError, zlib.error, RuntimeError, TypeError, OSError)
+# Content-invalid objects are reported in rejected_archives and never fail the catalog.
+# OSError, botocore ClientError/BotoCoreError and socket errors are deliberately absent:
+# a storage outage must fail the refresh (so the stale catalog is served), not be
+# published as though every archive were malformed. EOFError is a truncated deflate stream.
+ARCHIVE_ERRORS = (BadZipFile, EOFError, KeyError, UnicodeDecodeError, ValueError, zlib.error, RuntimeError, TypeError)
+logger = logging.getLogger("catalog")
 
 
 def setting(name: str) -> str:
@@ -45,12 +51,19 @@ def read_credentials(path: Path) -> tuple[str, str]:
         raise RuntimeError("catalog credential file is malformed") from exc
 
 
-def storage_errors() -> tuple[type[BaseException], ...]:
+def cache_ttl() -> float:
+    """Parse CATALOG_CACHE_TTL once at startup; a bad value must stop the service."""
+
+    raw = os.environ.get("CATALOG_CACHE_TTL", "").strip()
+    if not raw:
+        return DEFAULT_CACHE_TTL
     try:
-        from botocore.exceptions import BotoCoreError, ClientError
-    except ImportError:
-        return ()
-    return (BotoCoreError, ClientError)
+        ttl = float(raw)
+    except ValueError:
+        raise RuntimeError(f"CATALOG_CACHE_TTL must be a number of seconds, got {raw!r}") from None
+    if not math.isfinite(ttl) or ttl < 0:
+        raise RuntimeError(f"CATALOG_CACHE_TTL must be a finite, non-negative number of seconds, got {raw!r}")
+    return ttl
 
 
 def read_members(body: bytes) -> tuple[object, object]:
@@ -89,7 +102,11 @@ def read_members(body: bytes) -> tuple[object, object]:
 
 
 class PayloadCache:
-    """TTL cache of the encoded catalog; refreshes are serialized and coalesced."""
+    """TTL cache of the encoded catalog; refreshes are serialized and coalesced.
+
+    get() returns (body, remaining_seconds). remaining_seconds is how long the body
+    may still be cached downstream; it is 0 for a stale copy served after a failed refresh.
+    """
 
     def __init__(self, build: Callable[[], dict[str, object]], ttl: float, clock: Callable[[], float] = time.monotonic) -> None:
         self._build = build
@@ -98,23 +115,35 @@ class PayloadCache:
         self._lock = threading.Lock()
         self._encoded: bytes | None = None
         self._expires_at = 0.0
+        self._stale = False
+        self._failure: Exception | None = None
+        self._failed_until = 0.0
 
-    def get(self) -> bytes:
+    def get(self) -> tuple[bytes, float]:
         with self._lock:
             now = self._clock()
-            if self._encoded is not None and now < self._expires_at:
-                return self._encoded
+            if self._encoded is not None:
+                if now < self._expires_at:
+                    return self._encoded, 0.0 if self._stale else self._expires_at - now
+            elif self._failure is not None and now < self._failed_until:
+                # Cold failure: do not let every request rescan a storage backend that is down.
+                raise self._failure
             try:
                 encoded = json.dumps(self._build(), separators=(",", ":"), ensure_ascii=False).encode()
-            except Exception:
+            except Exception as exc:
+                # The scan itself can be slow, so hold off from the time it finished, not started.
+                built = self._clock()
+                retry_at = built + min(self._ttl, STALE_RETRY_SECONDS)
                 if self._encoded is None:
+                    self._failure, self._failed_until = exc, retry_at
                     raise
-                # Serve the stale catalog, but do not hammer storage while it is down.
-                self._expires_at = now + min(self._ttl, STALE_RETRY_SECONDS)
-                return self._encoded
-            self._encoded = encoded
-            self._expires_at = now + self._ttl
-            return encoded
+                logger.warning("catalog refresh failed; serving the stale catalog", exc_info=True)
+                self._stale, self._expires_at = True, retry_at
+                return self._encoded, 0.0
+            built = self._clock()
+            self._encoded, self._expires_at = encoded, built + self._ttl
+            self._stale, self._failure = False, None
+            return encoded, self._ttl
 
 
 class Catalog:
@@ -143,7 +172,7 @@ class Catalog:
 
     def payload(self) -> dict[str, object]:
         packs, rejected = [], []
-        recoverable = ARCHIVE_ERRORS + storage_errors()
+        recoverable = ARCHIVE_ERRORS
         for bucket in self.buckets:
             for page in self.client.get_paginator("list_objects_v2").paginate(Bucket=bucket):
                 for item in page.get("Contents", []):
@@ -157,35 +186,25 @@ class Catalog:
         return {"schema_version": 1, "generated_at": datetime.now(timezone.utc).isoformat(), "buckets": list(self.buckets), "pack_count": len(packs), "packs": packs, "rejected_archives": rejected}
 
 
-_cache: PayloadCache | None = None
-_cache_guard = threading.Lock()
-
-
-def encoded_catalog() -> bytes:
-    """Build the catalog lazily so importing this module needs neither boto3 nor credentials."""
-
-    global _cache
-    with _cache_guard:
-        if _cache is None:
-            _cache = PayloadCache(Catalog().payload, float(os.environ.get("CATALOG_CACHE_TTL", DEFAULT_CACHE_TTL)))
-        cache = _cache
-    return cache.get()
-
-
 class Handler(BaseHTTPRequestHandler):
+    cache: PayloadCache  # set by main() after configuration has been validated
+
     def do_GET(self) -> None:  # noqa: N802
         if self.path != "/packs/index":
             self.send_error(HTTPStatus.NOT_FOUND)
             return
         try:
-            response = encoded_catalog()
+            response, remaining = self.cache.get()
         except Exception:
+            logger.exception("catalog refresh failed with nothing cached")
             self.send_error(HTTPStatus.SERVICE_UNAVAILABLE)
             return
+        max_age = int(remaining)
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(response)))
-        self.send_header("Cache-Control", f"public, max-age={int(float(os.environ.get('CATALOG_CACHE_TTL', DEFAULT_CACHE_TTL)))}")
+        # Stale fallbacks (and a nearly expired body) must not be cached downstream.
+        self.send_header("Cache-Control", f"public, max-age={max_age}" if max_age > 0 else "no-cache")
         self.end_headers()
         self.wfile.write(response)
 
@@ -193,5 +212,15 @@ class Handler(BaseHTTPRequestHandler):
         return
 
 
+def main() -> None:
+    """Validate all configuration before binding, so a bad setting fails at startup."""
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    ttl = cache_ttl()
+    host, port = setting("CATALOG_BIND_HOST"), int(setting("CATALOG_BIND_PORT"))
+    Handler.cache = PayloadCache(Catalog().payload, ttl)
+    ThreadingHTTPServer((host, port), Handler).serve_forever()
+
+
 if __name__ == "__main__":
-    ThreadingHTTPServer((setting("CATALOG_BIND_HOST"), int(setting("CATALOG_BIND_PORT"))), Handler).serve_forever()
+    main()

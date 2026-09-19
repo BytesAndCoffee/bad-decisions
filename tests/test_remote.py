@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import errno
 import json
+import os
 
 import pytest
 
+import bad_decisions.archive as archive_module
 from bad_decisions.archive import export_pack
 from bad_decisions.errors import PackConfigurationError
 from bad_decisions.packs import load_registry
@@ -97,3 +100,49 @@ def test_import_index_rolls_back_when_a_later_pack_already_exists(tmp_path, monk
         import_index(_serve_catalog(monkeypatch, archives), registry, pack_ids=["maha", "coffee"])
     assert _registry_files(registry) == ["coffee.json"]  # maha.json rolled back, coffee.json untouched
     assert (registry / "coffee.json").read_text(encoding="utf-8") == "precious"
+
+
+def _two_archives(tmp_path):
+    packs = load_registry().packs
+    return {pack_id: export_pack(packs[pack_id], tmp_path / f"{pack_id}.carddeck").read_bytes() for pack_id in ("maha", "coffee")}
+
+
+def test_import_index_rolls_back_a_pack_that_a_late_failure_left_behind(tmp_path, monkeypatch):
+    registry = (tmp_path / "registry").resolve()
+    archives = _two_archives(tmp_path)
+    real_fsync_directory = archive_module._fsync_directory
+    calls: list[object] = []
+
+    def flaky(path):
+        calls.append(path)
+        if len(calls) == 2:  # coffee.json is already published when this import fails
+            raise OSError(errno.EIO, "disk on fire")
+        real_fsync_directory(path)
+
+    monkeypatch.setattr(archive_module, "_fsync_directory", flaky)
+    with pytest.raises(PackConfigurationError, match="cannot import pack"):
+        import_index(_serve_catalog(monkeypatch, archives), registry, pack_ids=["maha", "coffee"])
+    assert _registry_files(registry) == []  # both the returned pack and the half-installed one are gone
+
+
+def test_import_index_rollback_leaves_a_pack_another_writer_replaced(tmp_path, monkeypatch):
+    registry = (tmp_path / "registry").resolve()
+    archives = _two_archives(tmp_path)
+    real_fsync_directory = archive_module._fsync_directory
+    calls: list[object] = []
+
+    def flaky(path):
+        calls.append(path)
+        real_fsync_directory(path)
+        if len(calls) == 1:  # another writer swaps maha.json for a different inode
+            intruder = registry / ".intruder"
+            intruder.write_text("not yours", encoding="utf-8")
+            os.replace(intruder, registry / "maha.json")
+        if len(calls) == 2:
+            raise OSError(errno.EIO, "disk on fire")
+
+    monkeypatch.setattr(archive_module, "_fsync_directory", flaky)
+    with pytest.raises(PackConfigurationError, match="cannot import pack"):
+        import_index(_serve_catalog(monkeypatch, archives), registry, pack_ids=["maha", "coffee"])
+    assert _registry_files(registry) == ["maha.json"]  # coffee.json rolled back, the replacement kept
+    assert (registry / "maha.json").read_text(encoding="utf-8") == "not yours"

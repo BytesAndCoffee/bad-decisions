@@ -111,7 +111,7 @@ def test_explicit_release_overrides_the_watermark_and_updates_it(host):
     host.good(MID, NEW)
     assert host.run(OLD).returncode == 0
     assert host.current() == OLD
-    assert host.watermark() == [MID, OLD]
+    assert host.watermark() == [OLD]  # newer entries are dropped, not kept
 
 
 def test_hostile_or_unusable_watermark_entries_are_ignored(host, tmp_path):
@@ -183,6 +183,71 @@ def test_failed_health_check_restores_the_release_and_keeps_the_watermark(host):
     assert host.current() == NEW
     assert host.restarts() == ["restart svc", "restart svc"]
     assert host.watermark() == [OLD, MID, NEW]
+
+
+def test_rollback_normalizes_unsorted_and_hostile_watermark_lines(host):
+    host.good(NEW, "../../x", OLD, "not-an-id", MID, OLD, "")
+    assert host.run(OLD).returncode == 0
+    assert host.watermark() == [OLD]
+    host.good(NEW, "junk", MID, "; rm -rf /")
+    assert host.run(MID).returncode == 0
+    assert host.watermark() == [MID]
+
+
+def test_explicit_rollback_then_plain_rollback_refuses_to_roll_forward(host):
+    assert host.run(OLD).returncode == 0
+    assert host.watermark() == [OLD]
+    result = host.run()
+    assert result.returncode == 1 and "No known-good release" in result.stderr
+    assert host.current() == OLD
+
+
+def test_rollback_watermark_caps_history_at_twenty(host):
+    older = [f"20250101T0000{n:02d}Z" for n in range(30)]
+    host.good(*older, OLD, MID, NEW)
+    assert host.run(MID).returncode == 0
+    entries = host.watermark()
+    assert len(entries) == 20 and entries[-1] == MID and entries == sorted(entries)
+
+
+def test_stale_current_new_directory_blocks_activation_loudly(host):
+    (host.app / "current.new").mkdir()
+    result = host.run(MID)
+    assert result.returncode == 1
+    assert "Rollback complete" not in result.stdout
+    assert "RESTORE FAILED" in result.stderr
+    assert host.current() == NEW
+    assert host.restarts() == []
+    assert host.watermark() == [OLD, MID, NEW]
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root ignores directory permissions")
+def test_unwritable_app_root_fails_instead_of_reporting_success(host):
+    host.app.chmod(0o555)
+    try:
+        result = host.run(MID)
+    finally:
+        host.app.chmod(0o755)
+    assert result.returncode == 1
+    assert "Rollback complete" not in result.stdout
+    assert "RESTORE FAILED" in result.stderr
+    assert host.current() == NEW
+    assert host.restarts() == []
+    assert host.watermark() == [OLD, MID, NEW]
+
+
+def test_failed_watermark_write_warns_and_never_replaces_the_file(host):
+    (host.app / "good-releases.new").mkdir()
+    result = host.run(MID)
+    assert result.returncode == 0
+    assert "could not update" in result.stderr
+    assert host.current() == MID
+    assert host.watermark() == [OLD, MID, NEW]
+
+
+def test_smoke_test_output_is_not_dumped_to_the_terminal():
+    (line,) = curl_lines("/v1/round")
+    assert line.rstrip().endswith(">/dev/null")
 
 
 def test_deploy_script_dispatches_rollback_and_rejects_unknown_arguments():
