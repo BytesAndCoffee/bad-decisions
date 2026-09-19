@@ -64,8 +64,9 @@ validation, licenses, backups, and ZIP-bomb defenses are not.
 - Do not run `deploy.sh`, `bad-decisions deploy`, `twine upload`, or `git push`
   unless the user asks. Pushing a `v*` tag publishes both packages to PyPI, so
   treat it like `twine upload`. Leave changes uncommitted unless asked to commit.
-- Push only to the private `origin`. Never push to the public remote
-  (`bad-decisions-public`) without being asked.
+- The only remote is `origin`, the public Bad Decisions repository on GitHub
+  (the old Cards Against Coffee repository is archived and is not a remote).
+  Everything pushed there is public, so push only when asked.
 - Privileged (`sudo`) steps belong to the human. Agents have no sudo, and sudo
   tickets are per terminal, so `sudo -v` elsewhere does not reach an agent's
   shell. Do not work around this (no sudoers edits, no cached-ticket tricks).
@@ -162,8 +163,8 @@ For a server release, build and validate the exact artifacts:
   before uploading; never rebuild different contents under an existing version.
 - Releases publish from CI, not from a laptop: bump every version source (four
   files plus the `?v=` cache busters in `web/index.html`; a test keeps them
-  equal), merge to `main` with CI green, then push a `vX.Y.Z` tag to the public
-  remote. `release.yml` verifies the tag matches the versions and is on `main`,
+  equal), merge to `main` with CI green, then push a `vX.Y.Z` tag to
+  `origin`. `release.yml` verifies the tag matches the versions and is on `main`,
   runs the tests, builds and `twine check`s both packages once, and publishes
   those files through PyPI Trusted Publishing behind the `pypi` environment
   approval. There are no PyPI tokens; never add one. See `RELEASING.md`.

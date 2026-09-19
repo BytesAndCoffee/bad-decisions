@@ -19,7 +19,7 @@ CORE_RULES = [
     "deploy.sh",
     "twine upload",
     "git push",
-    "bad-decisions-public",
+    "The only remote is `origin`",
     "patchnotes.md",
     ".venv/bin/python",
     "AGENTS.local.md",

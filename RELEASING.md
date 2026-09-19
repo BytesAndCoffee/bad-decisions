@@ -12,12 +12,12 @@ manual step (see [DEPLOYMENT.md](DEPLOYMENT.md)).
    `bad-decisions-client`), open *Manage > Publishing* on pypi.org and add a
    GitHub publisher: owner `BytesAndCoffee`, repository `bad-decisions`,
    workflow `release.yml`, environment `pypi`.
-2. **GitHub environment.** In the public repository, create an environment named
+2. **GitHub environment.** In the repository, create an environment named
    `pypi` and add yourself as a required reviewer, so a tag alone cannot publish.
 3. **Tag protection (optional).** Restrict who can create `v*` tags.
 
-Workflows run in the public repository (`bad-decisions-public`, the one the
-package metadata links to). The private `origin` does not need them.
+Workflows run in the repository the package metadata links to
+(`BytesAndCoffee/bad-decisions`), which is the `origin` remote.
 
 ## Release procedure
 
@@ -30,7 +30,7 @@ package metadata links to). The private `origin` does not need them.
 
    ```bash
    git tag v1.1.1
-   git push bad-decisions-public v1.1.1
+   git push origin v1.1.1
    ```
 
 4. Approve the `pypi` environment when the **Release** workflow pauses.
