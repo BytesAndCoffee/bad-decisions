@@ -13,6 +13,18 @@ Tracks fixes from the 2026-09-19 code review. Tick an item when its fix and test
 ## Added on request
 - [x] Manual rollback: `deploy.sh rollback [RELEASE_ID]` (`deploy/rollback.sh`), defaulting to the last good release from the `good-releases` watermark.
 
+## Review round 2 (code review of 98c1552)
+- [x] R1. `rollback.sh`: `activate()` failures were ignored inside `if ... &&`, so a failed switch could report success.
+- [x] R2. `rollback.sh`: watermark ordering could roll forward after an explicit rollback.
+- [x] R3. Catalog: transient storage errors were cached as `rejected_archives`.
+- [x] R4. Import: no-hard-link fallback wrote straight into the destination (not atomic).
+- [x] R5. Catalog: lazy `Catalog()` hid bad config behind silent 503s.
+- [x] R6. PYX: multi-byte UTF-8 octal/hex escapes decoded as mojibake.
+- [x] R7. Catalog: `Cache-Control` advertised full TTL for stale bodies; TTL not validated.
+- [x] R8. Catalog: `PayloadCache` lock/expiry timing and repeated cold-start scans.
+- [x] R9. `import_index`: rollback missed a pack that failed after linking.
+- [x] R10. All-packs default reviewed and deliberately kept (user decision).
+
 ## Should consider
 - [ ] Reject C0 control characters (except newline) in card text validators.
 - [ ] `operations.setup`: don't silently ignore `--pack-dir`; make config actually reach the service; honor `SERVICE_NAME` in `_service()`.
@@ -38,3 +50,18 @@ Tracks fixes from the 2026-09-19 code review. Tick an item when its fix and test
 2026-09-19 - Minor tests - Added concurrent-import, malformed-catalog-archive and PYX escape edge-case tests (with items 1, 5, 6).
 2026-09-19 - rollback - Added `deploy.sh rollback [RELEASE_ID]`: repoints `current` to the newest earlier (or named) release, restarts, health-checks, and restores the serving release if the target is unhealthy; rejects malformed, symlinked, incomplete and current IDs. Unknown `deploy.sh` arguments now error instead of starting a deploy. Tests: `tests/test_deploy_script.py`.
 2026-09-19 - rollback watermark - `deploy.sh` records each release that passes all health checks in `$APP_ROOT/good-releases` (last 20, seeded from the serving release on first use); `rollback` defaults to the newest entry that is not current, so failed releases are never chosen, and drops the release it left so repeated rollbacks step back. Hosts without the file fall back to the newest older release with a warning. Tests: `tests/test_deploy_script.py`.
+2026-09-19 - R1 - `rollback.sh`: every `activate()` step now returns 1 on failure (stale `current.new` fails loudly), a failed restore prints "RESTORE FAILED", `update_watermark` no longer `mv`s after a failed write; `deploy.sh` sends the `/v1/round` smoke-test output to `/dev/null`. Tests: `tests/test_deploy_script.py`.
+2026-09-19 - R2 - `good-releases` is ID-sorted and ID-validated; a rollback to T keeps only entries `<= T`, so a plain rollback after `rollback A` refuses instead of rolling forward. `DEPLOYMENT.md` updated.
+2026-09-19 - R3 - `catalog.py`: storage/network errors (`OSError`, botocore, sockets) fail the refresh so the stale catalog is served; `ARCHIVE_ERRORS` is content errors only, plus `EOFError`.
+2026-09-19 - R4 - Import fallback for filesystems without hard links publishes the fsynced temp file under an `O_EXCL` `.<pack>.json.lock` plus `os.replace`; readers never see a partial pack, a leftover lock gives a distinct "stale lock" error (never broken by age). Residual: a crashed importer leaves the lock until removed by hand; non-importer writers are not coordinated.
+2026-09-19 - R5 - `CATALOG_CACHE_TTL` validated once at startup (`cache_ttl()`, rejects non-numeric, negative, non-finite); `main()` validates config before binding and logs refresh failures.
+2026-09-19 - R6 - PYX COPY octal/hex escapes are gathered into byte runs and decoded as strict UTF-8; invalid runs raise `PackConfigurationError` ("invalid UTF-8 in COPY byte escapes"); octal above `\377` still rejected deliberately.
+2026-09-19 - R7 - `PayloadCache.get()` returns `(body, remaining_seconds)`; `/packs/index` sends `max-age=<remaining>` when fresh and `no-cache` for stale or under one second left.
+2026-09-19 - R8 - Cache expiry measured after the build finishes; a cold-start failure is negative-cached for `min(ttl, 10s)`.
+2026-09-19 - R9 - `import_index` tracks published packs by `(path, st_dev, st_ino)` via private `_import_pack(..., created=...)`; late failures roll back, and a pack another writer replaced is left alone.
+2026-09-19 - R10 - Kept the all-packs default as decided. Follow-up: catalog.py changes need the object-archive container rebuilt separately; the rest needs a `deploy.sh` run.
+2026-09-19 - docs - AGENTS.md now covers rollback/watermark, catalog indexer constraints, import atomicity/lock, PYX byte escapes, default-packs rule and update-install PORT gotcha; CLAUDE.md slimmed to Claude behavior plus local production notes and the approved screen-based sudo route.
+2026-09-19 - docs - CLAUDE.md is now tracked; AGENTS.md and CLAUDE.md both carry equivalent conduct rules plus a 'Keeping agent guides in sync' rule (update both in the same change, no machine-specific details in tracked files); production details moved to Claude project memory. Test: tests/test_agent_guides.py.
+2026-09-19 - docs - Parity across AI coding platforms: machine-specific production notes moved from Claude-only memory to git-ignored AGENTS.local.md referenced by both guides; both guides state that no rule may live only in one tool's private config. Tests: tests/test_agent_guides.py.
+2026-09-19 - docs - Cross-platform parity: AGENTS.md is the single source of rules; CLAUDE.md, GEMINI.md, .cursor/rules/agents.mdc and .github/copilot-instructions.md are thin adapters with no rules; sync rule rewritten accordingly. Test: tests/test_agent_guides.py.
+2026-09-19 - release - Bumped both packages and the web cache busters to 1.1.1 (server + client stay coordinated); added tests/test_release_versions.py so the four version sources and index.html cache busters cannot drift.
