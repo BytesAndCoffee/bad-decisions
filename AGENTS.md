@@ -19,6 +19,8 @@ validation, licenses, backups, and ZIP-bomb defenses are not.
   standalone catalog indexer (`indexer/catalog.py`).
 - `patchnotes.md`: checklist and log of review fixes; tick the item and add a
   one-line note for every notable change.
+- `.github/workflows/`: CI (`ci.yml`) and PyPI release (`release.yml`);
+  `RELEASING.md` documents them and `scripts/check_release_tag.py` gates tags.
 - Agent adapters (`CLAUDE.md`, `GEMINI.md`, `.cursor/rules/agents.mdc`,
   `.github/copilot-instructions.md`): thin pointers to this file; no rules.
 
@@ -60,7 +62,8 @@ validation, licenses, backups, and ZIP-bomb defenses are not.
 
 - Use the repo venv: `.venv/bin/python`. Never install into the system Python.
 - Do not run `deploy.sh`, `bad-decisions deploy`, `twine upload`, or `git push`
-  unless the user asks. Leave changes uncommitted unless asked to commit.
+  unless the user asks. Pushing a `v*` tag publishes both packages to PyPI, so
+  treat it like `twine upload`. Leave changes uncommitted unless asked to commit.
 - Push only to the private `origin`. Never push to the public remote
   (`bad-decisions-public`) without being asked.
 - Privileged (`sudo`) steps belong to the human. Agents have no sudo, and sudo
@@ -157,5 +160,16 @@ For a server release, build and validate the exact artifacts:
   `deploy/object-archive/docker-compose.catalog-v3.yml`, not by `deploy.sh`.
 - PyPI versions are immutable. Check the current published version and bump it
   before uploading; never rebuild different contents under an existing version.
+- Releases publish from CI, not from a laptop: bump every version source (four
+  files plus the `?v=` cache busters in `web/index.html`; a test keeps them
+  equal), merge to `main` with CI green, then push a `vX.Y.Z` tag to the public
+  remote. `release.yml` verifies the tag matches the versions and is on `main`,
+  runs the tests, builds and `twine check`s both packages once, and publishes
+  those files through PyPI Trusted Publishing behind the `pypi` environment
+  approval. There are no PyPI tokens; never add one. See `RELEASING.md`.
+  Locally built artifacts are for checking only, not for uploading.
+- Workflows must stay least-privilege: pin every action to a full commit SHA,
+  default to `contents: read`, and grant `id-token: write` only to the publish
+  job. `tests/test_release_workflows.py` enforces this.
 - Never commit virtual environments, build artifacts, dotenv files, tokens, or
   generated local exports.
