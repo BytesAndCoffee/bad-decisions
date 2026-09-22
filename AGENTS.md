@@ -70,8 +70,9 @@ validation, licenses, backups, and ZIP-bomb defenses are not.
 - Privileged (`sudo`) steps belong to the human. Agents have no sudo, and sudo
   tickets are per terminal, so `sudo -v` elsewhere does not reach an agent's
   shell. Do not work around this (no sudoers edits, no cached-ticket tricks).
-  The only approved route: the user starts `screen -S deploy`, runs `sudo -v` in
-  it, and says so in that turn. Then read the window first
+  The approved route: the user starts `screen -S deploy` and either runs `sudo -v`
+  there in the current turn or explicitly confirms that its existing ticket remains
+  valid. Then read the window first
   (`screen -S deploy -X hardcopy <file>`), send only the agreed command with
   `screen -S deploy -X stuff`, watch the output, and verify from outside
   afterward. Type nothing else into that window.

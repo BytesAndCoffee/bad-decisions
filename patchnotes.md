@@ -70,3 +70,6 @@ Tracks fixes from the 2026-09-19 code review. Tick an item when its fix and test
 2026-09-19 - docs - Corrected the remote layout: both GitHub repos were public and the old cards-against-coffee repo is archived, so there is no private repo. Removed the archived remote, renamed bad-decisions-public to origin, and rewrote the AGENTS.md remote/push rules and RELEASING.md to match (old remote URL: https://github.com/BytesAndCoffee/cards-against-coffee.git).
 2026-09-22 - consequences - Replaced the preliminary aggregate-only analytics scaffold with optional SQLite-backed request/round telemetry, deterministic content hashes, capability-protected feedback, atomic combination counters, private operator commands, and web/Regret client hooks. Tests: tests/test_analytics.py.
 2026-09-22 - release - Prepared Consequences as release 1.1.2; server and client versions plus web cache busters remain coordinated.
+2026-09-22 - web - Added the Minecraft-style “Now with Consequences!” masthead splash line.
+2026-09-22 - release - Prepared the web splash update as 1.1.3 so deployed assets do not reuse the immutable 1.1.2 version.
+2026-09-22 - agents - Clarified that an explicitly confirmed still-valid sudo ticket in the named deploy screen is acceptable; inspect-first and agreed-command safeguards remain mandatory.
