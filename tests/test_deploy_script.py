@@ -296,3 +296,8 @@ def test_deploy_watermark_failure_warns_without_failing_the_deploy(tmp_path):
     result = run_watermark_block(tmp_path / "missing", NEW)
     assert result.returncode == 0
     assert "could not update" in result.stderr
+
+def test_deployer_selects_the_wheel_from_project_metadata_not_the_development_venv():
+    text = "\n".join(SCRIPT)
+    assert "tomllib.load" in text
+    assert "from bad_decisions import __version__" not in text

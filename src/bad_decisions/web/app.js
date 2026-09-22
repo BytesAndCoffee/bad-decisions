@@ -1,4 +1,34 @@
 const packsElement = document.querySelector("#packs");
+const feedbackElement = document.querySelector("#feedback");
+const feedbackStatus = document.querySelector("#feedback-status");
+let currentFeedback = null;
+const identityKey = "bad-decisions-regret-client-id";
+const identityOffKey = "bad-decisions-regret-identity-off";
+let sessionId = crypto.randomUUID ? crypto.randomUUID() : null;
+function clientHeaders() {
+  if (localStorage.getItem(identityOffKey) === "true") return { Accept: "application/json" };
+  let clientId = null;
+  try { clientId = localStorage.getItem(identityKey) || crypto.randomUUID(); localStorage.setItem(identityKey, clientId); } catch (_) { clientId = crypto.randomUUID ? crypto.randomUUID() : null; }
+  return { Accept: "application/json", ...(clientId ? {"X-Regret-Client-ID":clientId} : {}), ...(sessionId ? {"X-Regret-Session-ID":sessionId} : {}) };
+}
+function renderFeedback() {
+  const available = Boolean(currentFeedback && currentFeedback.token);
+  feedbackElement.hidden = !available;
+  feedbackElement.querySelectorAll("[data-vote]").forEach((button) => { button.disabled = !available; button.setAttribute("aria-pressed", String((button.dataset.vote === "true" && currentFeedback?.choice === true) || (button.dataset.vote === "false" && currentFeedback?.choice === false))); });
+}
+async function vote(choice) {
+  const feedback = currentFeedback;
+  if (!feedback) return;
+  feedbackStatus.textContent = "Recording your consequences...";
+  try {
+    const response = await fetch(feedback.url, {method:choice === "clear" ? "DELETE" : "PUT", headers:{"Content-Type":"application/json","X-Regret-Feedback-Token":feedback.token}, body:choice === "clear" ? undefined : JSON.stringify({enjoyed:choice === "true"})});
+    if (!response.ok && response.status !== 204) throw new Error();
+    if (currentFeedback !== feedback) return;
+    feedback.choice = choice === "clear" ? null : choice === "true";
+    feedbackStatus.textContent = choice === "clear" ? "Feedback withdrawn." : "Noted. We will not judge.";
+    renderFeedback();
+  } catch (_) { if (currentFeedback === feedback) feedbackStatus.textContent = "Feedback was not saved. You can retry."; }
+}
 const dealButton = document.querySelector("#deal");
 const statusElement = document.querySelector("#status");
 const roundElement = document.querySelector("#round");
@@ -33,7 +63,7 @@ function updatePackSummary() {
 
 async function loadPacks() {
   try {
-    const response = await fetch(apiUrl("packs"), { headers: { Accept: "application/json" } });
+    const response = await fetch(apiUrl("packs"), { headers: clientHeaders() });
     if (!response.ok) throw new Error("Could not load packs");
     const packs = await response.json();
     const indexedPacks = packs.filter((pack) => pack.id.startsWith("pyx-"));
@@ -93,7 +123,7 @@ async function deal() {
   dealButton.disabled = true;
   setStatus("Consulting the machine…");
   try {
-    const response = await fetch(`${apiUrl("round")}?packs=${encodeURIComponent(packs.join(","))}`, { headers: { Accept: "application/json" } });
+    const response = await fetch(`${apiUrl("round")}?packs=${encodeURIComponent(packs.join(","))}`, { headers: clientHeaders() });
     const body = await response.json();
     if (!response.ok) throw new Error(body.error?.message || "Round failed");
     blackElement.textContent = body.black.repr;
@@ -103,6 +133,10 @@ async function deal() {
       return answer;
     }));
     resultElement.textContent = body.result;
+    const token = response.headers.get("X-Regret-Feedback-Token");
+    currentFeedback = body.feedback?.available && token ? { url: body.feedback.url, token, choice: null } : null;
+    feedbackStatus.textContent = "";
+    renderFeedback();
     roundElement.hidden = false;
     emptyRoundElement.hidden = true;
     setStatus("");
@@ -120,3 +154,6 @@ document.querySelector("#all-packs").addEventListener("click", () => {
 });
 dealButton.addEventListener("click", deal);
 loadPacks();
+feedbackElement.querySelectorAll("[data-vote]").forEach((button) => button.addEventListener("click", () => vote(button.dataset.vote)));
+document.querySelector("#reset-identity").addEventListener("click", () => { try { localStorage.removeItem(identityKey); localStorage.removeItem(identityOffKey); } catch (_) {} sessionId = crypto.randomUUID ? crypto.randomUUID() : null; feedbackStatus.textContent = "Analytics identity reset for future deals."; });
+document.querySelector("#omit-identity").addEventListener("click", () => { try { localStorage.setItem(identityOffKey, "true"); } catch (_) {} feedbackStatus.textContent = "Analytics identity will be omitted for future deals."; });

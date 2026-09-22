@@ -103,6 +103,44 @@ in the loaded registry, so custom `BAD_DECISIONS_PACK_DIR` registries need no `b
 `/docs` exposes OpenAPI documentation. Errors use a stable JSON envelope and
 request responses include a request ID.
 
+
+## Consequences (optional analytics and feedback)
+
+Consequences is disabled by default. Enable it only with a local, persistent SQLite
+path owned by the service user:
+
+    BAD_DECISIONS_CONSEQUENCES_DB=/var/lib/bad-decisions/consequences.sqlite3
+
+The database must not live in a release directory, an object store, or a shared
+filesystem. SQLite uses bounded writer waits; durable draws and feedback are
+transactional, while request telemetry is best effort. If the store is unavailable,
+dealing still succeeds and the response advertises feedback as unavailable.
+
+Consequences records route templates, method, status, duration, optional random
+client/session UUIDs, and authoritative drawn-card/provenance records. It does not
+record IP addresses, user agents, raw query strings, raw request headers, or
+feedback capabilities. Capability tokens are returned only in
+`X-Regret-Feedback-Token`, are stored as verifiers, and expire after seven days.
+
+Set `BAD_DECISIONS_CONSEQUENCES_FEEDBACK=0` to retain analytics without voting.
+Public combination summaries are off unless
+`BAD_DECISIONS_CONSEQUENCES_PUBLIC_STATS=1`. Other controls include bounded
+writer timeout, feedback TTL, and retention days; feedback TTL may not outlive
+retention.
+
+Private operator commands:
+
+    bad-decisions consequences report /absolute/path/consequences.sqlite3
+    bad-decisions consequences rebuild /absolute/path/consequences.sqlite3
+    bad-decisions consequences purge /absolute/path/consequences.sqlite3 --retention-days 90
+
+The Regret client automatically sends a random per-installation UUID when it can
+safely persist it in `~/.regret.env`, and a new session UUID per invocation.
+Use `regret identity reset` or `regret identity off` for control. After a deal,
+`regret feedback enjoy`, `regret feedback regret`, and `regret feedback clear`
+operate on its securely cached last eligible draw. Feedback is one mutable vote per
+draw; retries do not duplicate it, and the last committed concurrent vote wins.
+
 ## Linux deployment
 
 Bad Decisions is Linux-native for production deployment:

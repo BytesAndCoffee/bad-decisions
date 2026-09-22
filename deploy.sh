@@ -72,7 +72,7 @@ fi
 
 echo "Building ${APP_NAME} wheel"
 "${BUILD_PYTHON}" -m build "${SCRIPT_DIR}"
-VERSION=$("${BUILD_PYTHON}" -c 'from bad_decisions import __version__; print(__version__)')
+VERSION=$("${BUILD_PYTHON}" -c 'import sys, tomllib; print(tomllib.load(open(sys.argv[1], "rb"))["project"]["version"])' "${SCRIPT_DIR}/pyproject.toml")
 WHEEL=${SCRIPT_DIR}/dist/bad_decisions-${VERSION}-py3-none-any.whl
 if [[ ! -f ${WHEEL} ]]; then
   echo "Expected wheel was not created: ${WHEEL}" >&2

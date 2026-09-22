@@ -12,6 +12,7 @@ Tracks fixes from the 2026-09-19 code review. Tick an item when its fix and test
 
 ## Added on request
 - [x] Manual rollback: `deploy.sh rollback [RELEASE_ID]` (`deploy/rollback.sh`), defaulting to the last good release from the `good-releases` watermark.
+- [x] Consequences: optional SQLite request telemetry, durable round provenance, capability-protected Enjoy/Regret feedback, aggregate maintenance, and client integration.
 
 ## Review round 2 (code review of 98c1552)
 - [x] R1. `rollback.sh`: `activate()` failures were ignored inside `if ... &&`, so a failed switch could report success.
@@ -67,3 +68,5 @@ Tracks fixes from the 2026-09-19 code review. Tick an item when its fix and test
 2026-09-19 - release - Bumped both packages and the web cache busters to 1.1.1 (server + client stay coordinated); added tests/test_release_versions.py so the four version sources and index.html cache busters cannot drift.
 2026-09-19 - release - Added .github/workflows/ci.yml (server on 3.12, client on 3.9 and 3.13, deploy-script syntax) and release.yml (tag vX.Y.Z -> verify tag/main/versions + tests -> build and twine-check once -> PyPI Trusted Publishing behind the pypi environment), scripts/check_release_tag.py, RELEASING.md, and AGENTS.md release rules. Actions pinned to commit SHAs; only the publish job gets id-token. Tests: tests/test_release_workflows.py.
 2026-09-19 - docs - Corrected the remote layout: both GitHub repos were public and the old cards-against-coffee repo is archived, so there is no private repo. Removed the archived remote, renamed bad-decisions-public to origin, and rewrote the AGENTS.md remote/push rules and RELEASING.md to match (old remote URL: https://github.com/BytesAndCoffee/cards-against-coffee.git).
+2026-09-22 - consequences - Replaced the preliminary aggregate-only analytics scaffold with optional SQLite-backed request/round telemetry, deterministic content hashes, capability-protected feedback, atomic combination counters, private operator commands, and web/Regret client hooks. Tests: tests/test_analytics.py.
+2026-09-22 - release - Prepared Consequences as release 1.1.2; server and client versions plus web cache busters remain coordinated.

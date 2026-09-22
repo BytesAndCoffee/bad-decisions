@@ -6,8 +6,8 @@
     <meta name="description" content="Deal a hand with Bad Decisions.">
     <base href="__WEB_BASE__">
     <title>Bad Decisions — deal badly, professionally</title>
-    <link rel="icon" href="favicon.svg?v=1.1.1" type="image/svg+xml">
-    <link rel="stylesheet" href="style.css?v=1.1.1">
+    <link rel="icon" href="favicon.svg?v=1.1.2" type="image/svg+xml">
+    <link rel="stylesheet" href="style.css?v=1.1.2">
   </head>
   <body>
     <main class="shell">
@@ -62,6 +62,13 @@
             <div id="answers" class="answers"></div>
           </div>
           <p id="result" class="result"></p>
+          <section id="feedback" class="feedback" hidden aria-labelledby="feedback-question">
+            <p id="feedback-question">Do you enjoy this bad decision, or regret it?</p>
+            <div><button type="button" data-vote="true">Enjoy it</button><button type="button" data-vote="false">Regret it</button><button type="button" data-vote="clear">Withdraw</button></div>
+            <button id="reset-identity" class="quiet-button" type="button">Reset analytics identity</button>
+            <button id="omit-identity" class="quiet-button" type="button">Omit analytics identity</button>
+            <p id="feedback-status" role="status"></p>
+          </section>
         </section>
 
         <section id="empty-round" class="empty-round" aria-label="Round preview">
@@ -81,6 +88,6 @@
         <span>Unofficial fan project.</span>
       </footer>
     </main>
-    <script src="app.js?v=1.1.1" defer></script>
+    <script src="app.js?v=1.1.2" defer></script>
   </body>
 </html>

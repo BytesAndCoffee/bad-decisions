@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import json
 import math
+import sqlite3
 import signal
 import sys
 import time
@@ -9,6 +11,7 @@ from pathlib import Path
 from typing import Sequence
 
 from .archive import export_pack, import_pack, initialize_registry, validate_archive
+from .consequences import ConsequencesStore
 from .engine import generate_from_resolved, render_round
 from .errors import BadDecisionsError, PackConfigurationError, UnknownPackError
 from .packs import load_registry, resolve_pools
@@ -60,6 +63,15 @@ def pack_parser() -> argparse.ArgumentParser:
     imported.add_argument("--pack", dest="pack_ids", action="append", help="catalog pack ID; repeat with --index")
     initialized = commands.add_parser("init-registry", help="initialize an empty absolute registry with bundled packs")
     initialized.add_argument("registry_dir", type=Path)
+    return result
+
+def consequences_parser() -> argparse.ArgumentParser:
+    result = argparse.ArgumentParser(prog="bad-decisions consequences", description="Operate private local Consequences analytics.")
+    commands = result.add_subparsers(dest="command", required=True)
+    for name, help_text in (("report", "print aggregate report as JSON"), ("rebuild", "rebuild aggregate counters"), ("purge", "purge retained records")):
+        command = commands.add_parser(name, help=help_text)
+        command.add_argument("database", type=Path, help="absolute SQLite database path")
+        if name == "purge": command.add_argument("--retention-days", type=int, required=True)
     return result
 
 
@@ -130,12 +142,25 @@ def _run_pack(argv: Sequence[str]) -> int:
     return 0
 
 
+def _run_consequences(argv: Sequence[str]) -> int:
+    args = consequences_parser().parse_args(argv)
+    try:
+        store = ConsequencesStore(args.database)
+        if args.command == "report": _write(json.dumps(store.report(), sort_keys=True))
+        elif args.command == "rebuild": store.rebuild(); _write("rebuilt Consequences aggregates")
+        else: _write(f"purged {store.purge(args.retention_days)} retained rounds")
+    except (ValueError, sqlite3.Error) as exc:
+        raise PackConfigurationError(f"consequences database error: {exc}") from exc
+    return 0
+
 def run(argv: Sequence[str] | None = None, *, sleep=time.sleep) -> int:
     values = list(sys.argv[1:] if argv is None else argv)
     if values and values[0] in {"setup", "serve", "deploy", "status", "reload", "stop"}:
         return operations.run(values)
     if values and values[0] == "pack":
         return _run_pack(values[1:])
+    if values and values[0] in {"analytics", "consequences"}:
+        return _run_consequences(values[1:])
     args = parser().parse_args(values)
     if args.delay is not None and not args.rapid:
         parser().error("--delay may only be used with --rapid")
