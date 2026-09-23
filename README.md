@@ -152,9 +152,15 @@ retention.
 
 Private operator commands:
 
+    bad-decisions consequences report
     bad-decisions consequences report /absolute/path/consequences.sqlite3
     bad-decisions consequences rebuild /absolute/path/consequences.sqlite3
     bad-decisions consequences purge /absolute/path/consequences.sqlite3 --retention-days 90
+
+For `report`, the database argument is optional: the CLI first uses
+`BAD_DECISIONS_CONSEQUENCES_DB`, then discovers the persistent
+`consequences/consequences.sqlite3` beside an installed immutable release.
+`rebuild` and `purge` continue to require an explicit path.
 
 The Regret client automatically sends a random per-installation UUID when it can
 safely persist it in `~/.regret.env`, and a new session UUID per invocation.

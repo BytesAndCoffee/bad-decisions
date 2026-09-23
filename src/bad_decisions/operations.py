@@ -20,9 +20,12 @@ def _require_linux() -> None:
         raise RuntimeError("Bad Decisions deployment commands are supported on Linux only")
 
 
-def _service(action: str) -> int:
+def _service(action: str, *, require_root: bool = False) -> int:
     _require_linux()
     command = ["systemctl", action, "bad-decisions.service"]
+    if require_root and os.geteuid() != 0:
+        print(f"bad-decisions {action} must be run with sudo.", file=sys.stderr)
+        return 2
     completed = subprocess.run(command, check=False)
     return completed.returncode
 
@@ -87,7 +90,7 @@ def run(argv: list[str]) -> int:
     if command == "status":
         return _service("status")
     if command == "reload":
-        return _service("reload")
+        return _service("reload", require_root=True)
     if command == "stop":
-        return _service("stop")
+        return _service("stop", require_root=True)
     raise ValueError(f"unknown operational command: {command}")

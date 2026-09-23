@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 from bad_decisions.api import create_app
+from bad_decisions import cli
 from bad_decisions.consequences import ConsequencesStore, canonical_hash, round_identity
 
 def configured(tmp_path, monkeypatch):
@@ -73,3 +74,31 @@ def test_expired_capability(tmp_path,monkeypatch):
     with sqlite3.connect(database) as connection: connection.execute("UPDATE rounds SET feedback_expires_at=0")
     with TestClient(create_app()) as client:
         assert client.put(body["feedback"]["url"],json={"enjoyed":True},headers={"X-Regret-Feedback-Token":token}).status_code == 410
+
+
+def test_consequences_report_defaults_to_configured_database(tmp_path, monkeypatch):
+    database = tmp_path / "configured.sqlite3"
+    ConsequencesStore(database)
+    monkeypatch.setenv("BAD_DECISIONS_CONSEQUENCES_DB", str(database))
+
+    assert cli._default_consequences_database() == database
+    assert cli.run(["consequences", "report"]) == 0
+
+
+def test_consequences_report_discovers_installed_database(tmp_path, monkeypatch):
+    database = tmp_path / "app" / "consequences" / "consequences.sqlite3"
+    database.parent.mkdir(parents=True)
+    ConsequencesStore(database)
+    executable = tmp_path / "app" / "releases" / "release-id" / ".venv" / "bin" / "python"
+    monkeypatch.delenv("BAD_DECISIONS_CONSEQUENCES_DB", raising=False)
+    monkeypatch.setattr(cli.sys, "executable", str(executable))
+
+    assert cli._default_consequences_database() == database
+    assert cli.run(["consequences", "report"]) == 0
+
+
+def test_mutating_consequences_commands_still_require_database_path():
+    with pytest.raises(SystemExit):
+        cli.run(["consequences", "rebuild"])
+    with pytest.raises(SystemExit):
+        cli.run(["consequences", "purge", "--retention-days", "90"])

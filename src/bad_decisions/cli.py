@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import sqlite3
 import signal
 import sys
@@ -70,7 +71,10 @@ def consequences_parser() -> argparse.ArgumentParser:
     commands = result.add_subparsers(dest="command", required=True)
     for name, help_text in (("report", "print aggregate report as JSON"), ("rebuild", "rebuild aggregate counters"), ("purge", "purge retained records")):
         command = commands.add_parser(name, help=help_text)
-        command.add_argument("database", type=Path, help="absolute SQLite database path")
+        if name == "report":
+            command.add_argument("database", type=Path, nargs="?", help="absolute SQLite database path")
+        else:
+            command.add_argument("database", type=Path, help="absolute SQLite database path")
         if name == "purge": command.add_argument("--retention-days", type=int, required=True)
     return result
 
@@ -142,10 +146,33 @@ def _run_pack(argv: Sequence[str]) -> int:
     return 0
 
 
+def _default_consequences_database() -> Path:
+    configured = os.getenv("BAD_DECISIONS_CONSEQUENCES_DB")
+    if configured:
+        database = Path(configured)
+        if not database.is_absolute():
+            raise PackConfigurationError("BAD_DECISIONS_CONSEQUENCES_DB must be an absolute path")
+        return database
+
+    executable = Path(sys.executable).resolve()
+    try:
+        release = executable.parents[2]
+    except IndexError:
+        release = Path()
+    if release.parent.name == "releases":
+        installed = release.parent.parent / "consequences" / "consequences.sqlite3"
+        if installed.is_file():
+            return installed
+    raise PackConfigurationError(
+        "consequences report needs a database path; set BAD_DECISIONS_CONSEQUENCES_DB or pass one explicitly"
+    )
+
+
 def _run_consequences(argv: Sequence[str]) -> int:
     args = consequences_parser().parse_args(argv)
+    database = args.database if args.database is not None else _default_consequences_database()
     try:
-        store = ConsequencesStore(args.database)
+        store = ConsequencesStore(database)
         if args.command == "report": _write(json.dumps(store.report(), sort_keys=True))
         elif args.command == "rebuild": store.rebuild(); _write("rebuilt Consequences aggregates")
         else: _write(f"purged {store.purge(args.retention_days)} retained rounds")

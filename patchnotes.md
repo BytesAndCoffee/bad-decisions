@@ -77,3 +77,6 @@ Tracks fixes from the 2026-09-19 code review. Tick an item when its fix and test
 2026-09-23 - release - Prepared the licensing and distribution-boundary documentation update as 1.1.4; server, client, and web cache busters remain coordinated.
 2026-09-23 - client - Added `regret provenance` (text and JSON) and retained the represented packs' license, attribution, version, and source metadata in the secure last-draw cache.
 2026-09-23 - release - Prepared the Regret provenance command as 1.1.5; server, client, and web cache busters remain coordinated.
+2026-09-23 - operations - Added an explicit root preflight for `reload` and `stop`; read-only `status` remains unprivileged and all three paths have focused tests.
+2026-09-23 - consequences - Made the `report` database path optional: use `BAD_DECISIONS_CONSEQUENCES_DB` first, then discover the installed release's persistent SQLite database; mutating commands still require an explicit path.
+2026-09-23 - release - Prepared the operations privilege preflight and installed Consequences report default as 1.1.6; server, client, and web cache busters remain coordinated.
