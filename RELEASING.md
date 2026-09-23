@@ -29,8 +29,8 @@ Workflows run in the repository the package metadata links to
 3. Tag the commit and push the tag (this is what publishes):
 
    ```bash
-   git tag v1.1.1
-   git push origin v1.1.1
+   git tag vX.Y.Z
+   git push origin vX.Y.Z
    ```
 
 4. Approve the `pypi` environment when the **Release** workflow pauses.

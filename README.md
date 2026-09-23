@@ -38,7 +38,9 @@ bad-decisions pack init-registry /absolute/pack/registry
 bad-decisions pack import example.carddeck /absolute/pack/registry
 ```
 
-[CardDeck 1](CARDDECK.md) defines the portable format. Its ZIP validation
+[CardDeck 1](CARDDECK.md) defines the portable format. See
+[REMOTE_IMPORTS.md](REMOTE_IMPORTS.md) for the remote catalog and archive
+workflow. Its ZIP validation
 rejects traversal, symlinks, unexpected members, checksum mismatches,
 oversized content, and dangerous compression ratios before any pack is written.
 
@@ -109,6 +111,16 @@ In other words: use the engine however the MIT License permits, but check the
 license on the cards you put into it. If your Bad Decisions have Consequences,
 that is between you and the stew.
 
+## Documentation
+
+- [CardDeck format](CARDDECK.md)
+- [Remote imports](REMOTE_IMPORTS.md)
+- [Attribution and content rights](ATTRIBUTION.md)
+- [Deployment](DEPLOYMENT.md)
+- [Release process](RELEASING.md)
+- [Changelog](CHANGELOG.md)
+- [Terminal client](client/README.md)
+
 ## API
 
 ```bash
@@ -161,6 +173,11 @@ For `report`, the database argument is optional: the CLI first uses
 `BAD_DECISIONS_CONSEQUENCES_DB`, then discovers the persistent
 `consequences/consequences.sqlite3` beside an installed immutable release.
 `rebuild` and `purge` continue to require an explicit path.
+
+The Regret client keeps Consequences disabled until the user explicitly chooses
+`regret consequences enjoy`; `regret consequences regret` disables voting and its
+pseudonymous telemetry. The preference is stored locally and is never enabled by
+a non-interactive invocation.
 
 The Regret client automatically sends a random per-installation UUID when it can
 safely persist it in `~/.regret.env`, and a new session UUID per invocation.

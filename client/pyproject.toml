@@ -8,6 +8,7 @@ version = "1.1.8"
 description = "Cross-platform terminal client for Bad Decisions services"
 readme = "README.md"
 requires-python = ">=3.9"
+dependencies = ["packaging>=23"]
 license = { text = "MIT" }
 authors = [{ name = "Bad Decisions contributors" }]
 maintainers = [{ name = "BytesAndCoffee" }]
@@ -26,3 +27,6 @@ packages = ["src/bad_decisions_client"]
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "tests", "*.md", "pyproject.toml"]

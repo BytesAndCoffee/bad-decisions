@@ -84,3 +84,6 @@ Tracks fixes from the 2026-09-19 code review. Tick an item when its fix and test
 2026-09-23 - release - Prepared the installed Consequences database discovery correction as 1.1.7; coordinated versions remain aligned.
 2026-09-23 - consequences - Opened CLI reports with SQLite `mode=ro`, avoiding schema initialization so service-group readers do not need database write permission.
 2026-09-23 - release - Prepared read-only installed Consequences reporting as 1.1.8; coordinated versions remain aligned.
+2026-09-23 - docs - Added a README documentation index and corrected the release guide's example tag to use a version placeholder.
+
+2026-09-23 - client - Added opt-in Consequences preferences, consent schema tracking, safe non-interactive defaults, and a cached PyPI update check.
