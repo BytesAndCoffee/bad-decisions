@@ -102,3 +102,13 @@ def test_mutating_consequences_commands_still_require_database_path():
         cli.run(["consequences", "rebuild"])
     with pytest.raises(SystemExit):
         cli.run(["consequences", "purge", "--retention-days", "90"])
+
+
+def test_readonly_store_reports_without_write_access(tmp_path):
+    database = tmp_path / "readonly.sqlite3"
+    ConsequencesStore(database)
+    database.chmod(0o440)
+
+    report = ConsequencesStore(database, readonly=True).report()
+    assert report["schema_version"] == 1
+    assert report["draws"]["recorded"] == 0

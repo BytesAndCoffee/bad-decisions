@@ -32,15 +32,16 @@ class IssuedRound:
 
 class ConsequencesStore:
     """SQLite is a single-host writer store: draws/votes are synchronous and atomic."""
-    def __init__(self, path: str | Path, *, busy_timeout_ms: int = 250, feedback_ttl_seconds: int = 604800) -> None:
+    def __init__(self, path: str | Path, *, busy_timeout_ms: int = 250, feedback_ttl_seconds: int = 604800, readonly: bool = False) -> None:
         self.path = Path(path)
         if not self.path.is_absolute(): raise ValueError("consequences database path must be absolute")
         if not self.path.parent.is_dir(): raise ValueError(f"consequences database directory does not exist: {self.path.parent}")
-        self.busy_timeout_ms, self.feedback_ttl_seconds = busy_timeout_ms, feedback_ttl_seconds
-        self._initialize()
+        self.busy_timeout_ms, self.feedback_ttl_seconds, self.readonly = busy_timeout_ms, feedback_ttl_seconds, readonly
+        if not readonly: self._initialize()
 
     def _connect(self) -> sqlite3.Connection:
-        con = sqlite3.connect(self.path, timeout=self.busy_timeout_ms / 1000, isolation_level=None)
+        target = f"{self.path.as_uri()}?mode=ro" if self.readonly else self.path
+        con = sqlite3.connect(target, timeout=self.busy_timeout_ms / 1000, isolation_level=None, uri=self.readonly)
         con.execute(f"PRAGMA busy_timeout = {self.busy_timeout_ms}")
         con.execute("PRAGMA foreign_keys = ON")
         return con
