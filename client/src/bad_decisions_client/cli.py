@@ -82,14 +82,56 @@ def _feedback(argv: Sequence[str]) -> int:
     command=argparse.ArgumentParser(prog="regret feedback")
     command.add_argument("choice",choices=("enjoy","regret","clear")); command.add_argument("--api-url",default=DEFAULT_API_URL); command.add_argument("--timeout",type=float,default=10)
     args=command.parse_args(argv)
-    try: saved=json.loads(ROUND_PATH.read_text(encoding="utf-8"))
-    except OSError: print("regret: no saved round with feedback available",file=sys.stderr); return 1
+    try:
+        saved=json.loads(ROUND_PATH.read_text(encoding="utf-8"))
+        if not isinstance(saved,dict) or not all(key in saved for key in ("url","token")): raise ValueError
+    except (OSError,json.JSONDecodeError,TypeError,ValueError):
+        print("regret: no saved round with feedback available",file=sys.stderr)
+        return 1
     try:
         method="DELETE" if args.choice=="clear" else "PUT"; body=None if method=="DELETE" else {"enjoyed":args.choice=="enjoy"}
         _request_json(_base_url(args.api_url)+saved["url"],timeout=args.timeout,method=method,payload=body,headers={"X-Regret-Feedback-Token":saved["token"]})
         print("feedback cleared" if args.choice=="clear" else f"marked {args.choice}")
         return 0
     except (RuntimeError,ValueError,KeyError) as exc: print(f"regret: {exc}",file=sys.stderr); return 1
+
+def _provenance(argv: Sequence[str]) -> int:
+    command=argparse.ArgumentParser(prog="regret provenance")
+    command.add_argument("--json",action="store_true")
+    args=command.parse_args(argv)
+    try:
+        saved=json.loads(ROUND_PATH.read_text(encoding="utf-8"))
+        provenance=saved["provenance"]
+        if not isinstance(provenance,dict) or not provenance: raise ValueError("saved round has no provenance")
+    except (OSError,json.JSONDecodeError,KeyError,TypeError,ValueError) as exc:
+        detail=f": {exc}" if not isinstance(exc,OSError) else ""
+        print(f"regret: no saved round provenance available{detail}",file=sys.stderr)
+        return 1
+    if args.json:
+        print(json.dumps(provenance,ensure_ascii=False,indent=2,sort_keys=True))
+        return 0
+    for index,pack_id in enumerate(sorted(provenance)):
+        details=provenance[pack_id]
+        if not isinstance(details,dict):
+            print("regret: saved round provenance is malformed",file=sys.stderr)
+            return 1
+        if index: print()
+        print(pack_id)
+        print(f"  License: {details.get('license_id','unknown')}")
+        if details.get("license_url"): print(f"  License URL: {details['license_url']}")
+        print(f"  Attribution: {details.get('attribution','unknown')}")
+        print(f"  Version: {details.get('version','unknown')}")
+        sources=details.get("sources",[])
+        if sources:
+            print("  Sources:")
+            for source in sources:
+                if not isinstance(source,dict):
+                    print("regret: saved round provenance is malformed",file=sys.stderr)
+                    return 1
+                print(f"    - {source.get('origin','unknown')}")
+                for label,key in (("Edition","edition"),("SHA-256","sha256"),("Retrieved","retrieved"),("License evidence","license_evidence")):
+                    if source.get(key): print(f"      {label}: {source[key]}")
+    return 0
 
 def _identity(argv: Sequence[str]) -> int:
     p=argparse.ArgumentParser(prog="regret identity"); p.add_argument("action",choices=("status","reset","off","on")); args=p.parse_args(argv)
@@ -106,6 +148,7 @@ def _identity(argv: Sequence[str]) -> int:
 def run(argv: Sequence[str] | None=None) -> int:
     values=list(sys.argv[1:] if argv is None else argv)
     if values and values[0]=="feedback": return _feedback(values[1:])
+    if values and values[0]=="provenance": return _provenance(values[1:])
     if values and values[0]=="identity": return _identity(values[1:])
     if values and values[0]=="health": values[0]="--health"
     elif values and values[0]=="deal": values.pop(0)
@@ -127,8 +170,11 @@ def run(argv: Sequence[str] | None=None) -> int:
         payload,response_headers=_request_json(f"{base}/v1/round"+(f"?{urlencode(params)}" if params else ""),timeout=args.timeout,headers=headers)
         feedback=payload.get("feedback",{})
         token=response_headers.get("X-Regret-Feedback-Token")
-        if token and feedback.get("available"):
-            try: _atomic_json(ROUND_PATH,{"round_id":payload["round_id"],"url":feedback["url"],"token":token,"expires_at":feedback.get("expires_at")})
+        saved={"provenance":payload["provenance"]} if isinstance(payload.get("provenance"),dict) else None
+        if saved is not None:
+            if token and feedback.get("available"):
+                saved.update({"round_id":payload["round_id"],"url":feedback["url"],"token":token,"expires_at":feedback.get("expires_at")})
+            try: _atomic_json(ROUND_PATH,saved)
             except OSError: pass
         print(json.dumps(payload,ensure_ascii=False,indent=2) if args.json else payload["result"]); return 0
     except (RuntimeError,ValueError,KeyError) as exc: print(f"regret: {exc}",file=sys.stderr); return 1

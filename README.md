@@ -162,6 +162,9 @@ Use `regret identity reset` or `regret identity off` for control. After a deal,
 `regret feedback enjoy`, `regret feedback regret`, and `regret feedback clear`
 operate on its securely cached last eligible draw. Feedback is one mutable vote per
 draw; retries do not duplicate it, and the last committed concurrent vote wins.
+`regret provenance` reads that local last-draw record and prints the license,
+attribution, version, and source metadata for every represented pack without
+contacting the API; add `--json` for machine-readable output.
 
 ## Linux deployment
 

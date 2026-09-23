@@ -75,3 +75,5 @@ Tracks fixes from the 2026-09-19 code review. Tick an item when its fix and test
 2026-09-22 - agents - Clarified that an explicitly confirmed still-valid sudo ticket in the named deploy screen is acceptable; inspect-first and agreed-command safeguards remain mandatory.
 2026-09-23 - licensing - Clarified the MIT software/card-content boundary, documented the official BytesAndCoffee service's non-commercial operation, identified BytesAndCoffee as package maintainer, and added a synthetic CardDeck metadata-preservation test.
 2026-09-23 - release - Prepared the licensing and distribution-boundary documentation update as 1.1.4; server, client, and web cache busters remain coordinated.
+2026-09-23 - client - Added `regret provenance` (text and JSON) and retained the represented packs' license, attribution, version, and source metadata in the secure last-draw cache.
+2026-09-23 - release - Prepared the Regret provenance command as 1.1.5; server, client, and web cache busters remain coordinated.
