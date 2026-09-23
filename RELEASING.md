@@ -1,7 +1,8 @@
 # Releasing
 
 Both packages (`bad-decisions` server and `bad-decisions-client`) are released
-together, with the same version, by pushing a tag. GitHub Actions builds,
+together, with the same version, by pushing a tag. Every release is lockstep: a
+server release always publishes a matching client version, and vice versa. GitHub Actions builds,
 validates, and publishes them to PyPI using Trusted Publishing (OIDC), so no
 PyPI token is stored anywhere. Deploying the server to a host is a separate,
 manual step (see [DEPLOYMENT.md](DEPLOYMENT.md)).

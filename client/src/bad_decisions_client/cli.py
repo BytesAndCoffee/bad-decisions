@@ -1,7 +1,6 @@
 from __future__ import annotations
 import argparse, json, os, sys, tempfile, uuid
 from datetime import datetime, timezone
-from importlib.metadata import PackageNotFoundError, version as installed_version
 from pathlib import Path
 from typing import Any, Sequence
 from urllib.error import HTTPError, URLError
@@ -83,11 +82,8 @@ def _consequences(argv: Sequence[str]) -> int:
     print("Consequences enabled" if _consequences_enabled(config) else "Consequences disabled")
     return 0
 
-def _maybe_update_check(config: dict[str, str]) -> None:
-    try:
-        current = installed_version("bad-decisions-client")
-    except PackageNotFoundError:
-        current = __version__
+def _maybe_update_check(config: dict[str, str], api_url: str) -> None:
+    current = __version__
     try:
         last = datetime.fromisoformat(config.get("REGRET_LAST_UPDATE_CHECK", "")).timestamp()
     except (ValueError, TypeError, OverflowError):
@@ -97,13 +93,13 @@ def _maybe_update_check(config: dict[str, str]) -> None:
         latest = config.get("REGRET_LATEST_SEEN_VERSION")
     else:
         try:
-            payload, _ = _request_json("https://pypi.org/pypi/bad-decisions-client/json", timeout=2.0)
-            latest = payload.get("info", {}).get("version")
+            payload, _ = _request_json(f"{_base_url(api_url)}/healthz", timeout=2.0)
+            latest = payload.get("version")
             if latest:
                 config["REGRET_LATEST_SEEN_VERSION"] = str(latest)
             config["REGRET_LAST_UPDATE_CHECK"] = now.isoformat()
             _write_config(config)
-        except (RuntimeError, OSError, KeyError, TypeError, AttributeError):
+        except (RuntimeError, OSError, KeyError, TypeError, AttributeError, ValueError):
             return
     if latest:
         try:
@@ -112,7 +108,8 @@ def _maybe_update_check(config: dict[str, str]) -> None:
         except Exception:
             newer = False
         if newer:
-            print(f"A newer Bad Decision is available:\nregret {current} -> {latest}\npipx upgrade bad-decisions-client", file=sys.stderr)
+            print(f"A newer Bad Decision is available:\nregret {current} -> {latest}", file=sys.stderr)
+
 
 def _client_id(reset: bool = False) -> str | None:
     config=_read_config()
@@ -260,7 +257,7 @@ def run(argv: Sequence[str] | None=None) -> int:
                 saved.update({"round_id":payload["round_id"],"url":feedback["url"],"token":token,"expires_at":feedback.get("expires_at")})
             try: _atomic_json(ROUND_PATH,saved)
             except OSError: pass
-        if sys.stdin.isatty() and sys.stdout.isatty(): _maybe_update_check(config)
+        if sys.stdin.isatty() and sys.stdout.isatty(): _maybe_update_check(config, args.api_url)
         print(json.dumps(payload,ensure_ascii=False,indent=2) if args.json else payload["result"]); return 0
     except (RuntimeError,ValueError,KeyError) as exc: print(f"regret: {exc}",file=sys.stderr); return 1
 

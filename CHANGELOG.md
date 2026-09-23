@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.1.9]
 
 ### Regret client
 
@@ -11,7 +11,7 @@ This release introduces Consequences, because apparently drawing terrible cards 
 - **Regret Consequences** disables voting entirely, including vote telemetry.
 - Existing installations without a saved preference are prompted once; the choice is stored locally and preserved by future upgrades.
 - Added consent schema versioning so materially different future telemetry can require renewed consent.
-- Added a cached, best-effort PyPI update check. It is separate from Consequences, does not use the stable ID, runs at most daily, and never installs updates automatically.
+- Added a cached, best-effort API version check. It is separate from Consequences, does not use the stable ID, runs at most daily, and never installs updates automatically.
 - Non-interactive invocations remain Consequences-disabled unless an explicit preference already exists.
 
 No account is required. When enabled, voting may use a stable pseudonymous installation identifier. When disabled, voting and vote telemetry are both disabled. We are not constructing a shadow profile; we have neither the budget nor the emotional resilience.

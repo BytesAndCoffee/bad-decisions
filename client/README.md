@@ -24,8 +24,7 @@ regret consequences regret
 
 The first interactive deal prompts once when no preference is stored; non-interactive
 runs remain disabled. When enabled, voting and its pseudonymous telemetry are
-available. The client also performs a cached, best-effort daily check for a newer
-PyPI release.
+available. The client also performs a cached, best-effort daily check against the configured API version.
 
 `regret provenance` prints the licenses, attribution, versions, and source
 records for every pack represented in the last locally saved draw. It does not

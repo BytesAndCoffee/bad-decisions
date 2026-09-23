@@ -86,4 +86,6 @@ Tracks fixes from the 2026-09-19 code review. Tick an item when its fix and test
 2026-09-23 - release - Prepared read-only installed Consequences reporting as 1.1.8; coordinated versions remain aligned.
 2026-09-23 - docs - Added a README documentation index and corrected the release guide's example tag to use a version placeholder.
 
-2026-09-23 - client - Added opt-in Consequences preferences, consent schema tracking, safe non-interactive defaults, and a cached PyPI update check.
+2026-09-23 - client - Added opt-in Consequences preferences, consent schema tracking, safe non-interactive defaults, and a cached API version check.
+
+2026-09-23 - release - Prepared lockstep 1.1.9 versions and changed the client update check to use the configured API health version instead of PyPI.
