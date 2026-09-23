@@ -80,3 +80,5 @@ Tracks fixes from the 2026-09-19 code review. Tick an item when its fix and test
 2026-09-23 - operations - Added an explicit root preflight for `reload` and `stop`; read-only `status` remains unprivileged and all three paths have focused tests.
 2026-09-23 - consequences - Made the `report` database path optional: use `BAD_DECISIONS_CONSEQUENCES_DB` first, then discover the installed release's persistent SQLite database; mutating commands still require an explicit path.
 2026-09-23 - release - Prepared the operations privilege preflight and installed Consequences report default as 1.1.6; server, client, and web cache busters remain coordinated.
+2026-09-23 - consequences - Fixed installed database discovery to use the virtual-environment prefix rather than resolving its Python symlink to the system interpreter.
+2026-09-23 - release - Prepared the installed Consequences database discovery correction as 1.1.7; coordinated versions remain aligned.

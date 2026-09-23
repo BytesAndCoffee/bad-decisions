@@ -154,11 +154,8 @@ def _default_consequences_database() -> Path:
             raise PackConfigurationError("BAD_DECISIONS_CONSEQUENCES_DB must be an absolute path")
         return database
 
-    executable = Path(sys.executable).resolve()
-    try:
-        release = executable.parents[2]
-    except IndexError:
-        release = Path()
+    environment = Path(sys.prefix).resolve()
+    release = environment.parent if environment.name == ".venv" else Path()
     if release.parent.name == "releases":
         installed = release.parent.parent / "consequences" / "consequences.sqlite3"
         if installed.is_file():

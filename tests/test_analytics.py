@@ -89,9 +89,9 @@ def test_consequences_report_discovers_installed_database(tmp_path, monkeypatch)
     database = tmp_path / "app" / "consequences" / "consequences.sqlite3"
     database.parent.mkdir(parents=True)
     ConsequencesStore(database)
-    executable = tmp_path / "app" / "releases" / "release-id" / ".venv" / "bin" / "python"
+    environment = tmp_path / "app" / "releases" / "release-id" / ".venv"
     monkeypatch.delenv("BAD_DECISIONS_CONSEQUENCES_DB", raising=False)
-    monkeypatch.setattr(cli.sys, "executable", str(executable))
+    monkeypatch.setattr(cli.sys, "prefix", str(environment))
 
     assert cli._default_consequences_database() == database
     assert cli.run(["consequences", "report"]) == 0
