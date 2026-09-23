@@ -87,6 +87,28 @@ owner-authorized material based on IRC messages, distributed under CC BY-SA
 4.0; its raw source-message corpus is not included. The `base` pack is licensed
 CC BY-NC-SA 2.0; operators distributing it must honor those terms.
 
+## Licensing
+
+Bad Decisions is free and open-source software licensed under the
+[MIT License](LICENSE).
+
+Card packs are separate works and may be distributed under different licenses.
+A card pack's own declared license, attribution, provenance, and modification
+information governs use of that pack; the Bad Decisions MIT license does not
+grant additional rights to third-party content. In particular, BytesAndCoffee
+cannot grant commercial rights to third-party card-pack content beyond the
+rights provided by that content's owner and license.
+
+The official BytesAndCoffee distribution and hosted service are currently
+provided free of charge. BytesAndCoffee does not sell access, offer paid API
+access, or monetize the hosted service with advertising. This describes how
+BytesAndCoffee operates its official distribution; it is not a restriction on
+downstream use of the MIT-licensed software.
+
+In other words: use the engine however the MIT License permits, but check the
+license on the cards you put into it. If your Bad Decisions have Consequences,
+that is between you and the stew.
+
 ## API
 
 ```bash

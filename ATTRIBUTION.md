@@ -33,7 +33,22 @@ The authoritative legal code is preserved at
 fields, and source references but preserves every original card field, order,
 punctuation, and duplicate.
 
+## Coffee pack
+
+`Cards Against Coffee` is owner-authorized material by Michael Yazdani, based
+on the author's IRC messages. It is distributed under CC BY-SA 4.0. The raw
+message corpus is intentionally excluded; the pack retains only compact source
+references. Its pack metadata contains the controlling attribution, provenance,
+license notice, and modification record.
+
 ## Software
 
-New engine code is MIT-licensed. That license does not cover card data or
-inherited code with unknown rights.
+Bad Decisions software is MIT-licensed. Card packs are separate works: their
+own declared licenses, attribution, provenance, and modification records govern
+their use. Bundling or loading a pack does not place its card data under the
+software's MIT License or grant additional rights to third-party content.
+
+The official BytesAndCoffee distribution and hosted service are currently
+free of charge, with no paid API access, sale of access, advertising, or other
+service monetization. That is a factual description of the official service,
+not a restriction on downstream use of the MIT-licensed software.

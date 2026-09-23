@@ -79,6 +79,23 @@ the adjacent files provide the human-readable material needed to redistribute
 them. Pack authors are responsible for having the rights necessary to share
 their card text and source references.
 
+### Licensing boundary
+
+A CardDeck pack is a separate work from any engine that creates, validates,
+imports, or reads it. Compatibility with Bad Decisions does not place a pack
+under the engine's MIT License, and the engine's license grants no additional
+rights to third-party card content.
+
+Within `metadata`, `license_id` identifies the pack's declared license,
+`license_url` MAY link to that license, `authors` and `attribution` identify the
+creator and required credit, and `sources` records provenance through an
+`origin` URL or descriptive source reference plus optional edition, digest,
+retrieval date, and license evidence. These fields, the pack's
+`license_notice`, its modification history, and the adjacent human-readable
+files govern redistribution and use of the pack. A distributor or engine
+publisher MUST NOT override, broaden, or reinterpret third-party content rights
+merely by packaging the pack with MIT-licensed software.
+
 ## Validation and import
 
 A conforming importer MUST, before writing anything:

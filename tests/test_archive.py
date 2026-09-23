@@ -13,6 +13,7 @@ import pytest
 import bad_decisions.archive as archive_module
 from bad_decisions.archive import export_pack, import_pack, initialize_registry, validate_archive
 from bad_decisions.errors import PackConfigurationError
+from bad_decisions.models import BlackCard, Pack, PackMetadata, Source
 from bad_decisions.packs import load_registry
 
 
@@ -30,6 +31,45 @@ def test_export_validate_and_import_round_trip(tmp_path):
     assert imported == registry / "maha.json"
     with pytest.raises(PackConfigurationError, match="overwrite"):
         import_pack(archive, registry)
+
+
+def test_archive_round_trip_preserves_declared_content_rights(tmp_path):
+    metadata = PackMetadata(
+        id="rights-test",
+        name="Rights test",
+        description="Synthetic metadata-preservation fixture.",
+        version="7",
+        language="en",
+        custom=True,
+        authors=("Example Creator",),
+        attribution="Credit Example Creator.",
+        license_id="Example-License-1.0",
+        license_url="https://example.invalid/licenses/1.0",
+        license_notice="Example license notice.",
+        sources=(
+            Source(
+                origin="https://example.invalid/source",
+                edition="First edition",
+                sha256="0" * 64,
+                retrieved="2026-09-23",
+                license_evidence="Creator declaration.",
+            ),
+        ),
+        modifications=("Converted to CardDeck without changing card text.",),
+    )
+    pack = Pack(
+        schema_version=1,
+        metadata=metadata,
+        black=(BlackCard(id="b1", repr="Why? ____", template="Why? {}", slots=1, pack="rights-test"),),
+        white=(),
+    )
+
+    archive = export_pack(pack, tmp_path / "rights-test.carddeck")
+    assert validate_archive(archive).metadata == metadata
+
+    registry = (tmp_path / "registry").resolve()
+    import_pack(archive, registry)
+    assert load_registry(registry).packs["rights-test"].metadata == metadata
 
 
 def test_import_requires_absolute_destination_and_never_overwrites(tmp_path):
