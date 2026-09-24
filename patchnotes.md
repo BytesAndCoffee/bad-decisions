@@ -88,4 +88,8 @@ Tracks fixes from the 2026-09-19 code review. Tick an item when its fix and test
 
 2026-09-23 - client - Added opt-in Consequences preferences, consent schema tracking, safe non-interactive defaults, and a cached API version check.
 
-2026-09-23 - release - Prepared lockstep 1.1.9 versions and changed the client update check to use the configured API health version instead of PyPI.
+2026-09-23 - release - Prepared lockstep 1.2.0 versions and changed the client update check to use the configured API health version instead of PyPI.
+
+2026-09-23 - incident - Documented a catastrophic breach of brand integrity: release engineering made a good decision. Root cause analysis ongoing; no recurrence expected.
+
+2026-09-23 - release - Promoted the brand-integrity incident notes and GitHub changelog links into lockstep 1.2.0.

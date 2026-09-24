@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.0]
+
+### Known issue
+
+A good decision was made during release engineering.
+Root cause analysis is ongoing.
+No recurrence is expected.
+
+### Fixed
+
+- Removed an unnecessary PyPI version check in favor of the server’s own version endpoint.
+- Unfortunately, this was the correct thing to do.
+
 ## [1.1.9]
 
 ### Regret client

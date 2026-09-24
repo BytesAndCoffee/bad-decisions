@@ -38,7 +38,7 @@ non-zero exit status.
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for client release notes.
+See [CHANGELOG.md](https://github.com/BytesAndCoffee/bad-decisions/blob/main/client/CHANGELOG.md) for client release notes.
 
 ## Release
 
