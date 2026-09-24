@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.0]
+
+### Added
+
+- Added an interactive Textual Consequences report dashboard with dashboard, combination, prompt, and recent-draw views plus row drill-downs.
+
 ## [1.2.2]
 
 ### Added

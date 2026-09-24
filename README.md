@@ -164,7 +164,11 @@ retention.
 
 Private operator commands:
 
+`bad-decisions consequences tui` opens an interactive Textual dashboard with dashboard, combination, prompt, and recent-draw views. Select rows for drill-down; the TUI is available with the `bad-decisions[tui]` extra.
+
+
     bad-decisions consequences report
+    bad-decisions consequences tui
     bad-decisions consequences report /absolute/path/consequences.sqlite3
     bad-decisions consequences rebuild /absolute/path/consequences.sqlite3
     bad-decisions consequences purge /absolute/path/consequences.sqlite3 --retention-days 90

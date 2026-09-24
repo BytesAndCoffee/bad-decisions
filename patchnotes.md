@@ -97,3 +97,5 @@ Tracks fixes from the 2026-09-19 code review. Tick an item when its fix and test
 2026-09-24 - web - Added the first-visit Consequences disclaimer modal and browser-side opt-in gate; prepared lockstep 1.2.1.
 
 2026-09-24 - web - Added a footer control to reopen the Consequences preference modal; prepared lockstep 1.2.2.
+
+2026-09-24 - consequences - Added the interactive Textual report dashboard with dashboard, combination, prompt, and recent-draw drill-down views; prepared lockstep 1.3.0.

@@ -69,9 +69,9 @@ def pack_parser() -> argparse.ArgumentParser:
 def consequences_parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(prog="bad-decisions consequences", description="Operate private local Consequences analytics.")
     commands = result.add_subparsers(dest="command", required=True)
-    for name, help_text in (("report", "print aggregate report as JSON"), ("rebuild", "rebuild aggregate counters"), ("purge", "purge retained records")):
+    for name, help_text in (("report", "print aggregate report as JSON"), ("tui", "open interactive Textual dashboard"), ("rebuild", "rebuild aggregate counters"), ("purge", "purge retained records")):
         command = commands.add_parser(name, help=help_text)
-        if name == "report":
+        if name in {"report", "tui"}:
             command.add_argument("database", type=Path, nargs="?", help="absolute SQLite database path")
         else:
             command.add_argument("database", type=Path, help="absolute SQLite database path")
@@ -171,6 +171,9 @@ def _run_consequences(argv: Sequence[str]) -> int:
     try:
         store = ConsequencesStore(database, readonly=args.command == "report")
         if args.command == "report": _write(json.dumps(store.report(), sort_keys=True))
+        elif args.command == "tui":
+            from .consequences_tui import run_tui
+            return run_tui(database)
         elif args.command == "rebuild": store.rebuild(); _write("rebuilt Consequences aggregates")
         else: _write(f"purged {store.purge(args.retention_days)} retained rounds")
     except (ValueError, sqlite3.Error) as exc:

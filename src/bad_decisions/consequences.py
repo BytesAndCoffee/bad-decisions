@@ -128,6 +128,28 @@ CREATE TABLE IF NOT EXISTS combination_stats(combination_hash TEXT PRIMARY KEY R
             votes=c.execute("SELECT COUNT(*),COALESCE(SUM(enjoyed=1),0),COALESCE(SUM(enjoyed=0),0) FROM feedback").fetchone()
         return {"schema_version":1,"requests":{"count":requests[0],"average_duration_ms":round(requests[1],2),"errors":requests[2]},"draws":{"recorded":draws[0],"combinations":draws[1]},"feedback":{"votes":votes[0],"enjoy":votes[1],"regret":votes[2]}}
 
+    def dashboard_rows(self, limit: int = 100) -> dict[str, list[dict[str, Any]]]:
+        """Return read-only drill-down data for the operator UI."""
+        if limit < 1 or limit > 500: raise ValueError("limit must be between 1 and 500")
+        with self._connect() as c:
+            combinations = c.execute("""SELECT combination_hash, draw_count, enjoy_count, regret_count,
+                CASE WHEN enjoy_count + regret_count = 0 THEN NULL ELSE CAST(enjoy_count - regret_count AS REAL) / (enjoy_count + regret_count) END
+                FROM combination_stats ORDER BY draw_count DESC, combination_hash LIMIT ?""", (limit,)).fetchall()
+            prompts = c.execute("""SELECT re.content_hash, re.pack_id, re.card_id, re.source_ref,
+                COUNT(r.round_id), COALESCE(SUM(f.enjoyed=1),0), COALESCE(SUM(f.enjoyed=0),0)
+                FROM round_elements re JOIN rounds r ON r.round_id=re.round_id LEFT JOIN feedback f ON f.round_id=r.round_id
+                WHERE re.role='prompt' GROUP BY re.content_hash, re.pack_id, re.card_id, re.source_ref
+                ORDER BY COUNT(r.round_id) DESC LIMIT ?""", (limit,)).fetchall()
+            recent = c.execute("""SELECT r.occurred_at, r.round_id, r.combination_hash,
+                COALESCE(f.enjoyed, -1), r.client_id IS NOT NULL
+                FROM rounds r LEFT JOIN feedback f ON f.round_id=r.round_id
+                ORDER BY r.occurred_at DESC LIMIT ?""", (limit,)).fetchall()
+        return {
+            "combinations": [{"hash": row[0], "draws": row[1], "enjoy": row[2], "regret": row[3], "score": row[4]} for row in combinations],
+            "prompts": [{"hash": row[0], "pack": row[1], "card": row[2], "source": row[3], "draws": row[4], "enjoy": row[5], "regret": row[6]} for row in prompts],
+            "recent": [{"occurred_at": row[0], "round_id": row[1], "combination": row[2], "vote": None if row[3] < 0 else bool(row[3]), "identified": bool(row[4])} for row in recent],
+        }
+
     def rebuild(self) -> None:
         with self._connect() as c:
             c.execute("BEGIN IMMEDIATE")
