@@ -113,3 +113,5 @@ Tracks fixes from the 2026-09-19 code review. Tick an item when its fix and test
 2026-09-24 - consequences - Fixed Textual 8 binding compatibility for the hash/value toggle.
 
 2026-09-24 - release - Prepared lockstep 1.4.0 for private raw-text analytics, expanded TUI drill-downs, and documentation reorganization.
+
+2026-09-24 - release - Fixed the release-workflow test path after moving long-form documentation into docs/; prepared lockstep 1.4.1.

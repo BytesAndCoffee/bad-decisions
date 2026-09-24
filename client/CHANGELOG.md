@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.1]
+
+### Fixed
+
+- Updated release-workflow documentation tests for the reorganized `docs/` tree.
+
 ## [1.4.0]
 
 ### Added

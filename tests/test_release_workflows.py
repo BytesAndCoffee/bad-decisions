@@ -89,7 +89,7 @@ def test_release_publishes_the_artifacts_it_built_without_rebuilding():
 
 
 def test_release_doc_covers_setup_and_the_tag_procedure():
-    doc = (ROOT / "RELEASING.md").read_text(encoding="utf-8")
+    doc = (ROOT / "docs" / "RELEASING.md").read_text(encoding="utf-8")
     for needle in ("Trusted Publishing", "release.yml", "environment", "git tag v", "pypi"):
         assert needle in doc, needle
 
