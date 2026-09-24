@@ -125,3 +125,14 @@ def test_api_default_selects_every_bundled_pack():
             "black_packs": ["base", "coffee", "maha"],
             "white_packs": ["base", "coffee", "maha"],
         }
+
+
+def test_management_status_requires_configured_bearer(monkeypatch):
+    monkeypatch.setenv("BAD_DECISIONS_MANAGEMENT_TOKEN", "correct-token")
+    with TestClient(create_app()) as client:
+        denied = client.get("/v1/manage/status")
+        assert denied.status_code == 401
+        assert denied.json()["error"]["code"] == "unauthorized"
+        accepted = client.get("/v1/manage/status", headers={"Authorization": "Bearer correct-token"})
+        assert accepted.status_code == 200
+        assert accepted.json() == {"status": "ok", "version": __version__, "pack_count": 3}

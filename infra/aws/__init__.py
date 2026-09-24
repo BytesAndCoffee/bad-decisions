@@ -1,1 +1,1 @@
-"""AWS CDK application for the Bad Decisions hybrid deployment."""
+"""AWS CDK application for the Bad Decisions AWS-native deployment."""

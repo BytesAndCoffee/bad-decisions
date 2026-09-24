@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "bad-decisions"
-version = "1.5.0"
+version = "1.6.0"
 description = "Reusable engine and service for fill-in-the-blank party card games"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -12,6 +12,9 @@ license = { file = "LICENSE" }
 maintainers = [{ name = "BytesAndCoffee" }]
 classifiers = ["License :: OSI Approved :: MIT License"]
 dependencies = [
+  "aws-cdk-lib==2.231.0",
+  "boto3==1.40.75",
+  "constructs>=10.0.0,<11.0.0",
   "fastapi==0.116.1",
   "pydantic==2.11.7",
   "uvicorn==0.35.0",

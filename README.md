@@ -210,6 +210,45 @@ The deployer creates an unprivileged service account, immutable wheel releases,
 a `bad-decisions.service` unit, and optional loopback nginx proxy configuration.
 See [DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
+### AWS-native deployment
+
+Bad Decisions has two complete deployment modes:
+
+- **Self-hosted:** the existing systemd/nginx service, SQLite Consequences, and
+  optional Garage archive remain supported.
+- **AWS-native:** a pip-installed local management client builds the image and
+  provisions the entire service without a source checkout.
+
+~~~bash
+bad-decisions setup aws --profile decisions \
+  --certificate-arn "$ACM_CERTIFICATE_ARN" \
+  --domain-name bad-decisions.example.com \
+  --hosted-zone-id "$ROUTE53_ZONE_ID"
+bad-decisions deploy aws
+bad-decisions status aws
+bad-decisions pack publish-aws ./my-pack.carddeck
+bad-decisions pack list-aws
+bad-decisions consequences report aws
+~~~
+
+AWS mode creates private Fargate tasks, an HTTPS ALB and Route 53 alias, a
+private versioned S3 bucket, a CloudFront HTTPS pack distribution, an
+event-driven dynamic CardDeck index, DynamoDB-backed Consequences, Secrets
+Manager injection, autoscaling, logs, and alarms. Runtime pack JSON, public
+archives, and catalog metadata use separate prefixes; CloudFront exposes only
+`/packs/*`. The deployment seeds the bundled packs and rolls tasks whenever a
+new pack is published, preserving the API's immutable-at-startup registry.
+
+The local client stores deployment coordinates and the management capability
+in `~/.bad-decisions.env` with mode `0600`. Pack and deployment mutations use
+the caller's temporary AWS credentials over HTTPS; the application API exposes
+only a hidden authenticated status read. The cost-conscious default is one
+task scaling to two, on-demand DynamoDB, no NAT gateway, and no Container
+Insights. `--allow-http` exists only for disposable smoke tests.
+
+See [DEPLOYMENT.md](docs/DEPLOYMENT.md) for architecture, prerequisites,
+security boundaries, costs, and commands.
+
 ## Development
 
 ```bash

@@ -43,6 +43,12 @@ def _load_file(path: Path) -> Pack:
 
 def load_registry(pack_dir: str | Path | None = None) -> Registry:
     configured = pack_dir if pack_dir is not None else os.getenv("BAD_DECISIONS_PACK_DIR")
+    bucket = os.getenv("BAD_DECISIONS_PACK_BUCKET") if configured is None else None
+    if bucket:
+        from .aws_packs import load_s3_packs
+        remote = load_s3_packs(bucket, os.getenv("BAD_DECISIONS_PACK_PREFIX", "packs/"))
+        if remote:
+            return Registry(remote)
     if configured is not None:
         root = Path(configured)
         if not root.is_absolute():

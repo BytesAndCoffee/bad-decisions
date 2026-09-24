@@ -1,42 +1,27 @@
-# AWS hybrid deployment scaffold
+# AWS CDK compatibility entry point
 
-This directory is an AWS CDK scaffold for the hybrid deployment shape:
+The canonical AWS stack ships in the `bad-decisions` Python package. This
+directory remains as a source-checkout compatibility entry point and imports
+`bad_decisions.aws_stack.BadDecisionsAwsStack`; it contains no second stack
+definition.
 
-```text
-existing nginx/systemd edge -> ALB -> ECS/Fargate service -> Bad Decisions API
-                                      |
-                                      +-> ECR image
-                                      +-> CloudWatch Logs
+For normal operation, use:
+
+```bash
+bad-decisions setup aws --profile decisions --region ca-west-1 \
+  --certificate-arn "$ACM_CERTIFICATE_ARN"
+bad-decisions deploy aws
+bad-decisions status aws
 ```
 
-The existing VPS remains a valid management and compatibility edge. The ALB
-is the cloud-native entry point for horizontally scaled API tasks. This stack
-does not create DNS records, certificates, Garage storage, or a production
-deployment automatically.
-
-## Prerequisites
-
-- AWS CDK v2 and Python 3.12+
-- An ECR image containing the Bad Decisions server
-- AWS credentials for the target account and region
-
-Install the CDK dependencies in a dedicated virtual environment, then run:
+For a source-checkout synthesis:
 
 ```bash
 cd infra/aws
-python -m pip install -r requirements.txt
+python -m pip install -r requirements.txt -e ../..
 cdk synth --strict
-cdk diff
 ```
 
-Set `BAD_DECISIONS_IMAGE` to an ECR image URI before synthesis. The default is
-the repository's `latest` tag in the stack-created repository and is intended
-only as a placeholder for the first bootstrap. Set `BAD_DECISIONS_DESIRED_COUNT`
-to scale the service, and `BAD_DECISIONS_VPC_ID` only if the service must use an
-existing VPC. The default creates a new VPC with public and private subnets.
-
-Do not use `cdk deploy --hotswap` or `--express` for production. Review
-`cdk synth --strict` and `cdk diff` before any deployment.
-
-The application container must listen on port 8000 and expose `/healthz`.
-Those values are configurable in the stack source if the image differs.
+HTTPS is required unless `--allow-http` is explicitly selected for a disposable
+smoke test. The service relies on the load balancer `/healthz` check; do not add
+an in-container health command unless its executable is part of the image.

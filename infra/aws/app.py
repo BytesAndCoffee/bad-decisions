@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CDK entry point for the Bad Decisions hybrid AWS deployment."""
+"""CDK entry point for the Bad Decisions AWS-native deployment."""
 
 import aws_cdk as cdk
 

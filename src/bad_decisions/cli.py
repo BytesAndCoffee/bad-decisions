@@ -64,6 +64,9 @@ def pack_parser() -> argparse.ArgumentParser:
     imported.add_argument("--pack", dest="pack_ids", action="append", help="catalog pack ID; repeat with --index")
     initialized = commands.add_parser("init-registry", help="initialize an empty absolute registry with bundled packs")
     initialized.add_argument("registry_dir", type=Path)
+    publish_aws = commands.add_parser("publish-aws", help="publish a CardDeck to configured AWS storage")
+    publish_aws.add_argument("arguments", nargs=argparse.REMAINDER)
+    list_aws = commands.add_parser("list-aws", help="print the configured AWS CardDeck catalog")
     return result
 
 def consequences_parser() -> argparse.ArgumentParser:
@@ -114,6 +117,10 @@ def _interactive(resolved, registry) -> int:
 
 def _run_pack(argv: Sequence[str]) -> int:
     args = pack_parser().parse_args(argv)
+    if args.command == "publish-aws":
+        return operations.publish_aws_pack([str(args.arguments[0])] + list(args.arguments[1:])) if args.arguments else operations.publish_aws_pack([])
+    if args.command == "list-aws":
+        return operations.list_aws_packs([])
     if args.command == "validate":
         pack = validate_archive(args.archive)
         _write(f"valid carddeck: {pack.metadata.id}")
@@ -166,6 +173,8 @@ def _default_consequences_database() -> Path:
 
 
 def _run_consequences(argv: Sequence[str]) -> int:
+    if list(argv) == ["report", "aws"]:
+        return operations.consequences_report_aws([])
     args = consequences_parser().parse_args(argv)
     database = args.database if args.database is not None else _default_consequences_database()
     try:

@@ -1,6 +1,6 @@
 name: Release
 
-# Publishes both packages to PyPI when a vX.Y.Z tag is pushed. See RELEASING.md.
+# Publishes both packages to PyPI when a vX.Y.Z tag is pushed. See docs/RELEASING.md.
 # Uses PyPI Trusted Publishing (OIDC): no API token is stored anywhere.
 
 on:

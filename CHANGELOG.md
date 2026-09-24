@@ -1,5 +1,19 @@
 # Changelog
 
+## [Unreleased]
+
+## [1.6.0]
+
+### Added
+
+- Completed the pip-installed AWS-native deployment: ECS/Fargate, certificate-matched ALB/Route 53 HTTPS, private S3, CloudFront archives, dynamic Lambda catalog, DynamoDB Consequences, Secrets Manager, autoscaling, and local management commands.
+- Added atomic AWS CardDeck publication, bundled-pack seeding, catalog listing, and private AWS Consequences reports.
+- Reduced AWS defaults to one task, scale-to-two, one-AZ interface endpoints, and no default Container Insights while retaining private compute.
+
+### Fixed
+
+- Removed the obsolete in-container `curl` health check that caused healthy Fargate tasks to trip the ECS deployment circuit breaker.
+
 ## [1.4.1]
 
 ### Fixed

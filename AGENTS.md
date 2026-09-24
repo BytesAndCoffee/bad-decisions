@@ -20,7 +20,7 @@ validation, licenses, backups, and ZIP-bomb defenses are not.
 - `patchnotes.md`: checklist and log of review fixes; tick the item and add a
   one-line note for every notable change.
 - `.github/workflows/`: CI (`ci.yml`) and PyPI release (`release.yml`);
-  `RELEASING.md` documents them and `scripts/check_release_tag.py` gates tags.
+  `docs/RELEASING.md` documents them and `scripts/check_release_tag.py` gates tags.
 - Agent adapters (`CLAUDE.md`, `GEMINI.md`, `.cursor/rules/agents.mdc`,
   `.github/copilot-instructions.md`): thin pointers to this file; no rules.
 
@@ -168,7 +168,7 @@ For a server release, build and validate the exact artifacts:
   `origin`. `release.yml` verifies the tag matches the versions and is on `main`,
   runs the tests, builds and `twine check`s both packages once, and publishes
   those files through PyPI Trusted Publishing behind the `pypi` environment
-  approval. There are no PyPI tokens; never add one. See `RELEASING.md`.
+  approval. There are no PyPI tokens; never add one. See `docs/RELEASING.md`.
   Locally built artifacts are for checking only, not for uploading.
 - Workflows must stay least-privilege: pin every action to a full commit SHA,
   default to `contents: read`, and grant `id-token: write` only to the publish

@@ -3,15 +3,22 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import platform
 import secrets
+import shutil
 import subprocess
+import tempfile
+from datetime import datetime, timezone
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 from .packs import load_registry
 from .settings import Settings
+from . import __version__
 
 DEFAULT_CONFIG = Path.home() / ".config" / "bad-decisions" / "config.env"
 AWS_ENV = Path.home() / ".bad-decisions.env"
@@ -53,25 +60,92 @@ def setup(argv: list[str]) -> int:
     return 0
 
 
+def _run(command: list[str], *, env: dict[str, str] | None = None, cwd: Path | None = None, capture: bool = False) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(command, env=env, cwd=cwd, check=False, text=True, capture_output=capture)
+
+
+def _require_commands(parser: argparse.ArgumentParser, *names: str) -> None:
+    missing = [name for name in names if shutil.which(name) is None]
+    if missing:
+        parser.error(f"required command(s) not found: {', '.join(missing)}")
+
+
+def _write_aws_env(values: dict[str, str]) -> None:
+    AWS_ENV.write_text("".join(f"{key}={value}\n" for key, value in sorted(values.items())), encoding="utf-8")
+    AWS_ENV.chmod(0o600)
+
+
+def _aws_env(profile: str, region: str) -> dict[str, str]:
+    return {**os.environ, "AWS_PROFILE": profile, "AWS_DEFAULT_REGION": region}
+
+
 def setup_aws(argv: list[str]) -> int:
-    parser = argparse.ArgumentParser(prog="bad-decisions setup aws", description="Create local AWS deployment credentials.")
-    parser.add_argument("--profile", default=os.getenv("AWS_PROFILE", "bad-decisions"))
+    parser = argparse.ArgumentParser(prog="bad-decisions setup aws", description="Build, publish, and configure the AWS deployment.")
+    parser.add_argument("--profile", default=os.getenv("AWS_PROFILE", "decisions"))
     parser.add_argument("--region", default=os.getenv("AWS_DEFAULT_REGION", "ca-west-1"))
-    parser.add_argument("--secret-id", default="bad-decisions/container-auth")
-    parser.add_argument("--app-dir", type=Path, default=Path(__file__).resolve().parents[2] / "infra" / "aws")
+    parser.add_argument("--repository", default="bad-decisions")
+    parser.add_argument("--secret-id", default="bad-decisions/management-token")
+    parser.add_argument("--source", type=Path, help="source checkout to build instead of the installed PyPI release")
+    parser.add_argument("--certificate-arn")
+    parser.add_argument("--domain-name")
+    parser.add_argument("--hosted-zone-id")
+    parser.add_argument("--hosted-zone-name")
+    parser.add_argument("--allow-http", action="store_true", help="permit HTTP for a disposable smoke test")
     args = parser.parse_args(argv)
-    if not args.app_dir.is_dir(): parser.error(f"AWS CDK app directory not found: {args.app_dir}")
-    key_dir = Path.home() / ".config" / "bad-decisions"; key_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-    private_key = key_dir / "aws-container-auth"; public_key = Path(f"{private_key}.pub")
-    if private_key.exists() or public_key.exists(): parser.error(f"key already exists: {private_key}")
-    if subprocess.run(["ssh-keygen", "-t", "ed25519", "-N", "", "-C", "bad-decisions-local", "-f", str(private_key)], check=False).returncode: return 1
-    payload = key_dir / f".{secrets.token_hex(8)}.public"; payload.write_text(public_key.read_text(encoding="utf-8"), encoding="utf-8"); payload.chmod(0o600)
+    if args.certificate_arn and (not args.domain_name or not args.hosted_zone_id):
+        parser.error("--certificate-arn requires --domain-name and --hosted-zone-id")
+    _require_commands(parser, "aws", "docker", "npx")
+    if args.source is not None and not (args.source / "Dockerfile").is_file():
+        parser.error("--source must contain Dockerfile")
+    env = _aws_env(args.profile, args.region)
+    identity = _run(["aws", "sts", "get-caller-identity", "--query", "Account", "--output", "text"], env=env, capture=True)
+    if identity.returncode:
+        print(identity.stderr.strip(), file=sys.stderr); return identity.returncode
+    account = identity.stdout.strip()
+    repository_uri = f"{account}.dkr.ecr.{args.region}.amazonaws.com/{args.repository}"
+    described = _run(["aws", "ecr", "describe-repositories", "--repository-names", args.repository], env=env, capture=True)
+    if described.returncode:
+        created = _run(["aws", "ecr", "create-repository", "--repository-name", args.repository, "--image-tag-mutability", "IMMUTABLE", "--image-scanning-configuration", "scanOnPush=true"], env=env)
+        if created.returncode: return created.returncode
+
+    token = secrets.token_urlsafe(48)
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8") as payload:
+        payload.write(token); payload.flush(); os.chmod(payload.name, 0o600)
+        exists = _run(["aws", "secretsmanager", "describe-secret", "--secret-id", args.secret_id], env=env, capture=True)
+        action = "put-secret-value" if exists.returncode == 0 else "create-secret"
+        secret_command = ["aws", "secretsmanager", action, "--secret-id" if action == "put-secret-value" else "--name", args.secret_id, "--secret-string", f"file://{payload.name}"]
+        if _run(secret_command, env=env).returncode: return 1
+
+    tag = f"{__version__}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+    image_uri = f"{repository_uri}:{tag}"
+    login = subprocess.Popen(["aws", "ecr", "get-login-password"], env=env, stdout=subprocess.PIPE)
+    docker_login = subprocess.run(["docker", "login", "--username", "AWS", "--password-stdin", repository_uri], stdin=login.stdout, check=False)
+    if login.stdout: login.stdout.close()
+    if login.wait() or docker_login.returncode: return 1
     try:
-        result = subprocess.run(["aws", "secretsmanager", "create-secret", "--name", args.secret_id, "--description", "Bad Decisions container authentication public key", "--secret-string", f"file://{payload}", "--profile", args.profile, "--region", args.region], check=False)
-    finally: payload.unlink(missing_ok=True)
-    if result.returncode: return result.returncode
-    AWS_ENV.write_text(f"AWS_PROFILE={args.profile}\nAWS_DEFAULT_REGION={args.region}\nBAD_DECISIONS_AWS_SECRET_ID={args.secret_id}\nBAD_DECISIONS_AWS_APP_DIR={args.app_dir}\nBAD_DECISIONS_AWS_PRIVATE_KEY={private_key}\n", encoding="utf-8"); AWS_ENV.chmod(0o600)
-    print(f"AWS configuration ready: {AWS_ENV}"); print("The private key remains local; only its public key was stored in Secrets Manager."); return 0
+        if args.source:
+            build = _run(["docker", "build", "-t", image_uri, str(args.source.resolve())])
+        else:
+            with tempfile.TemporaryDirectory(prefix="bad-decisions-image-") as directory:
+                dockerfile = Path(directory) / "Dockerfile"
+                dockerfile.write_text(f"FROM python:3.12-slim\nRUN pip install --no-cache-dir bad-decisions=={__version__} && useradd --create-home --uid 10001 --shell /usr/sbin/nologin baddecisions\nUSER baddecisions\nEXPOSE 8000\nCMD [\"uvicorn\", \"bad_decisions.api:create_app\", \"--factory\", \"--host\", \"0.0.0.0\", \"--port\", \"8000\", \"--proxy-headers\"]\n", encoding="utf-8")
+                build = _run(["docker", "build", "-t", image_uri, directory])
+        if build.returncode or _run(["docker", "push", image_uri]).returncode: return 1
+    finally:
+        _run(["docker", "logout", repository_uri], capture=True)
+
+    bootstrap = _run(["npx", "--yes", "aws-cdk", "bootstrap", f"aws://{account}/{args.region}"], env=env)
+    if bootstrap.returncode: return bootstrap.returncode
+    values = {"AWS_PROFILE": args.profile, "AWS_DEFAULT_REGION": args.region, "BAD_DECISIONS_AWS_SECRET_ID": args.secret_id, "BAD_DECISIONS_AWS_MANAGEMENT_TOKEN": token, "BAD_DECISIONS_IMAGE": image_uri, "BAD_DECISIONS_REPOSITORY_NAME": args.repository}
+    if args.certificate_arn: values["BAD_DECISIONS_CERTIFICATE_ARN"] = args.certificate_arn
+    if args.domain_name: values["BAD_DECISIONS_DOMAIN_NAME"] = args.domain_name
+    if args.hosted_zone_id: values["BAD_DECISIONS_HOSTED_ZONE_ID"] = args.hosted_zone_id
+    if args.hosted_zone_name: values["BAD_DECISIONS_HOSTED_ZONE_NAME"] = args.hosted_zone_name
+    if args.allow_http: values["BAD_DECISIONS_ALLOW_HTTP"] = "1"
+    _write_aws_env(values)
+    print(f"AWS configuration ready: {AWS_ENV}")
+    print(f"Published image: {image_uri}")
+    return 0
 
 
 def serve(argv: list[str]) -> int:
@@ -100,17 +174,170 @@ def deploy(argv: list[str]) -> int:
     return subprocess.run([str(script)], check=False).returncode
 
 
+def _read_aws_env() -> dict[str, str]:
+    if not AWS_ENV.is_file():
+        return {}
+    return dict(line.split("=", 1) for line in AWS_ENV.read_text(encoding="utf-8").splitlines() if "=" in line and not line.startswith("#"))
+
+
 def deploy_aws(argv: list[str]) -> int:
-    parser = argparse.ArgumentParser(prog="bad-decisions deploy aws", description="Deploy the AWS hybrid compute plane with CDK.")
-    parser.add_argument("--image", required=True, help="immutable ECR image URI"); parser.add_argument("--desired-count", type=int, default=2)
+    parser = argparse.ArgumentParser(prog="bad-decisions deploy aws", description="Deploy the complete AWS service with CDK.")
+    parser.add_argument("--image")
+    parser.add_argument("--desired-count", type=int, default=1)
+    parser.add_argument("--max-count", type=int, default=2)
+    parser.add_argument("--certificate-arn")
+    parser.add_argument("--domain-name")
+    parser.add_argument("--hosted-zone-id")
+    parser.add_argument("--hosted-zone-name")
+    parser.add_argument("--allow-http", action="store_true")
     args = parser.parse_args(argv)
-    if args.desired_count < 1: parser.error("--desired-count must be positive")
-    if not AWS_ENV.is_file(): print(f"Missing {AWS_ENV}; run bad-decisions setup aws first.", file=sys.stderr); return 2
-    values = dict(line.split("=", 1) for line in AWS_ENV.read_text(encoding="utf-8").splitlines() if "=" in line and not line.startswith("#"))
-    app_dir = Path(values.get("BAD_DECISIONS_AWS_APP_DIR", ""))
-    if not app_dir.is_dir(): print(f"AWS CDK app directory not found: {app_dir}", file=sys.stderr); return 2
-    env = os.environ.copy(); env.update({k: values[k] for k in ("AWS_PROFILE", "AWS_DEFAULT_REGION") if k in values}); env.update({"BAD_DECISIONS_IMAGE": args.image, "BAD_DECISIONS_DESIRED_COUNT": str(args.desired_count), "BAD_DECISIONS_REPOSITORY_NAME": args.image.split("/")[-1].split(":", 1)[0]})
-    return subprocess.run(["npx", "--yes", "aws-cdk", "deploy", "BadDecisionsHybrid", "--require-approval", "never"], cwd=app_dir, env=env, check=False).returncode
+    if args.desired_count < 1 or args.max_count < args.desired_count:
+        parser.error("counts must be positive and --max-count must be at least --desired-count")
+    values = _read_aws_env()
+    if not values:
+        print(f"Missing {AWS_ENV}; run bad-decisions setup aws first.", file=sys.stderr); return 2
+    image = args.image or values.get("BAD_DECISIONS_IMAGE")
+    certificate = args.certificate_arn or values.get("BAD_DECISIONS_CERTIFICATE_ARN")
+    domain_name = args.domain_name or values.get("BAD_DECISIONS_DOMAIN_NAME")
+    hosted_zone_id = args.hosted_zone_id or values.get("BAD_DECISIONS_HOSTED_ZONE_ID")
+    hosted_zone_name = args.hosted_zone_name or values.get("BAD_DECISIONS_HOSTED_ZONE_NAME")
+    allow_http = args.allow_http or values.get("BAD_DECISIONS_ALLOW_HTTP") == "1"
+    if not image:
+        parser.error("no image configured; rerun setup aws or pass --image")
+    if not certificate and not allow_http:
+        parser.error("HTTPS requires --certificate-arn; use --allow-http only for a disposable smoke test")
+    if certificate and (not domain_name or not hosted_zone_id):
+        parser.error("HTTPS requires --domain-name and --hosted-zone-id so the certificate matches the public endpoint")
+    env = os.environ.copy(); env.update(values); env.update({"BAD_DECISIONS_IMAGE": image, "BAD_DECISIONS_DESIRED_COUNT": str(args.desired_count), "BAD_DECISIONS_MAX_COUNT": str(args.max_count)})
+    if certificate: env["BAD_DECISIONS_CERTIFICATE_ARN"] = certificate
+    if domain_name: env["BAD_DECISIONS_DOMAIN_NAME"] = domain_name
+    if hosted_zone_id: env["BAD_DECISIONS_HOSTED_ZONE_ID"] = hosted_zone_id
+    if hosted_zone_name: env["BAD_DECISIONS_HOSTED_ZONE_NAME"] = hosted_zone_name
+    if allow_http: env["BAD_DECISIONS_ALLOW_HTTP"] = "1"
+    app = f"{sys.executable} -m bad_decisions.aws_cdk_app"
+    with tempfile.NamedTemporaryFile(prefix="bad-decisions-cdk-", suffix=".json") as outputs:
+        command = ["npx", "--yes", "aws-cdk", "-a", app, "deploy", "BadDecisionsHybrid", "--require-approval", "never", "--outputs-file", outputs.name]
+        completed = _run(command, env=env)
+        if completed.returncode:
+            return completed.returncode
+        deployed = json.loads(Path(outputs.name).read_text(encoding="utf-8"))["BadDecisionsHybrid"]
+    values.update({
+        "BAD_DECISIONS_IMAGE": image,
+        "BAD_DECISIONS_AWS_ENDPOINT": deployed["PublicApiUrl"],
+        "BAD_DECISIONS_AWS_PACK_BUCKET": deployed["PackBucketName"],
+        "BAD_DECISIONS_AWS_PACK_BASE_URL": f"https://{deployed['PackDistributionDomainName']}",
+        "BAD_DECISIONS_AWS_PACK_INDEX": f"https://{deployed['PackDistributionDomainName']}/packs/index",
+        "BAD_DECISIONS_AWS_CLUSTER": deployed["ClusterName"],
+        "BAD_DECISIONS_AWS_SERVICE": deployed["ServiceName"],
+        "BAD_DECISIONS_AWS_CONSEQUENCES_TABLE": deployed["ConsequencesTableName"],
+    })
+    _write_aws_env(values)
+    _seed_bundled_aws(values)
+    print(f"AWS service ready: {values['BAD_DECISIONS_AWS_ENDPOINT']}")
+    print(f"AWS pack index: {values['BAD_DECISIONS_AWS_PACK_INDEX']}")
+    return 0
+
+
+def _aws_coordinates() -> tuple[dict[str, str], str, str]:
+    values = _read_aws_env()
+    bucket = values.get("BAD_DECISIONS_AWS_PACK_BUCKET")
+    base = values.get("BAD_DECISIONS_AWS_PACK_BASE_URL")
+    if not bucket or not base:
+        raise RuntimeError(f"Missing AWS pack storage in {AWS_ENV}; deploy AWS first.")
+    return values, bucket, base
+
+
+def publish_aws_pack(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(prog="bad-decisions pack publish-aws", description="Publish a validated CardDeck to the AWS runtime and public catalog.")
+    parser.add_argument("archive", type=Path)
+    parser.add_argument("--no-reload", action="store_true", help="do not roll ECS tasks after publishing")
+    args = parser.parse_args(argv)
+    values, bucket, base = _aws_coordinates()
+    from .aws_archive import force_runtime_reload, publish_archive
+    metadata = publish_archive(args.archive, bucket=bucket, public_base_url=base, profile=values.get("AWS_PROFILE"), region=values.get("AWS_DEFAULT_REGION"))
+    if not args.no_reload:
+        cluster, service = values.get("BAD_DECISIONS_AWS_CLUSTER"), values.get("BAD_DECISIONS_AWS_SERVICE")
+        if not cluster or not service:
+            raise RuntimeError("AWS cluster/service outputs are missing; deploy AWS again.")
+        force_runtime_reload(cluster=cluster, service=service, profile=values.get("AWS_PROFILE"), region=values.get("AWS_DEFAULT_REGION"))
+    print(f"published {metadata['archive']['pack_id']} to {metadata['url']}")
+    return 0
+
+
+def list_aws_packs(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(prog="bad-decisions pack list-aws", description="Read the AWS CardDeck catalog.")
+    parser.parse_args(argv)
+    values, bucket, _base = _aws_coordinates()
+    from .aws_archive import read_catalog
+    print(json.dumps(read_catalog(bucket=bucket, profile=values.get("AWS_PROFILE"), region=values.get("AWS_DEFAULT_REGION")), sort_keys=True))
+    return 0
+
+
+def consequences_report_aws(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(prog="bad-decisions consequences report aws", description="Read the private AWS Consequences report.")
+    parser.parse_args(argv)
+    values = _read_aws_env()
+    table = values.get("BAD_DECISIONS_AWS_CONSEQUENCES_TABLE")
+    if not table:
+        print(f"Missing AWS Consequences table in {AWS_ENV}; deploy AWS first.", file=sys.stderr)
+        return 2
+    old_profile, old_region = os.environ.get("AWS_PROFILE"), os.environ.get("AWS_DEFAULT_REGION")
+    try:
+        if values.get("AWS_PROFILE"): os.environ["AWS_PROFILE"] = values["AWS_PROFILE"]
+        if values.get("AWS_DEFAULT_REGION"): os.environ["AWS_DEFAULT_REGION"] = values["AWS_DEFAULT_REGION"]
+        from .aws_consequences import DynamoConsequencesStore
+        print(json.dumps(DynamoConsequencesStore(table).report(), sort_keys=True))
+    finally:
+        if old_profile is None: os.environ.pop("AWS_PROFILE", None)
+        else: os.environ["AWS_PROFILE"] = old_profile
+        if old_region is None: os.environ.pop("AWS_DEFAULT_REGION", None)
+        else: os.environ["AWS_DEFAULT_REGION"] = old_region
+    return 0
+
+
+def _seed_bundled_aws(values: dict[str, str]) -> int:
+    from .archive import export_pack
+    from .aws_archive import archive_exists, force_runtime_reload, publish_archive
+    bucket, base = values["BAD_DECISIONS_AWS_PACK_BUCKET"], values["BAD_DECISIONS_AWS_PACK_BASE_URL"]
+    profile, region = values.get("AWS_PROFILE"), values.get("AWS_DEFAULT_REGION")
+    missing = []
+    registry = load_registry()
+    with tempfile.TemporaryDirectory(prefix="bad-decisions-seed-") as directory:
+        for pack_id, pack in registry.packs.items():
+            if archive_exists(bucket=bucket, pack_id=pack_id, profile=profile, region=region):
+                continue
+            archive = export_pack(pack, Path(directory) / f"{pack_id}.carddeck")
+            publish_archive(archive, bucket=bucket, public_base_url=base, profile=profile, region=region)
+            missing.append(pack_id)
+    if missing:
+        force_runtime_reload(cluster=values["BAD_DECISIONS_AWS_CLUSTER"], service=values["BAD_DECISIONS_AWS_SERVICE"], profile=profile, region=region)
+        print(f"Seeded AWS with {len(missing)} bundled pack(s).")
+    return len(missing)
+
+
+def status_aws(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(prog="bad-decisions status aws", description="Read authenticated AWS service status.")
+    parser.parse_args(argv)
+    values = _read_aws_env()
+    endpoint = values.get("BAD_DECISIONS_AWS_ENDPOINT")
+    token = values.get("BAD_DECISIONS_AWS_MANAGEMENT_TOKEN")
+    if not endpoint or not token:
+        print(f"Missing AWS endpoint or token in {AWS_ENV}; deploy AWS first.", file=sys.stderr)
+        return 2
+    request = urllib.request.Request(
+        f"{endpoint.rstrip('/')}/v1/manage/status",
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            print(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        print(f"AWS service returned HTTP {exc.code}.", file=sys.stderr)
+        return 1
+    except urllib.error.URLError as exc:
+        print(f"AWS service is unavailable: {exc.reason}", file=sys.stderr)
+        return 1
+    return 0
 
 
 def run(argv: list[str]) -> int:
@@ -124,7 +351,7 @@ def run(argv: list[str]) -> int:
     if command == "deploy":
         return deploy_aws(rest[1:]) if rest and rest[0] == "aws" else deploy(rest)
     if command == "status":
-        return _service("status")
+        return status_aws(rest[1:]) if rest and rest[0] == "aws" else _service("status")
     if command == "reload":
         return _service("reload", require_root=True)
     if command == "stop":

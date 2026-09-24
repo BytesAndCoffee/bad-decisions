@@ -1,3 +1,7 @@
+- [x] Completed the AWS-native path with private S3 runtime packs, CloudFront archives, Lambda indexing, DynamoDB Consequences, certificate-matched HTTPS, seeded bundled packs, and local management commands.
+- [x] Reduced AWS fixed costs with one task, scale-to-two, one-AZ endpoints, and private compute retained.
+- [x] Replaced the legacy CDK stack with a compatibility shim so the missing-`curl` ECS health-check failure cannot recur.
+
 ## 1.5.0
 
 - Added the AWS hybrid deployment scaffold, Docker image, and local AWS setup/deploy command plumbing.

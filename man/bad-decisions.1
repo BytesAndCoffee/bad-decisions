@@ -1,4 +1,4 @@
-\.TH BAD-DECISIONS 1 "2026-09-24" "Bad Decisions 1.3.1" "User Commands"
+\.TH BAD-DECISIONS 1 "2026-09-24" "Bad Decisions 1.6.0" "User Commands"
 .SH NAME
 bad-decisions \- deal, validate, import, and inspect Bad Decisions card packs
 .SH SYNOPSIS
@@ -66,6 +66,25 @@ Rebuild aggregate counters. Requires an explicit absolute database path.
 .TP
 .BI consequences purge database --retention-days days
 Purge retained records and rebuild counters.
+.SH AWS COMMANDS
+.TP
+.BI setup aws " [--profile name] [--region region] [--certificate-arn arn] [--domain-name name] [--hosted-zone-id id] [--source directory] [--allow-http]"
+Create or rotate the protected management capability, build and push an immutable ECR image, bootstrap CDK, and save deployment state in ~/.bad-decisions.env. Production HTTPS requires a certificate-matching domain and Route 53 hosted zone.
+.TP
+.BI deploy aws " [--image uri] [--desired-count n] [--max-count n] [--certificate-arn arn] [--domain-name name] [--hosted-zone-id id] [--allow-http]"
+Deploy the complete packaged AWS application. HTTPS is required unless --allow-http is explicitly selected for a disposable smoke test.
+.TP
+.B status aws
+Query the authenticated read-only AWS management status endpoint using the protected local credential.
+.TP
+.BI pack publish-aws archive.carddeck " [--no-reload]"
+Validate and atomically publish an archive, runtime pack, and catalog record to the configured AWS deployment.
+.TP
+.B pack list-aws
+Print the AWS CardDeck catalog as JSON.
+.TP
+.B consequences report aws
+Print the private DynamoDB Consequences summary using the configured AWS identity.
 .SH ENVIRONMENT
 .TP
 .B BAD_DECISIONS_PACK_DIR

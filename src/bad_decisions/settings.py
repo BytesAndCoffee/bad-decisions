@@ -11,12 +11,14 @@ class Settings:
     log_level: str = "INFO"
     root_path: str = ""
     consequences_db: str | None = None
+    consequences_dynamodb_table: str | None = None
     consequences_recording: bool = True
     consequences_feedback: bool = True
     consequences_public_stats: bool = False
     consequences_busy_timeout_ms: int = 250
     consequences_feedback_ttl_seconds: int = 7 * 24 * 60 * 60
     consequences_retention_days: int = 90
+    management_token: str | None = None
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -52,10 +54,12 @@ class Settings:
             log_level=level,
             root_path=os.getenv("BAD_DECISIONS_ROOT_PATH", ""),
             consequences_db=consequences_db,
+            consequences_dynamodb_table=os.getenv("BAD_DECISIONS_CONSEQUENCES_DYNAMODB_TABLE"),
             consequences_recording=boolean("BAD_DECISIONS_CONSEQUENCES_RECORDING", True),
             consequences_feedback=boolean("BAD_DECISIONS_CONSEQUENCES_FEEDBACK", True),
             consequences_public_stats=boolean("BAD_DECISIONS_CONSEQUENCES_PUBLIC_STATS", False),
             consequences_busy_timeout_ms=positive("BAD_DECISIONS_CONSEQUENCES_BUSY_TIMEOUT_MS", 250),
             consequences_feedback_ttl_seconds=feedback_ttl,
             consequences_retention_days=retention_days,
+            management_token=os.getenv("BAD_DECISIONS_MANAGEMENT_TOKEN"),
         )

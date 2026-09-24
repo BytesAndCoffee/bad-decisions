@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import hmac
 import re
 import sqlite3
 import time
@@ -45,7 +46,21 @@ def create_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         app.state.registry = load_registry(settings.pack_dir)
-        app.state.consequences = ConsequencesStore(settings.consequences_db, busy_timeout_ms=settings.consequences_busy_timeout_ms, feedback_ttl_seconds=settings.consequences_feedback_ttl_seconds) if settings.consequences_db and settings.consequences_recording else None
+        if settings.consequences_dynamodb_table and settings.consequences_recording:
+            from .aws_consequences import DynamoConsequencesStore
+            app.state.consequences = DynamoConsequencesStore(
+                settings.consequences_dynamodb_table,
+                feedback_ttl_seconds=settings.consequences_feedback_ttl_seconds,
+                retention_days=settings.consequences_retention_days,
+            )
+        elif settings.consequences_db and settings.consequences_recording:
+            app.state.consequences = ConsequencesStore(
+                settings.consequences_db,
+                busy_timeout_ms=settings.consequences_busy_timeout_ms,
+                feedback_ttl_seconds=settings.consequences_feedback_ttl_seconds,
+            )
+        else:
+            app.state.consequences = None
         app.state.ready = True
         yield
         app.state.ready = False
@@ -72,7 +87,7 @@ def create_app() -> FastAPI:
                 route = getattr(request.scope.get("route"), "path", "unmatched")
                 consequences.record_request(request_id=request_id, route=route, method=request.method, status=response.status_code, duration_ms=(time.monotonic() - started) * 1000, client_id=request.state.consequences_client_id, session_id=request.state.consequences_session_id)
                 if getattr(request.state, "consequences_round_id", None): consequences.link_request(request_id, request.state.consequences_round_id)
-            except sqlite3.Error:
+            except Exception:
                 logger.warning("consequences request telemetry could not be stored")
         logger.info(
             "request method=%s path=%s status=%s duration_ms=%.2f request_id=%s",
@@ -106,6 +121,15 @@ def create_app() -> FastAPI:
             {"status": "ok" if ready else "unavailable", "version": __version__, "pack_count": len(registry.packs) if registry else 0},
             status_code=200 if ready else 503,
         )
+
+    @app.get("/v1/manage/status", include_in_schema=False)
+    def management_status(request: Request):
+        expected = settings.management_token
+        supplied = request.headers.get("authorization", "")
+        if not expected or not supplied.startswith("Bearer ") or not hmac.compare_digest(supplied[7:], expected):
+            return JSONResponse(envelope("unauthorized", "Valid management credentials are required"), status_code=401)
+        registry: Registry = request.app.state.registry
+        return {"status": "ok", "version": __version__, "pack_count": len(registry.packs)}
 
     @app.get("/", response_class=PlainTextResponse, include_in_schema=False)
     def howto():
@@ -195,7 +219,7 @@ Service interfaces:
                 payload["feedback"] = {"available": bool(issued.feedback_token), "url": f"{settings.root_path}/v1/rounds/{issued.round_id}/feedback", "expires_at": issued.expires_at}
                 if issued.feedback_token:
                     request.state.feedback_token = issued.feedback_token
-            except sqlite3.Error:
+            except Exception:
                 logger.warning("consequences round could not be stored")
                 payload["feedback"] = {"available": False}
         response = JSONResponse(payload)
@@ -223,7 +247,7 @@ Service interfaces:
             return JSONResponse(envelope("feedback_unavailable", "Feedback is not available"), status_code=503)
         try:
             state, changed, enjoyed, created = consequences.feedback(round_id, x_regret_feedback_token or "", body.enjoyed)
-        except sqlite3.Error:
+        except Exception:
             return JSONResponse(envelope("feedback_unavailable", "Feedback is temporarily unavailable"), status_code=503)
         return feedback_response(state, changed, enjoyed, created, round_id)
 
@@ -234,7 +258,7 @@ Service interfaces:
             return JSONResponse(envelope("feedback_unavailable", "Feedback is not available"), status_code=503)
         try:
             state, changed, enjoyed, created = consequences.feedback(round_id, x_regret_feedback_token or "", None)
-        except sqlite3.Error:
+        except Exception:
             return JSONResponse(envelope("feedback_unavailable", "Feedback is temporarily unavailable"), status_code=503)
         return feedback_response(state, changed, enjoyed, created, round_id)
 
