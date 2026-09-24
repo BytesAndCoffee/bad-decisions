@@ -6,8 +6,8 @@
     <meta name="description" content="Deal a hand with Bad Decisions.">
     <base href="__WEB_BASE__">
     <title>Bad Decisions — deal badly, professionally</title>
-    <link rel="icon" href="favicon.svg?v=1.2.0" type="image/svg+xml">
-    <link rel="stylesheet" href="style.css?v=1.2.0">
+    <link rel="icon" href="favicon.svg?v=1.2.1" type="image/svg+xml">
+    <link rel="stylesheet" href="style.css?v=1.2.1">
   </head>
   <body>
     <main class="shell">
@@ -89,6 +89,18 @@
         <span>Unofficial fan project.</span>
       </footer>
     </main>
-    <script src="app.js?v=1.2.0" defer></script>
+    <div id="consequences-modal" class="modal-backdrop" hidden>
+      <section class="consent-modal" role="dialog" aria-modal="true" aria-labelledby="consent-title">
+        <p class="eyebrow">A SMALL DISCLAIMER</p>
+        <h2 id="consent-title">Now with Consequences.</h2>
+        <p>Consequences controls voting and the pseudonymous vote telemetry that makes it work. No account is required, and nothing is enabled until you choose.</p>
+        <div class="consent-actions">
+          <button id="enjoy-consequences" type="button">Enjoy Consequences</button>
+          <button id="regret-consequences" type="button">Regret Consequences</button>
+        </div>
+        <p class="consent-note">You can change this later. We're not Facebook.</p>
+      </section>
+    </div>
+    <script src="app.js?v=1.2.1" defer></script>
   </body>
 </html>

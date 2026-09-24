@@ -4,15 +4,19 @@ const feedbackStatus = document.querySelector("#feedback-status");
 let currentFeedback = null;
 const identityKey = "bad-decisions-regret-client-id";
 const identityOffKey = "bad-decisions-regret-identity-off";
+const consequencesKey = "bad-decisions-consequences";
+const consequencesModal = document.querySelector("#consequences-modal");
+function consequencesEnabled() { return localStorage.getItem(consequencesKey) === "enjoy"; }
 let sessionId = crypto.randomUUID ? crypto.randomUUID() : null;
 function clientHeaders() {
+  if (!consequencesEnabled()) return { Accept: "application/json" };
   if (localStorage.getItem(identityOffKey) === "true") return { Accept: "application/json" };
   let clientId = null;
   try { clientId = localStorage.getItem(identityKey) || crypto.randomUUID(); localStorage.setItem(identityKey, clientId); } catch (_) { clientId = crypto.randomUUID ? crypto.randomUUID() : null; }
   return { Accept: "application/json", ...(clientId ? {"X-Regret-Client-ID":clientId} : {}), ...(sessionId ? {"X-Regret-Session-ID":sessionId} : {}) };
 }
 function renderFeedback() {
-  const available = Boolean(currentFeedback && currentFeedback.token);
+  const available = consequencesEnabled() && Boolean(currentFeedback && currentFeedback.token);
   feedbackElement.hidden = !available;
   feedbackElement.querySelectorAll("[data-vote]").forEach((button) => { button.disabled = !available; button.setAttribute("aria-pressed", String((button.dataset.vote === "true" && currentFeedback?.choice === true) || (button.dataset.vote === "false" && currentFeedback?.choice === false))); });
 }
@@ -134,7 +138,7 @@ async function deal() {
     }));
     resultElement.textContent = body.result;
     const token = response.headers.get("X-Regret-Feedback-Token");
-    currentFeedback = body.feedback?.available && token ? { url: body.feedback.url, token, choice: null } : null;
+    currentFeedback = consequencesEnabled() && body.feedback?.available && token ? { url: body.feedback.url, token, choice: null } : null;
     feedbackStatus.textContent = "";
     renderFeedback();
     roundElement.hidden = false;
@@ -157,3 +161,12 @@ loadPacks();
 feedbackElement.querySelectorAll("[data-vote]").forEach((button) => button.addEventListener("click", () => vote(button.dataset.vote)));
 document.querySelector("#reset-identity").addEventListener("click", () => { try { localStorage.removeItem(identityKey); localStorage.removeItem(identityOffKey); } catch (_) {} sessionId = crypto.randomUUID ? crypto.randomUUID() : null; feedbackStatus.textContent = "Analytics identity reset for future deals."; });
 document.querySelector("#omit-identity").addEventListener("click", () => { try { localStorage.setItem(identityOffKey, "true"); } catch (_) {} feedbackStatus.textContent = "Analytics identity will be omitted for future deals."; });
+
+function setConsequences(value) {
+  try { localStorage.setItem(consequencesKey, value); } catch (_) {}
+  consequencesModal.hidden = true;
+  renderFeedback();
+}
+document.querySelector("#enjoy-consequences").addEventListener("click", () => setConsequences("enjoy"));
+document.querySelector("#regret-consequences").addEventListener("click", () => setConsequences("regret"));
+if (!localStorage.getItem(consequencesKey)) consequencesModal.hidden = false;

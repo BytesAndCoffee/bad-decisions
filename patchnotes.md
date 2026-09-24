@@ -93,3 +93,5 @@ Tracks fixes from the 2026-09-19 code review. Tick an item when its fix and test
 2026-09-23 - incident - Documented a catastrophic breach of brand integrity: release engineering made a good decision. Root cause analysis ongoing; no recurrence expected.
 
 2026-09-23 - release - Promoted the brand-integrity incident notes and GitHub changelog links into lockstep 1.2.0.
+
+2026-09-24 - web - Added the first-visit Consequences disclaimer modal and browser-side opt-in gate; prepared lockstep 1.2.1.

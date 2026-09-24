@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "bad-decisions-client"
-version = "1.2.0"
+version = "1.2.1"
 description = "Cross-platform terminal client for Bad Decisions services"
 readme = "README.md"
 requires-python = ">=3.9"

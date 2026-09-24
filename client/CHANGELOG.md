@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.1]
+
+### Added
+
+- Added a first-visit Consequences disclaimer modal to the web client. Visitors can enjoy or regret Consequences before voting and pseudonymous telemetry are enabled.
+
 ## [1.2.0]
 
 ### Known issue
