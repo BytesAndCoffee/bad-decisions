@@ -1,0 +1,14 @@
+.git
+.github
+.venv
+.pypi-venv
+.pytest_cache
+client
+dist
+exports
+imports
+infra
+tests
+*.pyc
+__pycache__
+AGENTS.local.md

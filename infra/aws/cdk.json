@@ -1,0 +1,8 @@
+{
+  "app": ".venv/bin/python app.py",
+  "context": {
+    "@aws-cdk/aws-cloudwatch:defaultMetricPeriod": 60,
+    "@aws-cdk/aws-ecs:enableImdsBlocking": true,
+    "@aws-cdk/aws-ecs:enableEcsExec": false
+  }
+}

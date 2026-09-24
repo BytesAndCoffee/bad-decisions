@@ -175,3 +175,18 @@ For a server release, build and validate the exact artifacts:
   job. `tests/test_release_workflows.py` enforces this.
 - Never commit virtual environments, build artifacts, dotenv files, tokens, or
   generated local exports.
+<!-- BEGIN AWS Agent Toolkit rules -->
+# AWS Guidance
+- Where these AWS rules conflict with the project's own instructions, the project's instructions take precedence.
+- Prefer the AWS MCP Server for AWS interactions; if unavailable, use the AWS CLI directly.
+- Before starting an AWS task, check for a relevant AWS skill and prefer its guidance.
+- When uncertain about AWS details, verify against documentation rather than guessing.
+- Prefer AWS CDK or CloudFormation over direct CLI commands when creating infrastructure.
+- Follow AWS Well-Architected Framework principles.
+- Do not use em dashes in AWS resource names or descriptions. Use hyphens instead.
+
+## Secret Safety
+- Load the `aws-secrets-manager` skill first for any secret, credential, API key, token, or password task.
+- Do not call Secrets Manager value-retrieval APIs or access the Secrets Manager Agent directly.
+- Resolve secrets at runtime with the approved `{{resolve:secretsmanager:...}}` mechanism.
+<!-- END AWS Agent Toolkit rules -->

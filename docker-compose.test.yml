@@ -1,0 +1,15 @@
+services:
+  bad-decisions:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      BIND_HOST: 0.0.0.0
+      PORT: "8000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true

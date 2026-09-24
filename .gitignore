@@ -29,3 +29,5 @@ exports/
 
 # Local machine-specific agent notes
 AGENTS.local.md
+.cdk.staging/
+infra/aws/cdk.out/
