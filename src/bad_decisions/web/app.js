@@ -168,5 +168,6 @@ function setConsequences(value) {
   renderFeedback();
 }
 document.querySelector("#enjoy-consequences").addEventListener("click", () => setConsequences("enjoy"));
+document.querySelector("#change-consequences").addEventListener("click", () => { consequencesModal.hidden = false; document.querySelector("#enjoy-consequences").focus(); });
 document.querySelector("#regret-consequences").addEventListener("click", () => setConsequences("regret"));
 if (!localStorage.getItem(consequencesKey)) consequencesModal.hidden = false;

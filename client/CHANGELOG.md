@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.2]
+
+### Added
+
+- Added a persistent website control for reopening and changing the Consequences preference.
+
 ## [1.2.1]
 
 ### Added
