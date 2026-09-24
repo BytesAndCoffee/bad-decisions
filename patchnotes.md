@@ -1,3 +1,7 @@
+## 1.5.0
+
+- Added the AWS hybrid deployment scaffold, Docker image, and local AWS setup/deploy command plumbing.
+
 # Patch notes
 
 Tracks fixes from the 2026-09-19 code review. Tick an item when its fix and test are done.
