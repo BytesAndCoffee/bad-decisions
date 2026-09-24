@@ -38,8 +38,8 @@ bad-decisions pack init-registry /absolute/pack/registry
 bad-decisions pack import example.carddeck /absolute/pack/registry
 ```
 
-[CardDeck 1](CARDDECK.md) defines the portable format. See
-[REMOTE_IMPORTS.md](REMOTE_IMPORTS.md) for the remote catalog and archive
+[CardDeck 1](docs/CARDDECK.md) defines the portable format. See
+[REMOTE_IMPORTS.md](docs/REMOTE_IMPORTS.md) for the remote catalog and archive
 workflow. Its ZIP validation
 rejects traversal, symlinks, unexpected members, checksum mismatches,
 oversized content, and dangerous compression ratios before any pack is written.
@@ -113,12 +113,14 @@ that is between you and the stew.
 
 ## Documentation
 
-- [CardDeck format](CARDDECK.md)
-- [Remote imports](REMOTE_IMPORTS.md)
-- [Attribution and content rights](ATTRIBUTION.md)
-- [Deployment](DEPLOYMENT.md)
-- [Release process](RELEASING.md)
+- [CardDeck format](docs/CARDDECK.md)
+- [Remote imports](docs/REMOTE_IMPORTS.md)
+- [Attribution and content rights](docs/ATTRIBUTION.md)
+- [Deployment](docs/DEPLOYMENT.md)
+- [Release process](docs/RELEASING.md)
 - [Changelog](CHANGELOG.md)
+- [bad-decisions(1)](man/bad-decisions.1)
+- [regret(1)](man/regret.1)
 - [Terminal client](client/README.md)
 
 ## API
@@ -164,7 +166,7 @@ retention.
 
 Private operator commands:
 
-`bad-decisions consequences tui` opens an interactive Textual dashboard with dashboard, combination, prompt, and recent-draw views. Select rows for drill-down; the TUI is available with the `bad-decisions[tui]` extra.
+`bad-decisions consequences tui` opens an interactive Textual dashboard with dashboard, combination, prompt, and recent-draw views. Select rows for drill-down; the TUI is included in the core `bad-decisions` package.
 
 
     bad-decisions consequences report
@@ -206,7 +208,7 @@ sudo NGINX_SITE_CONFIG=/etc/nginx/sites-available/example.com \
 
 The deployer creates an unprivileged service account, immutable wheel releases,
 a `bad-decisions.service` unit, and optional loopback nginx proxy configuration.
-See [DEPLOYMENT.md](DEPLOYMENT.md).
+See [DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Development
 

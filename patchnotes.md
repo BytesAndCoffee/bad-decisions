@@ -99,3 +99,17 @@ Tracks fixes from the 2026-09-19 code review. Tick an item when its fix and test
 2026-09-24 - web - Added a footer control to reopen the Consequences preference modal; prepared lockstep 1.2.2.
 
 2026-09-24 - consequences - Added the interactive Textual report dashboard with dashboard, combination, prompt, and recent-draw drill-down views; prepared lockstep 1.3.0.
+
+2026-09-24 - packaging - Made Textual a core server dependency so the Consequences dashboard requires no extra package; prepared lockstep 1.4.0.
+
+2026-09-24 - docs - Added comprehensive bad-decisions(1) and regret(1) manual pages and included them in source distributions.
+
+2026-09-24 - consequences - Fixed the TUI command to open the analytics database read-only instead of attempting schema writes.
+
+2026-09-24 - consequences - Fixed duplicate prompt-hash row keys in the Textual dashboard by using composite provenance keys.
+
+2026-09-24 - consequences - Added answer-card stats, sortable TUI tables, and opt-in local resolution of stored hashes to pack card values.
+
+2026-09-24 - consequences - Fixed Textual 8 binding compatibility for the hash/value toggle.
+
+2026-09-24 - release - Prepared lockstep 1.4.0 for private raw-text analytics, expanded TUI drill-downs, and documentation reorganization.

@@ -1,0 +1,101 @@
+\.TH REGRET 1 "2026-09-24" "Bad Decisions Client 1.3.1" "User Commands"
+.SH NAME
+regret \- deal rounds from a Bad Decisions API
+.SH SYNOPSIS
+.B regret
+.RI [ options ]
+.br
+.B regret deal
+.RI [ options ]
+.br
+.B regret health
+.RI [ options ]
+.br
+.B regret feedback
+.RI {enjoy|regret|clear} [ options ]
+.br
+.B regret provenance
+.RI [ --json ]
+.br
+.B regret identity
+.RI {status|reset|off|on}
+.br
+.B regret consequences
+.RI {status|enjoy|regret|enable|disable}
+.SH DESCRIPTION
+.B regret
+is the dependency-light terminal client for a Bad Decisions service. It deals rounds, lists packs, checks health, records optional feedback, and prints provenance from the last local draw.
+.PP
+Consequences is opt-in. It controls both voting and the pseudonymous telemetry required for voting. Non-interactive use leaves it disabled unless an explicit preference is already stored.
+.SH OPTIONS
+.TP
+.BI --api-url url
+Use a compatible API endpoint. The default is https://bytes.coffee/bad-decisions.
+.TP
+.BI --packs ids
+Comma-separated pack IDs for both colors.
+.TP
+.BI --black-packs ids
+Override the black-card selector.
+.TP
+.BI --white-packs ids
+Override the white-card selector.
+.TP
+.BR --list-packs
+List packs from the service.
+.TP
+.BR --health
+Check service health.
+.TP
+.BR --json
+Print machine-readable JSON where supported.
+.TP
+.BI --timeout seconds
+Network timeout. Must be greater than zero.
+.SH COMMANDS
+.TP
+.BI deal
+Deal and print one round. This is the default command.
+.TP
+.BI health
+Check the API health endpoint.
+.TP
+.BI feedback enjoy|regret|clear
+Submit, change, or withdraw the last eligible vote. Requires Enjoy Consequences.
+.TP
+.BI provenance [--json]
+Print license, attribution, version, and source metadata for packs in the last saved draw without contacting the API.
+.TP
+.BI identity status|reset|off|on
+Inspect, rotate, omit, or restore the local pseudonymous installation identity. Identity use is still subordinate to Consequences consent.
+.TP
+.BI consequences status
+Show whether Consequences is enabled.
+.TP
+.BI consequences enjoy
+Enable voting and stable-ID pseudonymous vote telemetry.
+.TP
+.BI consequences regret
+Disable voting and vote telemetry entirely.
+.SH CONSENT
+On the first interactive deal, an unset or stale consent preference prompts once. Choose Enjoy Consequences or Regret Consequences. The choice and consent schema version are stored locally and survive upgrades. Pressing Enter chooses regret. Non-interactive invocations never block for consent.
+.SH FILES
+.TP
+.I ~/.regret.env
+Atomic local preferences and pseudonymous identity state.
+.TP
+.I ~/.regret-last-round.json
+The last draw's provenance and, when eligible, its feedback capability.
+.SH PRIVACY
+No account is required. A stable pseudonymous identifier is used only when Consequences is enabled. Disabling Consequences disables voting and its telemetry. The client does not use this identifier for update checks; version checks are cached and use the configured API health endpoint.
+.SH EXIT STATUS
+.TP
+.B 0
+Success.
+.TP
+.B 1
+Network, configuration, or unavailable-feedback failure.
+.SH LICENSE
+The client is MIT licensed. Card-pack content remains governed by each pack's own declared license and provenance.
+.SH SEE ALSO
+.BR bad-decisions (1)

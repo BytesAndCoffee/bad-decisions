@@ -169,7 +169,7 @@ def _run_consequences(argv: Sequence[str]) -> int:
     args = consequences_parser().parse_args(argv)
     database = args.database if args.database is not None else _default_consequences_database()
     try:
-        store = ConsequencesStore(database, readonly=args.command == "report")
+        store = ConsequencesStore(database, readonly=args.command in {"report", "tui"})
         if args.command == "report": _write(json.dumps(store.report(), sort_keys=True))
         elif args.command == "tui":
             from .consequences_tui import run_tui

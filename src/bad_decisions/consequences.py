@@ -57,10 +57,14 @@ CREATE TABLE IF NOT EXISTS combinations(combination_hash TEXT PRIMARY KEY, hash_
 CREATE TABLE IF NOT EXISTS rounds(round_id TEXT PRIMARY KEY, occurred_at INTEGER NOT NULL, request_id TEXT, combination_hash TEXT NOT NULL REFERENCES combinations(combination_hash), client_id TEXT, session_id TEXT, feedback_expires_at INTEGER NOT NULL, token_verifier BLOB NOT NULL);
 CREATE INDEX IF NOT EXISTS rounds_time ON rounds(occurred_at);
 CREATE INDEX IF NOT EXISTS rounds_combination ON rounds(combination_hash);
-CREATE TABLE IF NOT EXISTS round_elements(round_id TEXT NOT NULL REFERENCES rounds(round_id) ON DELETE CASCADE, role TEXT NOT NULL CHECK(role IN ("prompt","answer")), slot_index INTEGER NOT NULL, content_hash TEXT NOT NULL, pack_id TEXT NOT NULL, pack_version TEXT NOT NULL, card_id TEXT NOT NULL, source_ref TEXT, license_id TEXT NOT NULL, attribution TEXT NOT NULL, modifications_json TEXT NOT NULL, PRIMARY KEY(round_id,role,slot_index));
+CREATE TABLE IF NOT EXISTS round_elements(round_id TEXT NOT NULL REFERENCES rounds(round_id) ON DELETE CASCADE, role TEXT NOT NULL CHECK(role IN ("prompt","answer")), slot_index INTEGER NOT NULL, content_hash TEXT NOT NULL, content_text TEXT, pack_id TEXT NOT NULL, pack_version TEXT NOT NULL, card_id TEXT NOT NULL, source_ref TEXT, license_id TEXT NOT NULL, attribution TEXT NOT NULL, modifications_json TEXT NOT NULL, PRIMARY KEY(round_id,role,slot_index));
 CREATE TABLE IF NOT EXISTS feedback(round_id TEXT PRIMARY KEY REFERENCES rounds(round_id) ON DELETE CASCADE, enjoyed INTEGER NOT NULL CHECK(enjoyed IN (0,1)), created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS combination_stats(combination_hash TEXT PRIMARY KEY REFERENCES combinations(combination_hash) ON DELETE CASCADE, draw_count INTEGER NOT NULL CHECK(draw_count >= 0), enjoy_count INTEGER NOT NULL DEFAULT 0 CHECK(enjoy_count >= 0), regret_count INTEGER NOT NULL DEFAULT 0 CHECK(regret_count >= 0), updated_at INTEGER NOT NULL);
 """)
+            columns = {row[1] for row in c.execute("PRAGMA table_info(round_elements)")}
+            if "content_text" not in columns:
+                c.execute("ALTER TABLE round_elements ADD COLUMN content_text TEXT")
+            c.execute("INSERT OR IGNORE INTO schema_migrations VALUES (2)")
 
     @staticmethod
     def _now() -> int: return int(time.time())
@@ -78,8 +82,8 @@ CREATE TABLE IF NOT EXISTS combination_stats(combination_hash TEXT PRIMARY KEY R
             try:
                 c.execute("INSERT OR IGNORE INTO combinations VALUES(?,?,?,?,?,?)", (combo,HASH_SCHEMA,prompt,json.dumps(answers),json.dumps({"template":round_.black.template}),now))
                 c.execute("INSERT INTO rounds VALUES(?,?,?,?,?,?,?,?)", (round_id,now,request_id,combo,client_id,session_id,now+self.feedback_ttl_seconds,verifier))
-                cards = [("prompt",0,prompt,round_.black)] + [("answer",i,d,card) for i,(d,card) in enumerate(zip(answers,round_.white))]
-                c.executemany("INSERT INTO round_elements VALUES(?,?,?,?,?,?,?,?,?,?,?)", [(round_id,role,slot,digest,card.pack,packs[card.pack].version,card.id,card.source_ref,packs[card.pack].license_id,packs[card.pack].attribution,"[]") for role,slot,digest,card in cards])
+                cards = [("prompt",0,prompt,round_.black.repr,round_.black)] + [("answer",i,d,card.text,card) for i,(d,card) in enumerate(zip(answers,round_.white))]
+                c.executemany("INSERT INTO round_elements VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", [(round_id,role,slot,digest,text,card.pack,packs[card.pack].version,card.id,card.source_ref,packs[card.pack].license_id,packs[card.pack].attribution,"[]") for role,slot,digest,text,card in cards])
                 c.execute("INSERT INTO combination_stats(combination_hash,draw_count,updated_at) VALUES(?,1,?) ON CONFLICT(combination_hash) DO UPDATE SET draw_count=draw_count+1,updated_at=excluded.updated_at", (combo,now))
                 if request_id: c.execute("UPDATE request_events SET round_id=? WHERE request_id=?", (round_id,request_id))
                 c.execute("COMMIT")
@@ -135,18 +139,24 @@ CREATE TABLE IF NOT EXISTS combination_stats(combination_hash TEXT PRIMARY KEY R
             combinations = c.execute("""SELECT combination_hash, draw_count, enjoy_count, regret_count,
                 CASE WHEN enjoy_count + regret_count = 0 THEN NULL ELSE CAST(enjoy_count - regret_count AS REAL) / (enjoy_count + regret_count) END
                 FROM combination_stats ORDER BY draw_count DESC, combination_hash LIMIT ?""", (limit,)).fetchall()
-            prompts = c.execute("""SELECT re.content_hash, re.pack_id, re.card_id, re.source_ref,
+            prompts = c.execute("""SELECT re.content_hash, re.content_text, re.pack_id, re.card_id, re.source_ref,
                 COUNT(r.round_id), COALESCE(SUM(f.enjoyed=1),0), COALESCE(SUM(f.enjoyed=0),0)
                 FROM round_elements re JOIN rounds r ON r.round_id=re.round_id LEFT JOIN feedback f ON f.round_id=r.round_id
                 WHERE re.role='prompt' GROUP BY re.content_hash, re.pack_id, re.card_id, re.source_ref
                 ORDER BY COUNT(r.round_id) DESC LIMIT ?""", (limit,)).fetchall()
+            answers = c.execute("""SELECT re.content_hash, re.content_text, re.pack_id, re.card_id, re.source_ref,
+                COUNT(DISTINCT r.round_id), COALESCE(SUM(f.enjoyed=1),0), COALESCE(SUM(f.enjoyed=0),0)
+                FROM round_elements re JOIN rounds r ON r.round_id=re.round_id LEFT JOIN feedback f ON f.round_id=r.round_id
+                WHERE re.role='answer' GROUP BY re.content_hash, re.pack_id, re.card_id, re.source_ref
+                ORDER BY COUNT(DISTINCT r.round_id) DESC LIMIT ?""", (limit,)).fetchall()
             recent = c.execute("""SELECT r.occurred_at, r.round_id, r.combination_hash,
                 COALESCE(f.enjoyed, -1), r.client_id IS NOT NULL
                 FROM rounds r LEFT JOIN feedback f ON f.round_id=r.round_id
                 ORDER BY r.occurred_at DESC LIMIT ?""", (limit,)).fetchall()
         return {
             "combinations": [{"hash": row[0], "draws": row[1], "enjoy": row[2], "regret": row[3], "score": row[4]} for row in combinations],
-            "prompts": [{"hash": row[0], "pack": row[1], "card": row[2], "source": row[3], "draws": row[4], "enjoy": row[5], "regret": row[6]} for row in prompts],
+            "prompts": [{"hash": row[0], "text": row[1], "pack": row[2], "card": row[3], "source": row[4], "draws": row[5], "enjoy": row[6], "regret": row[7]} for row in prompts],
+            "answers": [{"hash": row[0], "text": row[1], "pack": row[2], "card": row[3], "source": row[4], "draws": row[5], "enjoy": row[6], "regret": row[7]} for row in answers],
             "recent": [{"occurred_at": row[0], "round_id": row[1], "combination": row[2], "vote": None if row[3] < 0 else bool(row[3]), "identified": bool(row[4])} for row in recent],
         }
 

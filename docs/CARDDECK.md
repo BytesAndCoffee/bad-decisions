@@ -34,7 +34,7 @@ Member names MUST be plain basenames. They MUST NOT contain path separators,
 ## Manifest
 
 `manifest.json` MUST be UTF-8 JSON conforming to
-[`schemas/carddeck-manifest-v1.schema.json`](schemas/carddeck-manifest-v1.schema.json).
+[`schemas/carddeck-manifest-v1.schema.json`](../schemas/carddeck-manifest-v1.schema.json).
 It has no extension fields in version 1.
 
 ```json

@@ -1,0 +1,103 @@
+\.TH BAD-DECISIONS 1 "2026-09-24" "Bad Decisions 1.3.1" "User Commands"
+.SH NAME
+bad-decisions \- deal, validate, import, and inspect Bad Decisions card packs
+.SH SYNOPSIS
+.B bad-decisions
+.RI [ options ]
+.br
+.B bad-decisions pack
+.RI {validate|export|import|init-registry} ...
+.br
+.B bad-decisions consequences
+.RI {report|tui|rebuild|purge} ...
+.br
+.B bad-decisions
+.RI {setup|serve|deploy|status|reload|stop} ...
+.SH DESCRIPTION
+.B bad-decisions
+is the command-line engine and service toolkit for portable card-deck packs. With no subcommand it deals an interactive round. It can also produce one-shot output, stream rounds, manage .carddeck archives, and inspect the local Consequences analytics database.
+.PP
+An omitted pack selector means every pack in the loaded registry. Set BAD_DECISIONS_PACK_DIR to use a custom registry.
+.SH OPTIONS
+.TP
+.BR --oneshot
+Print one rendered round and exit.
+.TP
+.BR --rapid
+Continuously print rendered rounds.
+.TP
+.BI --delay seconds
+Delay between rapid rounds. Must be positive and finite.
+.TP
+.BI --packs ids
+Comma-separated pack IDs for both card colors.
+.TP
+.BI --black-packs ids
+Override the black-card selector.
+.TP
+.BI --white-packs ids
+Override the white-card selector.
+.TP
+.BR --list-packs
+List available packs and exit.
+.SH PACK COMMANDS
+.TP
+.BI pack validate archive
+Validate a .carddeck archive without changing disk.
+.TP
+.BI pack export pack-id archive
+Export a registered pack to an archive.
+.TP
+.BI pack import archive registry-dir
+Import an archive into an absolute registry directory. Use --remote for an HTTPS archive or --index for a remote catalog; --pack may be repeated with --index.
+.TP
+.BI pack init-registry registry-dir
+Initialize an absolute registry with bundled packs.
+.SH CONSEQUENCES COMMANDS
+.TP
+.BI consequences report [database]
+Print aggregate analytics as JSON. If database is omitted, use BAD_DECISIONS_CONSEQUENCES_DB or the installed release database.
+.TP
+.BI consequences tui [database]
+Open the read-only Textual dashboard. It provides dashboard, combination, prompt, and recent-draw views; press d, c, p, or r to switch views and q to quit. Textual is included in the core package.
+.TP
+.BI consequences rebuild database
+Rebuild aggregate counters. Requires an explicit absolute database path.
+.TP
+.BI consequences purge database --retention-days days
+Purge retained records and rebuild counters.
+.SH ENVIRONMENT
+.TP
+.B BAD_DECISIONS_PACK_DIR
+Replace the bundled pack registry.
+.TP
+.B BAD_DECISIONS_CONSEQUENCES_DB
+Absolute path to the Consequences SQLite database.
+.TP
+.B BAD_DECISIONS_CONSEQUENCES_RECORDING
+Enable or disable server-side Consequences recording.
+.TP
+.B BAD_DECISIONS_CONSEQUENCES_FEEDBACK
+Enable or disable voting while retaining server analytics.
+.TP
+.B BAD_DECISIONS_CONSEQUENCES_PUBLIC_STATS
+Enable public combination summaries.
+.SH FILES
+.TP
+.I /var/lib/bad-decisions/consequences.sqlite3
+Typical service database location.
+.SH EXIT STATUS
+.TP
+.B 0
+Success.
+.TP
+.B 1
+Configuration or operational failure.
+.TP
+.B 2
+Invalid request or domain error.
+.SH LICENSE
+The Bad Decisions software is MIT licensed. Card packs are separate works governed by their own licenses, attribution, and provenance metadata.
+.SH SEE ALSO
+.BR regret (1),
+.BR bad-decisions (1)

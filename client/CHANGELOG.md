@@ -1,9 +1,24 @@
 # Changelog
 
+## [1.4.0]
+
+### Added
+
+- Consequences stores private raw card-text snapshots alongside stable hashes for owner analytics and TUI lookup.
+- Added answer-card statistics, sortable dashboard views, and hash/value display controls.
+- Reorganized long-form documentation under `docs/` and added comprehensive `bad-decisions(1)` and `regret(1)` manpages.
+
+## [1.3.1]
+
+### Changed
+
+- Moved the Consequences Textual dashboard into the core server package; no extra install is required.
+
 ## [1.3.0]
 
 ### Added
 
+- Added answer-card frequency statistics, sortable TUI views, and optional local hash-to-card value resolution.
 - Added an interactive Textual Consequences report dashboard with dashboard, combination, prompt, and recent-draw views plus row drill-downs.
 
 ## [1.2.2]
