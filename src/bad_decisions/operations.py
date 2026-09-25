@@ -79,72 +79,131 @@ def _aws_env(profile: str, region: str) -> dict[str, str]:
     return {**os.environ, "AWS_PROFILE": profile, "AWS_DEFAULT_REGION": region}
 
 
+_DOMAIN_KEYS = {
+    "certificate_arn": "BAD_DECISIONS_CERTIFICATE_ARN",
+    "domain_name": "BAD_DECISIONS_DOMAIN_NAME",
+    "hosted_zone_id": "BAD_DECISIONS_HOSTED_ZONE_ID",
+    "hosted_zone_name": "BAD_DECISIONS_HOSTED_ZONE_NAME",
+}
+
+
+def _add_domain_arguments(parser: argparse.ArgumentParser) -> None:
+    for name in _DOMAIN_KEYS:
+        parser.add_argument(f"--{name.replace('_', '-')}")
+    parser.add_argument("--allow-http", action="store_true", help="permit HTTP for a disposable smoke test")
+
+
+def _merge_domain_arguments(args: argparse.Namespace, values: dict[str, str]) -> None:
+    """Save domain flags given on this run; omitted flags keep their saved values."""
+    for name, key in _DOMAIN_KEYS.items():
+        if getattr(args, name):
+            values[key] = getattr(args, name)
+    if args.allow_http:
+        values["BAD_DECISIONS_ALLOW_HTTP"] = "1"
+
+
+def _put_management_token(env: dict[str, str], secret_id: str, *, create: bool) -> str | None:
+    """Write a fresh management token to Secrets Manager and return it, or None on failure."""
+    token = secrets.token_urlsafe(48)
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8") as payload:
+        payload.write(token); payload.flush(); os.chmod(payload.name, 0o600)
+        command = ["aws", "secretsmanager", "create-secret", "--name", secret_id] if create else ["aws", "secretsmanager", "put-secret-value", "--secret-id", secret_id]
+        if _run(command + ["--secret-string", f"file://{payload.name}"], env=env).returncode:
+            return None
+    return token
+
+
 def setup_aws(argv: list[str]) -> int:
-    parser = argparse.ArgumentParser(prog="bad-decisions setup aws", description="Build, publish, and configure the AWS deployment.")
+    parser = argparse.ArgumentParser(prog="bad-decisions setup aws", description="Prepare an AWS account for Bad Decisions (one-time; safe to repeat).")
     parser.add_argument("--profile", default=os.getenv("AWS_PROFILE", "decisions"))
     parser.add_argument("--region", default=os.getenv("AWS_DEFAULT_REGION", "ca-west-1"))
     parser.add_argument("--repository", default="bad-decisions")
     parser.add_argument("--secret-id", default="bad-decisions/management-token")
-    parser.add_argument("--source", type=Path, help="source checkout to build instead of the installed PyPI release")
-    parser.add_argument("--certificate-arn")
-    parser.add_argument("--domain-name")
-    parser.add_argument("--hosted-zone-id")
-    parser.add_argument("--hosted-zone-name")
-    parser.add_argument("--allow-http", action="store_true", help="permit HTTP for a disposable smoke test")
+    _add_domain_arguments(parser)
     args = parser.parse_args(argv)
     if args.certificate_arn and (not args.domain_name or not args.hosted_zone_id):
         parser.error("--certificate-arn requires --domain-name and --hosted-zone-id")
-    _require_commands(parser, "aws", "docker", "npx")
-    if args.source is not None and not (args.source / "Dockerfile").is_file():
-        parser.error("--source must contain Dockerfile")
+    _require_commands(parser, "aws", "npx")
     env = _aws_env(args.profile, args.region)
     identity = _run(["aws", "sts", "get-caller-identity", "--query", "Account", "--output", "text"], env=env, capture=True)
     if identity.returncode:
         print(identity.stderr.strip(), file=sys.stderr); return identity.returncode
     account = identity.stdout.strip()
-    repository_uri = f"{account}.dkr.ecr.{args.region}.amazonaws.com/{args.repository}"
     described = _run(["aws", "ecr", "describe-repositories", "--repository-names", args.repository], env=env, capture=True)
     if described.returncode:
         created = _run(["aws", "ecr", "create-repository", "--repository-name", args.repository, "--image-tag-mutability", "IMMUTABLE", "--image-scanning-configuration", "scanOnPush=true"], env=env)
         if created.returncode: return created.returncode
 
-    token = secrets.token_urlsafe(48)
-    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8") as payload:
-        payload.write(token); payload.flush(); os.chmod(payload.name, 0o600)
-        exists = _run(["aws", "secretsmanager", "describe-secret", "--secret-id", args.secret_id], env=env, capture=True)
-        action = "put-secret-value" if exists.returncode == 0 else "create-secret"
-        secret_command = ["aws", "secretsmanager", action, "--secret-id" if action == "put-secret-value" else "--name", args.secret_id, "--secret-string", f"file://{payload.name}"]
-        if _run(secret_command, env=env).returncode: return 1
+    values = _read_aws_env()
+    # Never rotate an existing token here: running tasks would keep the old one. Use rotate-token aws.
+    exists = _run(["aws", "secretsmanager", "describe-secret", "--secret-id", args.secret_id], env=env, capture=True)
+    missing_token = False
+    if exists.returncode:
+        token = _put_management_token(env, args.secret_id, create=True)
+        if token is None: return 1
+        values["BAD_DECISIONS_AWS_MANAGEMENT_TOKEN"] = token
+    elif values.get("BAD_DECISIONS_AWS_SECRET_ID") != args.secret_id or not values.get("BAD_DECISIONS_AWS_MANAGEMENT_TOKEN"):
+        values.pop("BAD_DECISIONS_AWS_MANAGEMENT_TOKEN", None)
+        missing_token = True
 
-    tag = f"{__version__}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
-    image_uri = f"{repository_uri}:{tag}"
+    bootstrap = _run(["npx", "--yes", "aws-cdk", "bootstrap", f"aws://{account}/{args.region}"], env=env)
+    if bootstrap.returncode: return bootstrap.returncode
+    values.update({"AWS_PROFILE": args.profile, "AWS_DEFAULT_REGION": args.region, "BAD_DECISIONS_AWS_SECRET_ID": args.secret_id, "BAD_DECISIONS_REPOSITORY_NAME": args.repository, "BAD_DECISIONS_AWS_ACCOUNT": account})
+    _merge_domain_arguments(args, values)
+    _write_aws_env(values)
+    print(f"AWS configuration ready: {AWS_ENV}")
+    if missing_token:
+        print(f"Secret {args.secret_id} already exists but its token is not saved locally; run bad-decisions rotate-token aws.", file=sys.stderr)
+    return 0
+
+
+def _publish_image(env: dict[str, str], values: dict[str, str], source: Path | None) -> str | None:
+    """Build the installed release (or a source checkout), push it to ECR, and return its URI."""
+    account = values.get("BAD_DECISIONS_AWS_ACCOUNT")
+    if not account:
+        identity = _run(["aws", "sts", "get-caller-identity", "--query", "Account", "--output", "text"], env=env, capture=True)
+        if identity.returncode:
+            print(identity.stderr.strip(), file=sys.stderr); return None
+        account = identity.stdout.strip()
+    repository_uri = f"{account}.dkr.ecr.{values['AWS_DEFAULT_REGION']}.amazonaws.com/{values.get('BAD_DECISIONS_REPOSITORY_NAME', 'bad-decisions')}"
+    image_uri = f"{repository_uri}:{__version__}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
     login = subprocess.Popen(["aws", "ecr", "get-login-password"], env=env, stdout=subprocess.PIPE)
     docker_login = subprocess.run(["docker", "login", "--username", "AWS", "--password-stdin", repository_uri], stdin=login.stdout, check=False)
     if login.stdout: login.stdout.close()
-    if login.wait() or docker_login.returncode: return 1
+    if login.wait() or docker_login.returncode: return None
     try:
-        if args.source:
-            build = _run(["docker", "build", "-t", image_uri, str(args.source.resolve())])
+        if source:
+            build = _run(["docker", "build", "-t", image_uri, str(source.resolve())])
         else:
             with tempfile.TemporaryDirectory(prefix="bad-decisions-image-") as directory:
                 dockerfile = Path(directory) / "Dockerfile"
                 dockerfile.write_text(f"FROM python:3.12-slim\nRUN pip install --no-cache-dir bad-decisions=={__version__} && useradd --create-home --uid 10001 --shell /usr/sbin/nologin baddecisions\nUSER baddecisions\nEXPOSE 8000\nCMD [\"uvicorn\", \"bad_decisions.api:create_app\", \"--factory\", \"--host\", \"0.0.0.0\", \"--port\", \"8000\", \"--proxy-headers\"]\n", encoding="utf-8")
                 build = _run(["docker", "build", "-t", image_uri, directory])
-        if build.returncode or _run(["docker", "push", image_uri]).returncode: return 1
+        if build.returncode or _run(["docker", "push", image_uri]).returncode: return None
     finally:
         _run(["docker", "logout", repository_uri], capture=True)
-
-    bootstrap = _run(["npx", "--yes", "aws-cdk", "bootstrap", f"aws://{account}/{args.region}"], env=env)
-    if bootstrap.returncode: return bootstrap.returncode
-    values = {"AWS_PROFILE": args.profile, "AWS_DEFAULT_REGION": args.region, "BAD_DECISIONS_AWS_SECRET_ID": args.secret_id, "BAD_DECISIONS_AWS_MANAGEMENT_TOKEN": token, "BAD_DECISIONS_IMAGE": image_uri, "BAD_DECISIONS_REPOSITORY_NAME": args.repository}
-    if args.certificate_arn: values["BAD_DECISIONS_CERTIFICATE_ARN"] = args.certificate_arn
-    if args.domain_name: values["BAD_DECISIONS_DOMAIN_NAME"] = args.domain_name
-    if args.hosted_zone_id: values["BAD_DECISIONS_HOSTED_ZONE_ID"] = args.hosted_zone_id
-    if args.hosted_zone_name: values["BAD_DECISIONS_HOSTED_ZONE_NAME"] = args.hosted_zone_name
-    if args.allow_http: values["BAD_DECISIONS_ALLOW_HTTP"] = "1"
-    _write_aws_env(values)
-    print(f"AWS configuration ready: {AWS_ENV}")
     print(f"Published image: {image_uri}")
+    return image_uri
+
+
+def rotate_token_aws(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(prog="bad-decisions rotate-token aws", description="Replace the management token and restart every ECS task so they all use it.")
+    parser.parse_args(argv)
+    values = _read_aws_env()
+    secret_id = values.get("BAD_DECISIONS_AWS_SECRET_ID")
+    if not secret_id or not values.get("AWS_PROFILE") or not values.get("AWS_DEFAULT_REGION"):
+        print(f"Missing AWS settings in {AWS_ENV}; run bad-decisions setup aws first.", file=sys.stderr); return 2
+    token = _put_management_token(_aws_env(values["AWS_PROFILE"], values["AWS_DEFAULT_REGION"]), secret_id, create=False)
+    if token is None: return 1
+    values["BAD_DECISIONS_AWS_MANAGEMENT_TOKEN"] = token
+    _write_aws_env(values)
+    cluster, service = values.get("BAD_DECISIONS_AWS_CLUSTER"), values.get("BAD_DECISIONS_AWS_SERVICE")
+    if cluster and service:
+        from .aws_archive import force_runtime_reload
+        force_runtime_reload(cluster=cluster, service=service, profile=values["AWS_PROFILE"], region=values["AWS_DEFAULT_REGION"])
+        print("Token rotated; ECS is replacing tasks. The old token works until the old tasks stop.")
+    else:
+        print("Token rotated; no deployed service to restart.")
     return 0
 
 
@@ -180,44 +239,44 @@ def _read_aws_env() -> dict[str, str]:
     return dict(line.split("=", 1) for line in AWS_ENV.read_text(encoding="utf-8").splitlines() if "=" in line and not line.startswith("#"))
 
 
-def deploy_aws(argv: list[str]) -> int:
-    parser = argparse.ArgumentParser(prog="bad-decisions deploy aws", description="Deploy the complete AWS service with CDK.")
-    parser.add_argument("--image")
+def deploy_aws(argv: list[str], *, confirm=input) -> int:
+    parser = argparse.ArgumentParser(prog="bad-decisions deploy aws", description="Build and push the release image, show the CDK diff, and deploy it.")
+    parser.add_argument("--image", help="deploy an already-pushed image instead of building one")
+    parser.add_argument("--source", type=Path, help="source checkout to build instead of the installed PyPI release")
+    parser.add_argument("--yes", action="store_true", help="deploy without asking after the diff")
     parser.add_argument("--desired-count", type=int, default=1)
     parser.add_argument("--max-count", type=int, default=2)
-    parser.add_argument("--certificate-arn")
-    parser.add_argument("--domain-name")
-    parser.add_argument("--hosted-zone-id")
-    parser.add_argument("--hosted-zone-name")
-    parser.add_argument("--allow-http", action="store_true")
+    _add_domain_arguments(parser)
     args = parser.parse_args(argv)
     if args.desired_count < 1 or args.max_count < args.desired_count:
         parser.error("counts must be positive and --max-count must be at least --desired-count")
+    if args.image and args.source:
+        parser.error("--image and --source are mutually exclusive")
+    if args.source is not None and not (args.source / "Dockerfile").is_file():
+        parser.error("--source must contain Dockerfile")
     values = _read_aws_env()
     if not values:
         print(f"Missing {AWS_ENV}; run bad-decisions setup aws first.", file=sys.stderr); return 2
-    image = args.image or values.get("BAD_DECISIONS_IMAGE")
-    certificate = args.certificate_arn or values.get("BAD_DECISIONS_CERTIFICATE_ARN")
-    domain_name = args.domain_name or values.get("BAD_DECISIONS_DOMAIN_NAME")
-    hosted_zone_id = args.hosted_zone_id or values.get("BAD_DECISIONS_HOSTED_ZONE_ID")
-    hosted_zone_name = args.hosted_zone_name or values.get("BAD_DECISIONS_HOSTED_ZONE_NAME")
-    allow_http = args.allow_http or values.get("BAD_DECISIONS_ALLOW_HTTP") == "1"
-    if not image:
-        parser.error("no image configured; rerun setup aws or pass --image")
-    if not certificate and not allow_http:
+    _merge_domain_arguments(args, values)
+    if not values.get("BAD_DECISIONS_CERTIFICATE_ARN") and values.get("BAD_DECISIONS_ALLOW_HTTP") != "1":
         parser.error("HTTPS requires --certificate-arn; use --allow-http only for a disposable smoke test")
-    if certificate and (not domain_name or not hosted_zone_id):
+    if values.get("BAD_DECISIONS_CERTIFICATE_ARN") and (not values.get("BAD_DECISIONS_DOMAIN_NAME") or not values.get("BAD_DECISIONS_HOSTED_ZONE_ID")):
         parser.error("HTTPS requires --domain-name and --hosted-zone-id so the certificate matches the public endpoint")
+    if not args.yes and not sys.stdin.isatty():
+        parser.error("no terminal to confirm the diff; pass --yes to deploy unattended")
+    _require_commands(parser, "aws", "npx", *(() if args.image else ("docker",)))
+    aws_env = _aws_env(values["AWS_PROFILE"], values["AWS_DEFAULT_REGION"])
+    # Build every deploy so the image always matches the installed package that defines the stack.
+    image = args.image or _publish_image(aws_env, values, args.source)
+    if not image: return 1
     env = os.environ.copy(); env.update(values); env.update({"BAD_DECISIONS_IMAGE": image, "BAD_DECISIONS_DESIRED_COUNT": str(args.desired_count), "BAD_DECISIONS_MAX_COUNT": str(args.max_count)})
-    if certificate: env["BAD_DECISIONS_CERTIFICATE_ARN"] = certificate
-    if domain_name: env["BAD_DECISIONS_DOMAIN_NAME"] = domain_name
-    if hosted_zone_id: env["BAD_DECISIONS_HOSTED_ZONE_ID"] = hosted_zone_id
-    if hosted_zone_name: env["BAD_DECISIONS_HOSTED_ZONE_NAME"] = hosted_zone_name
-    if allow_http: env["BAD_DECISIONS_ALLOW_HTTP"] = "1"
-    app = f"{sys.executable} -m bad_decisions.aws_cdk_app"
+    cdk = ["npx", "--yes", "aws-cdk", "-a", f"{sys.executable} -m bad_decisions.aws_cdk_app"]
+    if _run(cdk + ["diff", "BadDecisionsHybrid"], env=env).returncode:
+        print("cdk diff failed; nothing was deployed.", file=sys.stderr); return 1
+    if not args.yes and confirm("Deploy these changes? [y/N] ").strip().lower() not in {"y", "yes"}:
+        print("Deploy cancelled; nothing was deployed.", file=sys.stderr); return 1
     with tempfile.NamedTemporaryFile(prefix="bad-decisions-cdk-", suffix=".json") as outputs:
-        command = ["npx", "--yes", "aws-cdk", "-a", app, "deploy", "BadDecisionsHybrid", "--require-approval", "never", "--outputs-file", outputs.name]
-        completed = _run(command, env=env)
+        completed = _run(cdk + ["deploy", "BadDecisionsHybrid", "--require-approval", "never", "--outputs-file", outputs.name], env=env)
         if completed.returncode:
             return completed.returncode
         deployed = json.loads(Path(outputs.name).read_text(encoding="utf-8"))["BadDecisionsHybrid"]
@@ -340,6 +399,11 @@ def status_aws(argv: list[str]) -> int:
     return 0
 
 
+def _usage_error(message: str) -> int:
+    print(f"bad-decisions: {message}", file=sys.stderr)
+    return 2
+
+
 def run(argv: list[str]) -> int:
     if not argv:
         return 2
@@ -350,6 +414,8 @@ def run(argv: list[str]) -> int:
         return serve(rest)
     if command == "deploy":
         return deploy_aws(rest[1:]) if rest and rest[0] == "aws" else deploy(rest)
+    if command == "rotate-token":
+        return rotate_token_aws(rest[1:]) if rest and rest[0] == "aws" else _usage_error("rotate-token requires aws")
     if command == "status":
         return status_aws(rest[1:]) if rest and rest[0] == "aws" else _service("status")
     if command == "reload":

@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [1.6.1]
+
+### Changed
+
+- `setup aws` is now one-time account preparation that is safe to repeat: it creates the management secret only if missing, never rotates an existing token, no longer builds images, and merges into `~/.bad-decisions.env` instead of overwriting deploy outputs and domain settings.
+- `deploy aws` builds and pushes the image for the installed version, shows `cdk diff`, and asks before deploying (`--yes` for unattended runs, `--source` to build a checkout). Domain flags passed to it are saved.
+
+### Added
+
+- `rotate-token aws` replaces the management token and forces a new ECS deployment so every task uses it.
+
 ## [1.6.0]
 
 ### Added

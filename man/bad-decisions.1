@@ -1,4 +1,4 @@
-\.TH BAD-DECISIONS 1 "2026-09-24" "Bad Decisions 1.6.0" "User Commands"
+\.TH BAD-DECISIONS 1 "2026-09-24" "Bad Decisions 1.6.1" "User Commands"
 .SH NAME
 bad-decisions \- deal, validate, import, and inspect Bad Decisions card packs
 .SH SYNOPSIS
@@ -68,11 +68,14 @@ Rebuild aggregate counters. Requires an explicit absolute database path.
 Purge retained records and rebuild counters.
 .SH AWS COMMANDS
 .TP
-.BI setup aws " [--profile name] [--region region] [--certificate-arn arn] [--domain-name name] [--hosted-zone-id id] [--source directory] [--allow-http]"
-Create or rotate the protected management capability, build and push an immutable ECR image, bootstrap CDK, and save deployment state in ~/.bad-decisions.env. Production HTTPS requires a certificate-matching domain and Route 53 hosted zone.
+.BI setup aws " [--profile name] [--region region] [--certificate-arn arn] [--domain-name name] [--hosted-zone-id id] [--allow-http]"
+One-time, repeatable account preparation: create the ECR repository and the protected management capability if missing (an existing one is never rotated), bootstrap CDK, and merge settings into ~/.bad-decisions.env. Production HTTPS requires a certificate-matching domain and Route 53 hosted zone.
 .TP
-.BI deploy aws " [--image uri] [--desired-count n] [--max-count n] [--certificate-arn arn] [--domain-name name] [--hosted-zone-id id] [--allow-http]"
-Deploy the complete packaged AWS application. HTTPS is required unless --allow-http is explicitly selected for a disposable smoke test.
+.BI deploy aws " [--image uri | --source directory] [--yes] [--desired-count n] [--max-count n] [--certificate-arn arn] [--domain-name name] [--hosted-zone-id id] [--allow-http]"
+Build and push an immutable ECR image of the installed version (unless --image is given), show the CDK diff, and deploy the complete packaged AWS application after confirmation (--yes skips the prompt and is required without a terminal). Domain flags are saved for later runs. HTTPS is required unless --allow-http is explicitly selected for a disposable smoke test.
+.TP
+.B rotate-token aws
+Replace the management capability in Secrets Manager, save it locally, and force a new ECS deployment so every task uses it.
 .TP
 .B status aws
 Query the authenticated read-only AWS management status endpoint using the protected local credential.

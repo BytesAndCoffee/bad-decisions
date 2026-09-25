@@ -224,8 +224,9 @@ bad-decisions setup aws --profile decisions \
   --certificate-arn "$ACM_CERTIFICATE_ARN" \
   --domain-name bad-decisions.example.com \
   --hosted-zone-id "$ROUTE53_ZONE_ID"
-bad-decisions deploy aws
+bad-decisions deploy aws        # builds the image, shows the diff, asks to deploy
 bad-decisions status aws
+bad-decisions rotate-token aws  # new management token, restarts tasks
 bad-decisions pack publish-aws ./my-pack.carddeck
 bad-decisions pack list-aws
 bad-decisions consequences report aws

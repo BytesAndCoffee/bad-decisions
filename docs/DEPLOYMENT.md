@@ -96,12 +96,24 @@ bad-decisions deploy aws
 bad-decisions status aws
 ~~~
 
-`setup aws` verifies the AWS identity, creates or reuses an immutable ECR
-repository, rotates the management capability in Secrets Manager, builds and
-pushes the exact installed package version, bootstraps CDK, and writes local
-state to `~/.bad-decisions.env` with mode `0600`. Use `--source` only to test
-an unreleased checkout. Invalid HTTPS/DNS arguments are rejected before AWS is
-changed.
+`setup aws` is one-time account preparation and is safe to repeat. It verifies
+the AWS identity, creates or reuses an immutable ECR repository, creates the
+management token in Secrets Manager only if the secret does not exist,
+bootstraps CDK, and merges its settings into `~/.bad-decisions.env` (mode
+`0600`) without discarding deploy outputs or saved domain settings. It never
+rotates an existing token. Invalid HTTPS/DNS arguments are rejected before AWS
+is changed.
+
+`deploy aws` runs for every release. It builds and pushes an image of the exact
+installed package version (so the image always matches the CDK stack that the
+same package defines), shows `cdk diff`, asks for confirmation, then deploys.
+Pass `--yes` to deploy unattended (required without a terminal), `--image` to
+redeploy an already-pushed image, or `--source` to test an unreleased checkout.
+Domain flags given to either command are saved for later runs.
+
+`rotate-token aws` replaces the management token in Secrets Manager, saves it
+locally, and forces a new ECS deployment so every task picks it up together.
+The old token keeps working until the old tasks stop.
 
 `deploy aws` provisions the packaged CDK stack:
 

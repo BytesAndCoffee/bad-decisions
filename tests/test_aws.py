@@ -50,31 +50,146 @@ def test_s3_pack_size_limit(monkeypatch):
         load_s3_packs("bucket")
 
 
-def test_deploy_aws_uses_packaged_cdk_app(tmp_path, monkeypatch):
+BASE_ENV = "AWS_PROFILE=decisions\nAWS_DEFAULT_REGION=ca-west-1\nBAD_DECISIONS_AWS_SECRET_ID=secret\nBAD_DECISIONS_REPOSITORY_NAME=bad-decisions\nBAD_DECISIONS_ALLOW_HTTP=1\n"
+STACK_OUTPUTS = {"BadDecisionsHybrid": {"LoadBalancerDnsName": "example.invalid", "PublicApiUrl": "http://example.invalid", "PackBucketName": "packs-bucket", "PackDistributionDomainName": "packs.example.invalid", "ClusterName": "cluster", "ServiceName": "service", "ConsequencesTableName": "table"}}
+
+
+@pytest.fixture
+def aws_env(tmp_path, monkeypatch):
     env_file = tmp_path / ".bad-decisions.env"
-    env_file.write_text("AWS_PROFILE=decisions\nAWS_DEFAULT_REGION=ca-west-1\nBAD_DECISIONS_AWS_SECRET_ID=secret\nBAD_DECISIONS_IMAGE=example.invalid/bad-decisions:tag\nBAD_DECISIONS_REPOSITORY_NAME=bad-decisions\nBAD_DECISIONS_ALLOW_HTTP=1\n")
     monkeypatch.setattr(operations, "AWS_ENV", env_file)
-    completed = Mock(returncode=0)
+    monkeypatch.setattr(operations.shutil, "which", lambda name: f"/usr/bin/{name}")
+    return env_file
+
+
+def _fake_aws(secret_exists=True):
+    """A _run stand-in that answers the AWS/CDK calls setup and deploy make."""
     def run(command, **_kwargs):
-        output_path = Path(command[command.index("--outputs-file") + 1])
-        output_path.write_text(json.dumps({"BadDecisionsHybrid": {"LoadBalancerDnsName": "example.invalid", "PublicApiUrl": "http://example.invalid", "PackBucketName": "packs-bucket", "PackDistributionDomainName": "packs.example.invalid", "ClusterName": "cluster", "ServiceName": "service", "ConsequencesTableName": "table"}}))
-        return completed
-    run_mock = Mock(side_effect=run)
+        if command[:2] == ["aws", "sts"]:
+            return Mock(returncode=0, stdout="123456789012\n", stderr="")
+        if command[:3] == ["aws", "secretsmanager", "describe-secret"]:
+            return Mock(returncode=0 if secret_exists else 254, stdout="", stderr="")
+        if "--outputs-file" in command:
+            Path(command[command.index("--outputs-file") + 1]).write_text(json.dumps(STACK_OUTPUTS))
+        return Mock(returncode=0, stdout="", stderr="")
+    return Mock(side_effect=run)
+
+
+def _commands(run_mock):
+    return [call.args[0] for call in run_mock.call_args_list]
+
+
+def test_deploy_aws_uses_packaged_cdk_app(aws_env, monkeypatch):
+    aws_env.write_text(BASE_ENV)
+    run_mock = _fake_aws()
     monkeypatch.setattr(operations, "_run", run_mock)
     seed = Mock(return_value=0)
     monkeypatch.setattr(operations, "_seed_bundled_aws", seed)
-    assert operations.deploy_aws([]) == 0
+    assert operations.deploy_aws(["--image", "example.invalid/bad-decisions:tag", "--yes"]) == 0
     command = run_mock.call_args.args[0]
     assert "bad_decisions.aws_cdk_app" in command[command.index("-a") + 1]
     assert run_mock.call_args.kwargs["env"]["BAD_DECISIONS_IMAGE"].endswith(":tag")
     assert run_mock.call_args.kwargs["env"]["BAD_DECISIONS_DESIRED_COUNT"] == "1"
     assert run_mock.call_args.kwargs["env"]["BAD_DECISIONS_MAX_COUNT"] == "2"
-    saved = env_file.read_text()
+    saved = aws_env.read_text()
     assert "BAD_DECISIONS_AWS_ENDPOINT=http://example.invalid" in saved
     assert "BAD_DECISIONS_AWS_PACK_BUCKET=packs-bucket" in saved
     assert "BAD_DECISIONS_AWS_PACK_INDEX=https://packs.example.invalid/packs/index" in saved
     assert "BAD_DECISIONS_AWS_CONSEQUENCES_TABLE=table" in saved
+    assert "BAD_DECISIONS_IMAGE=example.invalid/bad-decisions:tag" in saved
     seed.assert_called_once()
+
+
+def test_deploy_aws_builds_image_and_diffs_before_deploying(aws_env, monkeypatch):
+    aws_env.write_text(BASE_ENV)
+    run_mock = _fake_aws()
+    monkeypatch.setattr(operations, "_run", run_mock)
+    monkeypatch.setattr(operations, "_seed_bundled_aws", Mock(return_value=0))
+    publish = Mock(return_value="example.invalid/bad-decisions:new")
+    monkeypatch.setattr(operations, "_publish_image", publish)
+    assert operations.deploy_aws(["--yes"]) == 0
+    publish.assert_called_once()
+    cdk_actions = [c[c.index("-a") + 2] for c in _commands(run_mock) if "aws-cdk" in c]
+    assert cdk_actions == ["diff", "deploy"]
+    assert "BAD_DECISIONS_IMAGE=example.invalid/bad-decisions:new" in aws_env.read_text()
+
+
+def test_deploy_aws_declined_confirmation_deploys_nothing(aws_env, monkeypatch):
+    aws_env.write_text(BASE_ENV)
+    run_mock = _fake_aws()
+    monkeypatch.setattr(operations, "_run", run_mock)
+    monkeypatch.setattr(operations.sys.stdin, "isatty", lambda: True, raising=False)
+    assert operations.deploy_aws(["--image", "example.invalid/bad-decisions:tag"], confirm=lambda _prompt: "n") == 1
+    assert not any("deploy" in c for c in _commands(run_mock) if "aws-cdk" in c)
+    assert "BAD_DECISIONS_AWS_ENDPOINT" not in aws_env.read_text()
+
+
+def test_deploy_aws_requires_yes_without_terminal(aws_env, monkeypatch):
+    aws_env.write_text(BASE_ENV)
+    monkeypatch.setattr(operations.sys.stdin, "isatty", lambda: False, raising=False)
+    with pytest.raises(SystemExit):
+        operations.deploy_aws(["--image", "example.invalid/bad-decisions:tag"])
+
+
+def test_deploy_aws_persists_domain_flags(aws_env, monkeypatch):
+    aws_env.write_text(BASE_ENV.replace("BAD_DECISIONS_ALLOW_HTTP=1\n", ""))
+    monkeypatch.setattr(operations, "_run", _fake_aws())
+    monkeypatch.setattr(operations, "_seed_bundled_aws", Mock(return_value=0))
+    flags = ["--certificate-arn", "arn:cert", "--domain-name", "cards.example.invalid", "--hosted-zone-id", "Z123"]
+    assert operations.deploy_aws(["--image", "example.invalid/bad-decisions:tag", "--yes", *flags]) == 0
+    assert operations.deploy_aws(["--image", "example.invalid/bad-decisions:tag", "--yes"]) == 0
+    saved = aws_env.read_text()
+    assert "BAD_DECISIONS_CERTIFICATE_ARN=arn:cert" in saved
+    assert "BAD_DECISIONS_DOMAIN_NAME=cards.example.invalid" in saved
+
+
+def test_setup_aws_keeps_existing_token_and_deploy_state(aws_env, monkeypatch):
+    aws_env.write_text(BASE_ENV + "BAD_DECISIONS_AWS_MANAGEMENT_TOKEN=kept\nBAD_DECISIONS_AWS_ENDPOINT=https://api.example.invalid\n")
+    run_mock = _fake_aws(secret_exists=True)
+    monkeypatch.setattr(operations, "_run", run_mock)
+    assert operations.setup_aws(["--secret-id", "secret"]) == 0
+    assert not any(c[:2] == ["aws", "secretsmanager"] and c[2] != "describe-secret" for c in _commands(run_mock))
+    assert not any(c[0] == "docker" for c in _commands(run_mock))
+    saved = aws_env.read_text()
+    assert "BAD_DECISIONS_AWS_MANAGEMENT_TOKEN=kept" in saved
+    assert "BAD_DECISIONS_AWS_ENDPOINT=https://api.example.invalid" in saved
+    assert "BAD_DECISIONS_ALLOW_HTTP=1" in saved
+
+
+def test_setup_aws_creates_missing_secret(aws_env, monkeypatch):
+    run_mock = _fake_aws(secret_exists=False)
+    monkeypatch.setattr(operations, "_run", run_mock)
+    assert operations.setup_aws(["--secret-id", "secret"]) == 0
+    assert any(c[:3] == ["aws", "secretsmanager", "create-secret"] for c in _commands(run_mock))
+    assert "BAD_DECISIONS_AWS_MANAGEMENT_TOKEN=" in aws_env.read_text()
+
+
+def test_setup_aws_does_not_rotate_unsaved_existing_secret(aws_env, monkeypatch, capsys):
+    run_mock = _fake_aws(secret_exists=True)
+    monkeypatch.setattr(operations, "_run", run_mock)
+    assert operations.setup_aws(["--secret-id", "secret"]) == 0
+    assert not any(c[:3] == ["aws", "secretsmanager", "put-secret-value"] for c in _commands(run_mock))
+    assert "rotate-token aws" in capsys.readouterr().err
+    assert "BAD_DECISIONS_AWS_MANAGEMENT_TOKEN" not in aws_env.read_text()
+
+
+def test_rotate_token_aws_updates_secret_and_restarts_tasks(aws_env, monkeypatch):
+    aws_env.write_text(BASE_ENV + "BAD_DECISIONS_AWS_MANAGEMENT_TOKEN=old\nBAD_DECISIONS_AWS_CLUSTER=cluster\nBAD_DECISIONS_AWS_SERVICE=service\n")
+    run_mock = _fake_aws()
+    monkeypatch.setattr(operations, "_run", run_mock)
+    reload = Mock()
+    monkeypatch.setattr("bad_decisions.aws_archive.force_runtime_reload", reload)
+    assert operations.run(["rotate-token", "aws"]) == 0
+    assert any(c[:3] == ["aws", "secretsmanager", "put-secret-value"] for c in _commands(run_mock))
+    assert "BAD_DECISIONS_AWS_MANAGEMENT_TOKEN=old" not in aws_env.read_text()
+    reload.assert_called_once_with(cluster="cluster", service="service", profile="decisions", region="ca-west-1")
+
+
+def test_rotate_token_aws_leaves_env_alone_when_secret_write_fails(aws_env, monkeypatch):
+    aws_env.write_text(BASE_ENV + "BAD_DECISIONS_AWS_MANAGEMENT_TOKEN=old\n")
+    monkeypatch.setattr(operations, "_run", Mock(return_value=Mock(returncode=1)))
+    assert operations.rotate_token_aws([]) == 1
+    assert "BAD_DECISIONS_AWS_MANAGEMENT_TOKEN=old" in aws_env.read_text()
 
 
 def test_status_aws_uses_saved_token(tmp_path, monkeypatch, capsys):

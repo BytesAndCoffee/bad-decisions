@@ -123,3 +123,7 @@ Tracks fixes from the 2026-09-19 code review. Tick an item when its fix and test
 2026-09-24 - release - Prepared lockstep 1.4.0 for private raw-text analytics, expanded TUI drill-downs, and documentation reorganization.
 
 2026-09-24 - release - Fixed the release-workflow test path after moving long-form documentation into docs/; prepared lockstep 1.4.1.
+
+2026-09-24 - aws - Split AWS deploy stages: setup aws is one-time and never rotates an existing token or discards saved state; deploy aws builds the image for the installed version, shows cdk diff, and asks before deploying (--yes for unattended); domain flags persist; new rotate-token aws rotates the secret and restarts ECS tasks. Tests: tests/test_aws.py.
+
+2026-09-24 - release - Prepared lockstep 1.6.1 for the split AWS setup/deploy stages and rotate-token aws.
