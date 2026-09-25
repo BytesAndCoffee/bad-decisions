@@ -127,3 +127,7 @@ Tracks fixes from the 2026-09-19 code review. Tick an item when its fix and test
 2026-09-24 - aws - Split AWS deploy stages: setup aws is one-time and never rotates an existing token or discards saved state; deploy aws builds the image for the installed version, shows cdk diff, and asks before deploying (--yes for unattended); domain flags persist; new rotate-token aws rotates the secret and restarts ECS tasks. Tests: tests/test_aws.py.
 
 2026-09-24 - release - Prepared lockstep 1.6.1 for the split AWS setup/deploy stages and rotate-token aws.
+
+2026-09-24 - aws - Minimum-cost AWS stack: HTTP API + VPC link + Cloud Map replaces the ALB, public-subnet tasks replace interface endpoints, 0.25 vCPU/512 MiB Fargate Spot tasks (--capacity on-demand to opt out), API throttling, Python container health check, 30-day noncurrent S3 expiry, 10-image ECR retention, and bootstrap only when missing so setup aws works without IAM permissions. Tests: tests/test_aws.py (CLI and stack synthesis).
+
+2026-09-24 - release - Prepared lockstep 1.6.2 for the minimum-cost AWS stack.

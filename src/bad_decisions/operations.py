@@ -79,6 +79,9 @@ def _aws_env(profile: str, region: str) -> dict[str, str]:
     return {**os.environ, "AWS_PROFILE": profile, "AWS_DEFAULT_REGION": region}
 
 
+# Keep the newest images so --image redeploys and rollbacks have something to use.
+_ECR_LIFECYCLE = json.dumps({"rules": [{"rulePriority": 1, "description": "Keep the newest 10 images", "selection": {"tagStatus": "any", "countType": "imageCountMoreThan", "countNumber": 10}, "action": {"type": "expire"}}]})
+
 _DOMAIN_KEYS = {
     "certificate_arn": "BAD_DECISIONS_CERTIFICATE_ARN",
     "domain_name": "BAD_DECISIONS_DOMAIN_NAME",
@@ -90,7 +93,7 @@ _DOMAIN_KEYS = {
 def _add_domain_arguments(parser: argparse.ArgumentParser) -> None:
     for name in _DOMAIN_KEYS:
         parser.add_argument(f"--{name.replace('_', '-')}")
-    parser.add_argument("--allow-http", action="store_true", help="permit HTTP for a disposable smoke test")
+    parser.add_argument("--allow-http", action="store_true", help="skip the custom domain and use the generated API URL, for a disposable smoke test")
 
 
 def _merge_domain_arguments(args: argparse.Namespace, values: dict[str, str]) -> None:
@@ -119,6 +122,7 @@ def setup_aws(argv: list[str]) -> int:
     parser.add_argument("--region", default=os.getenv("AWS_DEFAULT_REGION", "ca-west-1"))
     parser.add_argument("--repository", default="bad-decisions")
     parser.add_argument("--secret-id", default="bad-decisions/management-token")
+    parser.add_argument("--bootstrap", action="store_true", help="run cdk bootstrap even if the CDKToolkit stack exists (needs IAM permissions)")
     _add_domain_arguments(parser)
     args = parser.parse_args(argv)
     if args.certificate_arn and (not args.domain_name or not args.hosted_zone_id):
@@ -133,6 +137,9 @@ def setup_aws(argv: list[str]) -> int:
     if described.returncode:
         created = _run(["aws", "ecr", "create-repository", "--repository-name", args.repository, "--image-tag-mutability", "IMMUTABLE", "--image-scanning-configuration", "scanOnPush=true"], env=env)
         if created.returncode: return created.returncode
+    lifecycle = _run(["aws", "ecr", "put-lifecycle-policy", "--repository-name", args.repository, "--lifecycle-policy-text", _ECR_LIFECYCLE], env=env, capture=True)
+    if lifecycle.returncode:
+        print(lifecycle.stderr.strip(), file=sys.stderr); return lifecycle.returncode
 
     values = _read_aws_env()
     # Never rotate an existing token here: running tasks would keep the old one. Use rotate-token aws.
@@ -146,8 +153,12 @@ def setup_aws(argv: list[str]) -> int:
         values.pop("BAD_DECISIONS_AWS_MANAGEMENT_TOKEN", None)
         missing_token = True
 
-    bootstrap = _run(["npx", "--yes", "aws-cdk", "bootstrap", f"aws://{account}/{args.region}"], env=env)
-    if bootstrap.returncode: return bootstrap.returncode
+    # Bootstrapping creates IAM roles, so only repeat it on request: day-to-day deploy
+    # identities (for example PowerUserAccess) cannot, and do not need to.
+    bootstrapped = _run(["aws", "cloudformation", "describe-stacks", "--stack-name", "CDKToolkit"], env=env, capture=True).returncode == 0
+    if args.bootstrap or not bootstrapped:
+        bootstrap = _run(["npx", "--yes", "aws-cdk", "bootstrap", f"aws://{account}/{args.region}"], env=env)
+        if bootstrap.returncode: return bootstrap.returncode
     values.update({"AWS_PROFILE": args.profile, "AWS_DEFAULT_REGION": args.region, "BAD_DECISIONS_AWS_SECRET_ID": args.secret_id, "BAD_DECISIONS_REPOSITORY_NAME": args.repository, "BAD_DECISIONS_AWS_ACCOUNT": account})
     _merge_domain_arguments(args, values)
     _write_aws_env(values)
@@ -246,6 +257,7 @@ def deploy_aws(argv: list[str], *, confirm=input) -> int:
     parser.add_argument("--yes", action="store_true", help="deploy without asking after the diff")
     parser.add_argument("--desired-count", type=int, default=1)
     parser.add_argument("--max-count", type=int, default=2)
+    parser.add_argument("--capacity", choices=("spot", "on-demand"), help="Fargate capacity (saved; default spot, about 70%% cheaper but interruptible)")
     _add_domain_arguments(parser)
     args = parser.parse_args(argv)
     if args.desired_count < 1 or args.max_count < args.desired_count:
@@ -258,6 +270,8 @@ def deploy_aws(argv: list[str], *, confirm=input) -> int:
     if not values:
         print(f"Missing {AWS_ENV}; run bad-decisions setup aws first.", file=sys.stderr); return 2
     _merge_domain_arguments(args, values)
+    if args.capacity:
+        values["BAD_DECISIONS_CAPACITY"] = args.capacity
     if not values.get("BAD_DECISIONS_CERTIFICATE_ARN") and values.get("BAD_DECISIONS_ALLOW_HTTP") != "1":
         parser.error("HTTPS requires --certificate-arn; use --allow-http only for a disposable smoke test")
     if values.get("BAD_DECISIONS_CERTIFICATE_ARN") and (not values.get("BAD_DECISIONS_DOMAIN_NAME") or not values.get("BAD_DECISIONS_HOSTED_ZONE_ID")):

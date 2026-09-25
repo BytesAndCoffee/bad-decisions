@@ -232,7 +232,8 @@ bad-decisions pack list-aws
 bad-decisions consequences report aws
 ~~~
 
-AWS mode creates private Fargate tasks, an HTTPS ALB and Route 53 alias, a
+AWS mode creates minimum-size Fargate Spot tasks behind an API Gateway HTTP
+API with an HTTPS custom domain and Route 53 alias (no load balancer), a
 private versioned S3 bucket, a CloudFront HTTPS pack distribution, an
 event-driven dynamic CardDeck index, DynamoDB-backed Consequences, Secrets
 Manager injection, autoscaling, logs, and alarms. Runtime pack JSON, public

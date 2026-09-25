@@ -84,7 +84,8 @@ the source tree, so fix or revert the code first.
 This is a complete alternative to the self-hosted deployment, not an extension
 of it. Install the `bad-decisions` package, AWS CLI v2, Docker Engine, and
 Node/npm on the management workstation. Authenticate with temporary AWS
-credentials, then run:
+credentials from `aws login --profile decisions` as an IAM user (never the
+root user and never long-term access keys), then run:
 
 ~~~bash
 bad-decisions setup aws --profile decisions --region ca-west-1 \
@@ -99,7 +100,9 @@ bad-decisions status aws
 `setup aws` is one-time account preparation and is safe to repeat. It verifies
 the AWS identity, creates or reuses an immutable ECR repository, creates the
 management token in Secrets Manager only if the secret does not exist,
-bootstraps CDK, and merges its settings into `~/.bad-decisions.env` (mode
+bootstraps CDK only if the `CDKToolkit` stack is missing (or with
+`--bootstrap`, which needs IAM permissions), keeps the newest 10 ECR images,
+and merges its settings into `~/.bad-decisions.env` (mode
 `0600`) without discarding deploy outputs or saved domain settings. It never
 rotates an existing token. Invalid HTTPS/DNS arguments are rejected before AWS
 is changed.
@@ -109,7 +112,8 @@ installed package version (so the image always matches the CDK stack that the
 same package defines), shows `cdk diff`, asks for confirmation, then deploys.
 Pass `--yes` to deploy unattended (required without a terminal), `--image` to
 redeploy an already-pushed image, or `--source` to test an unreleased checkout.
-Domain flags given to either command are saved for later runs.
+Domain flags given to either command, and `--capacity spot|on-demand`, are
+saved for later runs.
 
 `rotate-token aws` replaces the management token in Secrets Manager, saves it
 locally, and forces a new ECS deployment so every task picks it up together.
@@ -117,16 +121,22 @@ The old token keeps working until the old tasks stop.
 
 `deploy aws` provisions the packaged CDK stack:
 
-- isolated ECS/Fargate API tasks behind an ALB;
-- ACM HTTPS plus a Route 53 alias whose hostname matches the certificate;
-- a private, encrypted, versioned S3 pack/archive bucket;
+- the smallest Fargate API tasks (0.25 vCPU, 512 MiB), on Fargate Spot unless
+  `--capacity on-demand`, with a Python container health check;
+- an API Gateway HTTP API (throttled to 50 requests/s, burst 100) that reaches
+  the tasks through a VPC link and Cloud Map; the tasks' security group admits
+  only the VPC link;
+- ACM HTTPS on an API Gateway custom domain plus a Route 53 alias whose
+  hostname matches the certificate (the generated endpoint is then disabled);
+- a private, encrypted, versioned S3 pack/archive bucket that expires
+  superseded object versions after 30 days;
 - a CloudFront distribution exposing only `/packs/*` over HTTPS;
 - a Lambda-generated `/packs/index`, rebuilt from trusted `catalog/*.json`
   metadata whenever a pack is published;
 - DynamoDB Consequences storage with on-demand billing, TTL, encryption, and
   point-in-time recovery;
-- Secrets Manager injection, retained logs, health alarms, autoscaling, S3 and
-  DynamoDB gateway endpoints, and single-AZ ECR/Logs/Secrets endpoints.
+- Secrets Manager injection, retained logs, API and indexer error alarms, CPU
+  autoscaling, and free S3 and DynamoDB gateway endpoints.
 
 The S3 layout deliberately separates concerns:
 
@@ -145,13 +155,20 @@ catalog with `bad-decisions pack list-aws`. Owner analytics are available with
 The public API and archive paths use HTTPS. Local mutations use the AWS SDK and
 the caller's temporary IAM credentials over AWS HTTPS endpoints. The hidden
 read-only status endpoint uses the protected local management capability;
-secrets are never printed. `--allow-http` is only for disposable smoke tests
-and bypasses the production certificate/domain requirement.
+secrets are never printed. `--allow-http` is only for disposable smoke tests:
+it skips the custom domain and serves the generated `execute-api` URL (which is
+still HTTPS).
 
-The low-cost defaults are one task scaling to two, DynamoDB on-demand, no NAT
-gateway, no Container Insights, and one-AZ interface endpoints. ALB, Fargate,
-CloudFront traffic, and interface endpoints still incur charges; the
-single-AZ endpoints also reduce endpoint resilience and can add cross-AZ
-transfer charges. S3, DynamoDB, and CloudFront replace Garage only in AWS mode.
+The stack is sized for the lowest idle cost and scales horizontally: one task
+scaling to two by CPU (raise it with `--max-count`), DynamoDB on-demand, and no
+load balancer, NAT gateway, interface endpoints, or Container Insights. Tasks
+run in public subnets with a public IP so they can reach ECR, CloudWatch Logs,
+and Secrets Manager without paid endpoints; nothing reaches them except the VPC
+link. The fixed monthly cost is roughly the task, its public IPv4 address, and
+the Cloud Map private DNS zone; API Gateway, CloudFront, S3, and DynamoDB are
+billed per request. Spot tasks can be interrupted with two minutes' notice and
+are replaced automatically; use `--capacity on-demand` if that brief downtime
+matters.
+S3, DynamoDB, and CloudFront replace Garage only in AWS mode.
 The original systemd/nginx, SQLite, and optional Garage deployment remain the
 self-hosted mode.

@@ -62,9 +62,11 @@ def aws_env(tmp_path, monkeypatch):
     return env_file
 
 
-def _fake_aws(secret_exists=True):
+def _fake_aws(secret_exists=True, bootstrapped=True):
     """A _run stand-in that answers the AWS/CDK calls setup and deploy make."""
     def run(command, **_kwargs):
+        if command[:3] == ["aws", "cloudformation", "describe-stacks"]:
+            return Mock(returncode=0 if bootstrapped else 254, stdout="", stderr="")
         if command[:2] == ["aws", "sts"]:
             return Mock(returncode=0, stdout="123456789012\n", stderr="")
         if command[:3] == ["aws", "secretsmanager", "describe-secret"]:
@@ -190,6 +192,106 @@ def test_rotate_token_aws_leaves_env_alone_when_secret_write_fails(aws_env, monk
     monkeypatch.setattr(operations, "_run", Mock(return_value=Mock(returncode=1)))
     assert operations.rotate_token_aws([]) == 1
     assert "BAD_DECISIONS_AWS_MANAGEMENT_TOKEN=old" in aws_env.read_text()
+
+
+def test_setup_aws_skips_bootstrap_when_already_bootstrapped(aws_env, monkeypatch):
+    run_mock = _fake_aws(bootstrapped=True)
+    monkeypatch.setattr(operations, "_run", run_mock)
+    assert operations.setup_aws(["--secret-id", "secret"]) == 0
+    assert not any("bootstrap" in c for c in _commands(run_mock))
+
+
+@pytest.mark.parametrize(("bootstrapped", "flags"), [(False, []), (True, ["--bootstrap"])])
+def test_setup_aws_bootstraps_when_missing_or_forced(aws_env, monkeypatch, bootstrapped, flags):
+    run_mock = _fake_aws(bootstrapped=bootstrapped)
+    monkeypatch.setattr(operations, "_run", run_mock)
+    assert operations.setup_aws(["--secret-id", "secret", *flags]) == 0
+    assert any("bootstrap" in c for c in _commands(run_mock))
+
+
+def test_setup_aws_limits_retained_images(aws_env, monkeypatch):
+    run_mock = _fake_aws()
+    monkeypatch.setattr(operations, "_run", run_mock)
+    assert operations.setup_aws(["--secret-id", "secret"]) == 0
+    policy = next(c for c in _commands(run_mock) if c[:3] == ["aws", "ecr", "put-lifecycle-policy"])
+    rule = json.loads(policy[policy.index("--lifecycle-policy-text") + 1])["rules"][0]
+    assert rule["selection"]["countType"] == "imageCountMoreThan"
+    assert rule["action"]["type"] == "expire"
+
+
+def test_deploy_aws_persists_capacity(aws_env, monkeypatch):
+    aws_env.write_text(BASE_ENV)
+    run_mock = _fake_aws()
+    monkeypatch.setattr(operations, "_run", run_mock)
+    monkeypatch.setattr(operations, "_seed_bundled_aws", Mock(return_value=0))
+    assert operations.deploy_aws(["--image", "example.invalid/bad-decisions:tag", "--yes", "--capacity", "on-demand"]) == 0
+    assert run_mock.call_args.kwargs["env"]["BAD_DECISIONS_CAPACITY"] == "on-demand"
+    assert "BAD_DECISIONS_CAPACITY=on-demand" in aws_env.read_text()
+
+
+def _synth(monkeypatch, **env):
+    import aws_cdk as cdk
+    from aws_cdk.assertions import Template
+    from bad_decisions.aws_stack import BadDecisionsAwsStack
+    settings = {"BAD_DECISIONS_IMAGE": "123456789012.dkr.ecr.ca-west-1.amazonaws.com/bad-decisions:tag", "BAD_DECISIONS_AWS_SECRET_ID": "secret", "BAD_DECISIONS_ALLOW_HTTP": "1"}
+    settings.update(env)
+    for key in ("BAD_DECISIONS_CERTIFICATE_ARN", "BAD_DECISIONS_DOMAIN_NAME", "BAD_DECISIONS_HOSTED_ZONE_ID", "BAD_DECISIONS_CAPACITY"):
+        monkeypatch.delenv(key, raising=False)
+    for key, value in settings.items():
+        if value is None: monkeypatch.delenv(key, raising=False)
+        else: monkeypatch.setenv(key, value)
+    app = cdk.App()
+    return Template.from_stack(BadDecisionsAwsStack(app, "Test", env=cdk.Environment(account="123456789012", region="ca-west-1")))
+
+
+def test_stack_has_no_fixed_cost_networking(monkeypatch):
+    template = _synth(monkeypatch)
+    for resource in ("AWS::ElasticLoadBalancingV2::LoadBalancer", "AWS::EC2::NatGateway"):
+        template.resource_count_is(resource, 0)
+    endpoints = template.find_resources("AWS::EC2::VPCEndpoint")
+    assert endpoints and all(e["Properties"].get("VpcEndpointType", "Gateway") == "Gateway" for e in endpoints.values())
+    template.has_resource_properties("AWS::ECS::TaskDefinition", {"Cpu": "256", "Memory": "512"})
+
+
+def test_stack_runs_spot_by_default_and_on_demand_on_request(monkeypatch):
+    from aws_cdk.assertions import Match
+    _synth(monkeypatch).has_resource_properties("AWS::ECS::Service", {"CapacityProviderStrategy": [Match.object_like({"CapacityProvider": "FARGATE_SPOT"})]})
+    _synth(monkeypatch, BAD_DECISIONS_CAPACITY="on-demand").has_resource_properties("AWS::ECS::Service", {"CapacityProviderStrategy": [Match.object_like({"CapacityProvider": "FARGATE"})]})
+    with pytest.raises(ValueError, match="BAD_DECISIONS_CAPACITY"):
+        _synth(monkeypatch, BAD_DECISIONS_CAPACITY="cheap")
+
+
+def test_stack_tasks_accept_traffic_only_from_the_vpc_link(monkeypatch):
+    template = _synth(monkeypatch)
+    ingress = list(template.find_resources("AWS::EC2::SecurityGroupIngress").values())
+    assert len(ingress) == 1
+    rule = ingress[0]["Properties"]
+    assert (rule["FromPort"], rule["ToPort"], rule["IpProtocol"]) == (8000, 8000, "tcp")
+    assert "SourceSecurityGroupId" in rule and "CidrIp" not in rule
+    for group in template.find_resources("AWS::EC2::SecurityGroup").values():
+        assert not group["Properties"].get("SecurityGroupIngress")
+    template.has_resource_properties("AWS::ECS::Service", {"NetworkConfiguration": {"AwsvpcConfiguration": {"AssignPublicIp": "ENABLED"}}})
+
+
+def test_stack_container_health_check_uses_python(monkeypatch):
+    template = _synth(monkeypatch)
+    definition = next(iter(template.find_resources("AWS::ECS::TaskDefinition").values()))
+    command = definition["Properties"]["ContainerDefinitions"][0]["HealthCheck"]["Command"]
+    assert command[:2] == ["CMD", "python"] and "/healthz" in command[-1]
+    assert "curl" not in json.dumps(command)
+
+
+def test_stack_custom_domain_disables_generated_endpoint(monkeypatch):
+    template = _synth(monkeypatch, BAD_DECISIONS_ALLOW_HTTP=None, BAD_DECISIONS_CERTIFICATE_ARN="arn:aws:acm:ca-west-1:123456789012:certificate/x", BAD_DECISIONS_DOMAIN_NAME="cards.example.invalid", BAD_DECISIONS_HOSTED_ZONE_ID="Z123")
+    template.has_resource_properties("AWS::ApiGatewayV2::Api", {"DisableExecuteApiEndpoint": True})
+    template.has_resource_properties("AWS::ApiGatewayV2::DomainName", {"DomainName": "cards.example.invalid"})
+    template.resource_count_is("AWS::Route53::RecordSet", 1)
+    template.has_resource_properties("AWS::ApiGatewayV2::Stage", {"DefaultRouteSettings": {"ThrottlingRateLimit": 50, "ThrottlingBurstLimit": 100}})
+
+
+def test_stack_expires_old_pack_versions(monkeypatch):
+    from aws_cdk.assertions import Match
+    _synth(monkeypatch).has_resource_properties("AWS::S3::Bucket", {"LifecycleConfiguration": {"Rules": [Match.object_like({"NoncurrentVersionExpiration": {"NoncurrentDays": 30}})]}})
 
 
 def test_status_aws_uses_saved_token(tmp_path, monkeypatch, capsys):

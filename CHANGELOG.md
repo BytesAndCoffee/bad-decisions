@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [1.6.2]
+
+### Changed
+
+- Cut the AWS stack's idle cost to the minimum while keeping horizontal scaling: an API Gateway HTTP API with a VPC link and Cloud Map replaces the ALB, tasks run in public subnets (admitting only the VPC link) instead of behind four interface endpoints, and tasks are the smallest Fargate size (0.25 vCPU, 512 MiB) on Fargate Spot by default. `deploy aws --capacity on-demand` opts out of Spot and is saved.
+- The API is throttled to 50 requests/s (burst 100), and a custom domain disables the generated `execute-api` endpoint.
+- Tasks report health through a Python container health check, since no load balancer probes them.
+- `setup aws` bootstraps CDK only when the `CDKToolkit` stack is missing (or with `--bootstrap`), so it runs as a non-root IAM user without IAM permissions. It also keeps only the newest 10 ECR images.
+- Superseded S3 object versions expire after 30 days.
+
 ## [1.6.1]
 
 ### Changed

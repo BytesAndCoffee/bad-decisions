@@ -7,11 +7,12 @@ from aws_cdk import (
     Aws, CfnOutput, Duration, RemovalPolicy, Stack,
     aws_certificatemanager as acm, aws_cloudfront as cloudfront,
     aws_cloudfront_origins as origins, aws_cloudwatch as cloudwatch,
-    aws_dynamodb as dynamodb, aws_ec2 as ec2, aws_ecr as ecr,
-    aws_ecs as ecs, aws_elasticloadbalancingv2 as elbv2,
+    aws_apigatewayv2 as apigwv2, aws_apigatewayv2_integrations as apigwv2_integrations,
+    aws_dynamodb as dynamodb, aws_ec2 as ec2, aws_ecr as ecr, aws_ecs as ecs,
     aws_lambda as lambda_, aws_lambda_event_sources as lambda_events,
     aws_logs as logs, aws_route53 as route53, aws_route53_targets as route53_targets,
-    aws_s3 as s3, aws_secretsmanager as secretsmanager, aws_sqs as sqs,
+    aws_s3 as s3, aws_secretsmanager as secretsmanager, aws_servicediscovery as servicediscovery,
+    aws_sqs as sqs,
 )
 from constructs import Construct
 
@@ -23,33 +24,39 @@ def _integer(name: str, default: int) -> int:
     return value
 
 
+CAPACITY_PROVIDERS = {"spot": "FARGATE_SPOT", "on-demand": "FARGATE"}
+
+
 class BadDecisionsAwsStack(Stack):
-    """Complete AWS deployment; the Linux/systemd deployment remains independent."""
+    """Complete AWS deployment; the Linux/systemd deployment remains independent.
+
+    Sized for the lowest idle cost: no load balancer, NAT gateway, or interface
+    endpoints. An HTTP API reaches the smallest Fargate tasks (Spot by default)
+    through a VPC link and Cloud Map, and CPU autoscaling adds tasks under load.
+    """
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs: object) -> None:
         super().__init__(scope, construct_id, **kwargs)
+        capacity = os.getenv("BAD_DECISIONS_CAPACITY", "spot")
+        if capacity not in CAPACITY_PROVIDERS:
+            raise ValueError(f"BAD_DECISIONS_CAPACITY must be one of {', '.join(CAPACITY_PROVIDERS)}")
+        # Public subnets only: tasks reach ECR, Logs, and Secrets Manager over the internet
+        # gateway, and their security group admits only the API's VPC link.
         vpc = ec2.Vpc(
             self, "Vpc", max_azs=2, nat_gateways=0, restrict_default_security_group=True,
-            subnet_configuration=[
-                ec2.SubnetConfiguration(name="public", subnet_type=ec2.SubnetType.PUBLIC),
-                ec2.SubnetConfiguration(name="compute", subnet_type=ec2.SubnetType.PRIVATE_ISOLATED),
-            ],
+            subnet_configuration=[ec2.SubnetConfiguration(name="public", subnet_type=ec2.SubnetType.PUBLIC)],
         )
         vpc.add_gateway_endpoint("S3Endpoint", service=ec2.GatewayVpcEndpointAwsService.S3)
         vpc.add_gateway_endpoint("DynamoEndpoint", service=ec2.GatewayVpcEndpointAwsService.DYNAMODB)
-        endpoint_subnets = ec2.SubnetSelection(subnets=[vpc.isolated_subnets[0]])
-        for identifier, service in (
-            ("EcrApi", ec2.InterfaceVpcEndpointAwsService.ECR),
-            ("EcrDocker", ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER),
-            ("Logs", ec2.InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS),
-            ("Secrets", ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER),
-        ):
-            vpc.add_interface_endpoint(identifier, service=service, private_dns_enabled=True, subnets=endpoint_subnets)
 
         bucket = s3.Bucket(
             self, "PackArchive", block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
             encryption=s3.BucketEncryption.S3_MANAGED, enforce_ssl=True, versioned=True,
             removal_policy=RemovalPolicy.RETAIN,
+            lifecycle_rules=[s3.LifecycleRule(
+                noncurrent_version_expiration=Duration.days(30),
+                abort_incomplete_multipart_upload_after=Duration.days(7),
+            )],
         )
         archive_origin = origins.S3BucketOrigin.with_origin_access_control(bucket)
         catalog_cache = cloudfront.CachePolicy(
@@ -122,9 +129,9 @@ class BadDecisionsAwsStack(Stack):
         management_secret = secretsmanager.Secret.from_secret_name_v2(
             self, "ManagementSecret", os.environ["BAD_DECISIONS_AWS_SECRET_ID"]
         )
-        cluster = ecs.Cluster(self, "Cluster", vpc=vpc)
+        cluster = ecs.Cluster(self, "Cluster", vpc=vpc, enable_fargate_capacity_providers=True)
         log_group = logs.LogGroup(self, "Logs", retention=logs.RetentionDays.ONE_MONTH, removal_policy=RemovalPolicy.RETAIN)
-        task = ecs.FargateTaskDefinition(self, "Task", cpu=512, memory_limit_mib=1024)
+        task = ecs.FargateTaskDefinition(self, "Task", cpu=256, memory_limit_mib=512)
         bucket.grant_read(task.task_role, "runtime-packs/*")
         consequences.grant_read_write_data(task.task_role)
         container = task.add_container(
@@ -137,14 +144,25 @@ class BadDecisionsAwsStack(Stack):
             },
             secrets={"BAD_DECISIONS_MANAGEMENT_TOKEN": ecs.Secret.from_secrets_manager(management_secret)},
             readonly_root_filesystem=True,
+            # No load balancer probes the tasks, so ECS and Cloud Map rely on this check.
+            # The image has no curl; use its Python.
+            health_check=ecs.HealthCheck(
+                command=["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"],
+                interval=Duration.seconds(30), timeout=Duration.seconds(5), retries=3, start_period=Duration.seconds(30),
+            ),
         )
         container.add_port_mappings(ecs.PortMapping(container_port=8000))
+        namespace = servicediscovery.PrivateDnsNamespace(self, "Namespace", name="bad-decisions.internal", vpc=vpc)
         service = ecs.FargateService(
             self, "Service", cluster=cluster, task_definition=task,
             desired_count=_integer("BAD_DECISIONS_DESIRED_COUNT", 1),
-            assign_public_ip=False,
-            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_ISOLATED),
-            health_check_grace_period=Duration.seconds(60),
+            capacity_provider_strategies=[ecs.CapacityProviderStrategy(capacity_provider=CAPACITY_PROVIDERS[capacity], weight=1)],
+            assign_public_ip=True,
+            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
+            cloud_map_options=ecs.CloudMapOptions(
+                name="api", cloud_map_namespace=namespace,
+                dns_record_type=servicediscovery.DnsRecordType.SRV, container=container, container_port=8000,
+            ),
             circuit_breaker=ecs.DeploymentCircuitBreaker(rollback=True),
             min_healthy_percent=100, max_healthy_percent=200,
         )
@@ -154,38 +172,52 @@ class BadDecisionsAwsStack(Stack):
             scale_in_cooldown=Duration.seconds(120), scale_out_cooldown=Duration.seconds(60),
         )
 
-        alb = elbv2.ApplicationLoadBalancer(self, "LoadBalancer", vpc=vpc, internet_facing=True)
+        link_security_group = ec2.SecurityGroup(self, "ApiLinkSecurityGroup", vpc=vpc, description="API Gateway VPC link")
+        service.connections.allow_from(link_security_group, ec2.Port.tcp(8000), "API Gateway VPC link")
+        vpc_link = apigwv2.VpcLink(
+            self, "ApiLink", vpc=vpc, subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
+            security_groups=[link_security_group],
+        )
         certificate_arn = os.getenv("BAD_DECISIONS_CERTIFICATE_ARN")
+        api = apigwv2.HttpApi(
+            self, "HttpApi", create_default_stage=False,
+            default_integration=apigwv2_integrations.HttpServiceDiscoveryIntegration(
+                "Api", service.cloud_map_service, vpc_link=vpc_link,
+            ),
+            # With a custom domain, serve only that hostname so the certificate always matches.
+            disable_execute_api_endpoint=bool(certificate_arn),
+        )
+        # Caps request volume, and so the per-request bill, if the API is hammered.
+        throttle = apigwv2.ThrottleSettings(rate_limit=50, burst_limit=100)
         if certificate_arn:
             domain_name = os.getenv("BAD_DECISIONS_DOMAIN_NAME")
             hosted_zone_id = os.getenv("BAD_DECISIONS_HOSTED_ZONE_ID")
             if not domain_name or not hosted_zone_id:
                 raise ValueError("HTTPS requires BAD_DECISIONS_DOMAIN_NAME and BAD_DECISIONS_HOSTED_ZONE_ID")
-            listener = alb.add_listener(
-                "Https", port=443,
-                certificates=[acm.Certificate.from_certificate_arn(self, "Certificate", certificate_arn)],
-                open=True, ssl_policy=elbv2.SslPolicy.RECOMMENDED_TLS,
+            domain = apigwv2.DomainName(
+                self, "ApiDomain", domain_name=domain_name,
+                certificate=acm.Certificate.from_certificate_arn(self, "Certificate", certificate_arn),
             )
-            alb.add_redirect(source_port=80, source_protocol=elbv2.ApplicationProtocol.HTTP, target_port=443, target_protocol=elbv2.ApplicationProtocol.HTTPS)
+            apigwv2.HttpStage(
+                self, "Stage", http_api=api, stage_name="$default", auto_deploy=True, throttle=throttle,
+                domain_mapping=apigwv2.DomainMappingOptions(domain_name=domain),
+            )
             zone = route53.HostedZone.from_hosted_zone_attributes(
                 self, "HostedZone", hosted_zone_id=hosted_zone_id,
                 zone_name=os.getenv("BAD_DECISIONS_HOSTED_ZONE_NAME", domain_name),
             )
-            route53.ARecord(self, "ApiAlias", zone=zone, record_name=domain_name, target=route53.RecordTarget.from_alias(route53_targets.LoadBalancerTarget(alb)))
+            route53.ARecord(self, "ApiAlias", zone=zone, record_name=domain_name, target=route53.RecordTarget.from_alias(
+                route53_targets.ApiGatewayv2DomainProperties(domain.regional_domain_name, domain.regional_hosted_zone_id)
+            ))
             api_url = f"https://{domain_name}"
         elif os.getenv("BAD_DECISIONS_ALLOW_HTTP") == "1":
-            listener = alb.add_listener("Http", port=80, open=True)
-            api_url = f"http://{alb.load_balancer_dns_name}"
+            # No custom domain: the generated execute-api hostname (still HTTPS) for a smoke test.
+            apigwv2.HttpStage(self, "Stage", http_api=api, stage_name="$default", auto_deploy=True, throttle=throttle)
+            api_url = api.api_endpoint
         else:
             raise ValueError("BAD_DECISIONS_CERTIFICATE_ARN is required unless BAD_DECISIONS_ALLOW_HTTP=1")
-        target_group = listener.add_targets(
-            "Api", port=8000, targets=[service],
-            health_check=elbv2.HealthCheck(path="/healthz", healthy_http_codes="200"),
-        )
-        cloudwatch.Alarm(self, "UnhealthyTargets", metric=target_group.metrics.unhealthy_host_count(), threshold=1, evaluation_periods=2)
-        cloudwatch.Alarm(self, "ServerErrors", metric=alb.metrics.http_code_elb(elbv2.HttpCodeElb.ELB_5XX_COUNT), threshold=5, evaluation_periods=2)
+        cloudwatch.Alarm(self, "ServerErrors", metric=api.metric_server_error(), threshold=5, evaluation_periods=2)
 
-        CfnOutput(self, "LoadBalancerDnsName", value=alb.load_balancer_dns_name)
         CfnOutput(self, "PublicApiUrl", value=api_url)
         CfnOutput(self, "PackBucketName", value=bucket.bucket_name)
         CfnOutput(self, "PackDistributionDomainName", value=distribution.distribution_domain_name)
