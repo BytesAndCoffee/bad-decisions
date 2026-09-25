@@ -337,6 +337,16 @@ def publish_aws_pack(argv: list[str]) -> int:
     return 0
 
 
+def seed_aws_packs(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(prog="bad-decisions pack seed-aws", description="Seed missing bundled packs into the configured AWS deployment.")
+    parser.parse_args(argv)
+    values, _bucket, _base = _aws_coordinates()
+    count = _seed_bundled_aws(values)
+    if not count:
+        print("AWS bundled packs are already present.")
+    return 0
+
+
 def list_aws_packs(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="bad-decisions pack list-aws", description="Read the AWS CardDeck catalog.")
     parser.parse_args(argv)
@@ -359,7 +369,9 @@ def consequences_report_aws(argv: list[str]) -> int:
         if values.get("AWS_PROFILE"): os.environ["AWS_PROFILE"] = values["AWS_PROFILE"]
         if values.get("AWS_DEFAULT_REGION"): os.environ["AWS_DEFAULT_REGION"] = values["AWS_DEFAULT_REGION"]
         from .aws_consequences import DynamoConsequencesStore
-        print(json.dumps(DynamoConsequencesStore(table).report(), sort_keys=True))
+        from .aws_credentials import local_session
+        client = local_session(values.get("AWS_PROFILE"), values.get("AWS_DEFAULT_REGION")).client("dynamodb")
+        print(json.dumps(DynamoConsequencesStore(table, client=client).report(), sort_keys=True))
     finally:
         if old_profile is None: os.environ.pop("AWS_PROFILE", None)
         else: os.environ["AWS_PROFILE"] = old_profile

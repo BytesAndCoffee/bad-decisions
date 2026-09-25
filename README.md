@@ -228,6 +228,7 @@ bad-decisions deploy aws        # builds the image, shows the diff, asks to depl
 bad-decisions status aws
 bad-decisions rotate-token aws  # new management token, restarts tasks
 bad-decisions pack publish-aws ./my-pack.carddeck
+bad-decisions pack seed-aws  # recover a deployment whose initial seeding failed
 bad-decisions pack list-aws
 bad-decisions consequences report aws
 ~~~

@@ -26,11 +26,11 @@ def _item(value: dict[str, object]) -> dict[str, dict[str, object]]:
 class DynamoConsequencesStore:
     """Consequences backend using atomic DynamoDB transactions and TTL retention."""
 
-    def __init__(self, table_name: str, *, feedback_ttl_seconds: int = 604800, retention_days: int = 90) -> None:
+    def __init__(self, table_name: str, *, feedback_ttl_seconds: int = 604800, retention_days: int = 90, client=None) -> None:
         self.table_name = table_name
         self.feedback_ttl_seconds = feedback_ttl_seconds
         self.retention_seconds = retention_days * 86400
-        self.client = boto3.client("dynamodb", config=_RETRY)
+        self.client = client or boto3.client("dynamodb", config=_RETRY)
 
     @staticmethod
     def _now() -> int:

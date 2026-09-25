@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [1.6.3]
+
+### Fixed
+
+- Bridged AWS CLI `aws login` sessions into local boto3 management operations using in-memory short-lived credential export; credentials are never printed or persisted by Bad Decisions.
+- Added `bad-decisions pack seed-aws` so a deployment that completed before bundled-pack seeding failed can be repaired without rebuilding or redeploying.
+
 ## [1.6.2]
 
 ### Changed

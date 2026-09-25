@@ -149,8 +149,7 @@ Deployment seeds all bundled packs. Publish another validated archive with
 `bad-decisions pack publish-aws FILE.carddeck`; it refuses overwrite, writes
 catalog metadata last, rolls back exact object versions on failure, and forces
 an ECS deployment so all workers load the same immutable registry. Inspect the
-catalog with `bad-decisions pack list-aws`. Owner analytics are available with
-`bad-decisions consequences report aws`.
+catalog with `bad-decisions pack list-aws`. If infrastructure deployment succeeded but initial seeding failed, run `bad-decisions pack seed-aws`; it uploads only missing bundled packs and restarts the service without another CDK deployment. Owner analytics are available with `bad-decisions consequences report aws`.
 
 The public API and archive paths use HTTPS. Local mutations use the AWS SDK and
 the caller's temporary IAM credentials over AWS HTTPS endpoints. The hidden

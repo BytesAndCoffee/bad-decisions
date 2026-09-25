@@ -419,3 +419,47 @@ def test_catalog_lambda_builds_stable_compatible_index():
     assert result["schema_version"] == 1
     assert [entry["archive"]["pack_id"] for entry in result["packs"]] == ["a", "z"]
     assert result["rejected_archives"] == []
+
+
+def test_local_session_exports_aws_login_credentials(monkeypatch):
+    from bad_decisions.aws_credentials import local_session
+    exported = json.dumps({
+        "Version": 1, "AccessKeyId": "temporary-access",
+        "SecretAccessKey": "temporary-secret", "SessionToken": "temporary-token",
+        "Expiration": "2099-01-01T00:00:00Z",
+    })
+    run = Mock(return_value=Mock(returncode=0, stdout=exported, stderr=""))
+    session = Mock()
+    constructor = Mock(return_value=session)
+    monkeypatch.setattr("bad_decisions.aws_credentials.subprocess.run", run)
+    monkeypatch.setattr("bad_decisions.aws_credentials.boto3.Session", constructor)
+    assert local_session("decisions", "ca-west-1") is session
+    assert run.call_args.args[0] == [
+        "aws", "configure", "export-credentials", "--profile", "decisions", "--format", "process"
+    ]
+    constructor.assert_called_once_with(
+        aws_access_key_id="temporary-access",
+        aws_secret_access_key="temporary-secret",
+        aws_session_token="temporary-token",
+        region_name="ca-west-1",
+    )
+
+
+def test_local_session_reports_export_failure_without_stdout(monkeypatch):
+    from bad_decisions.aws_credentials import local_session
+    from bad_decisions.errors import PackConfigurationError
+    monkeypatch.setattr(
+        "bad_decisions.aws_credentials.subprocess.run",
+        Mock(return_value=Mock(returncode=1, stdout="sensitive", stderr="login expired")),
+    )
+    with pytest.raises(PackConfigurationError, match="login expired") as caught:
+        local_session("decisions", "ca-west-1")
+    assert "sensitive" not in str(caught.value)
+
+
+def test_seed_aws_cli_delegates_to_recovery_command(monkeypatch):
+    command = Mock(return_value=0)
+    monkeypatch.setattr(operations, "seed_aws_packs", command)
+    from bad_decisions.cli import run
+    assert run(["pack", "seed-aws"]) == 0
+    command.assert_called_once_with([])

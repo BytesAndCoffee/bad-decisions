@@ -1,3 +1,4 @@
+- [x] Bridged AWS CLI login-session credentials into boto3 management calls and added a standalone AWS bundled-pack recovery command.
 - [x] Completed the AWS-native path with private S3 runtime packs, CloudFront archives, Lambda indexing, DynamoDB Consequences, certificate-matched HTTPS, seeded bundled packs, and local management commands.
 - [x] Reduced AWS fixed costs with one task, scale-to-two, one-AZ endpoints, and private compute retained.
 - [x] Replaced the legacy CDK stack with a compatibility shim so the missing-`curl` ECS health-check failure cannot recur.

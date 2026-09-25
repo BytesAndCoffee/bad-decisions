@@ -67,6 +67,7 @@ def pack_parser() -> argparse.ArgumentParser:
     publish_aws = commands.add_parser("publish-aws", help="publish a CardDeck to configured AWS storage")
     publish_aws.add_argument("arguments", nargs=argparse.REMAINDER)
     list_aws = commands.add_parser("list-aws", help="print the configured AWS CardDeck catalog")
+    seed_aws = commands.add_parser("seed-aws", help="seed missing bundled packs into configured AWS storage")
     return result
 
 def consequences_parser() -> argparse.ArgumentParser:
@@ -121,6 +122,8 @@ def _run_pack(argv: Sequence[str]) -> int:
         return operations.publish_aws_pack([str(args.arguments[0])] + list(args.arguments[1:])) if args.arguments else operations.publish_aws_pack([])
     if args.command == "list-aws":
         return operations.list_aws_packs([])
+    if args.command == "seed-aws":
+        return operations.seed_aws_packs([])
     if args.command == "validate":
         pack = validate_archive(args.archive)
         _write(f"valid carddeck: {pack.metadata.id}")

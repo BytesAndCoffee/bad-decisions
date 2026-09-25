@@ -1,4 +1,4 @@
-\.TH BAD-DECISIONS 1 "2026-09-24" "Bad Decisions 1.6.2" "User Commands"
+\.TH BAD-DECISIONS 1 "2026-09-24" "Bad Decisions 1.6.3" "User Commands"
 .SH NAME
 bad-decisions \- deal, validate, import, and inspect Bad Decisions card packs
 .SH SYNOPSIS
@@ -85,6 +85,9 @@ Validate and atomically publish an archive, runtime pack, and catalog record to 
 .TP
 .B pack list-aws
 Print the AWS CardDeck catalog as JSON.
+.TP
+.B pack seed-aws
+Publish any missing bundled packs and restart the configured AWS service. Use this after infrastructure deployment succeeded but initial seeding failed.
 .TP
 .B consequences report aws
 Print the private DynamoDB Consequences summary using the configured AWS identity.

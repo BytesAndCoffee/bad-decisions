@@ -5,15 +5,15 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote
-import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
 from .archive import FORMAT, FORMAT_VERSION, _pack_payload, validate_archive
+from .aws_credentials import local_session
 from .errors import PackConfigurationError
 _RETRY = Config(retries={"total_max_attempts": 4, "mode": "adaptive"})
 
 def _session(profile: str | None, region: str | None):
-    return boto3.Session(profile_name=profile or None, region_name=region or None)
+    return local_session(profile, region)
 
 def _put_new(client, *, bucket: str, key: str, body: bytes, content_type: str, cache_control: str) -> str | None:
     try:
