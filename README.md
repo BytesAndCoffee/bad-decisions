@@ -233,8 +233,12 @@ bad-decisions pack list-aws
 bad-decisions consequences report aws
 ~~~
 
+For DNS hosted outside Route 53, omit the hosted-zone options and point a CNAME
+at the emitted `ApiDomainTarget` after deployment. The ACM certificate must be
+validated for the custom hostname first.
+
 AWS mode creates minimum-size Fargate Spot tasks behind an API Gateway HTTP
-API with an HTTPS custom domain and Route 53 alias (no load balancer), a
+API with an HTTPS custom domain and either external DNS or a Route 53 alias (no load balancer), a
 private versioned S3 bucket, a CloudFront HTTPS pack distribution, an
 event-driven dynamic CardDeck index, DynamoDB-backed Consequences, Secrets
 Manager injection, autoscaling, logs, and alarms. Runtime pack JSON, public

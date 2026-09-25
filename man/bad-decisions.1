@@ -1,4 +1,4 @@
-\.TH BAD-DECISIONS 1 "2026-09-24" "Bad Decisions 1.6.3" "User Commands"
+\.TH BAD-DECISIONS 1 "2026-09-24" "Bad Decisions 1.6.4" "User Commands"
 .SH NAME
 bad-decisions \- deal, validate, import, and inspect Bad Decisions card packs
 .SH SYNOPSIS
@@ -69,7 +69,7 @@ Purge retained records and rebuild counters.
 .SH AWS COMMANDS
 .TP
 .BI setup aws " [--profile name] [--region region] [--bootstrap] [--certificate-arn arn] [--domain-name name] [--hosted-zone-id id] [--allow-http]"
-One-time, repeatable account preparation: create the ECR repository (keeping the newest 10 images) and the protected management capability if missing (an existing one is never rotated), bootstrap CDK if it has not been (or with --bootstrap), and merge settings into ~/.bad-decisions.env. Production HTTPS requires a certificate-matching domain and Route 53 hosted zone.
+One-time, repeatable account preparation: create the ECR repository (keeping the newest 10 images) and the protected management capability if missing (an existing one is never rotated), bootstrap CDK if it has not been (or with --bootstrap), and merge settings into ~/.bad-decisions.env. Production HTTPS requires a certificate-matching domain. A Route 53 hosted zone is optional; external DNS providers use the emitted API Gateway CNAME target.
 .TP
 .BI deploy aws " [--image uri | --source directory] [--yes] [--capacity spot|on-demand] [--desired-count n] [--max-count n] [--certificate-arn arn] [--domain-name name] [--hosted-zone-id id] [--allow-http]"
 Build and push an immutable ECR image of the installed version (unless --image is given), show the CDK diff, and deploy the complete packaged AWS application after confirmation (--yes skips the prompt and is required without a terminal). Domain flags and --capacity (default spot) are saved for later runs. A custom HTTPS domain is required unless --allow-http is explicitly selected for a disposable smoke test, which serves the generated API Gateway URL.

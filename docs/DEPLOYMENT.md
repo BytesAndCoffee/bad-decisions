@@ -97,6 +97,13 @@ bad-decisions deploy aws
 bad-decisions status aws
 ~~~
 
+When DNS is hosted outside Route 53, omit `--hosted-zone-id` and
+`--hosted-zone-name`. After deployment, create a CNAME for the requested
+hostname pointing to the `ApiDomainTarget` CloudFormation output (also saved as
+`BAD_DECISIONS_AWS_DOMAIN_TARGET` in `~/.bad-decisions.env`). The ACM
+certificate must already be validated for that hostname. Route 53 users may
+continue passing the hosted-zone arguments to have CDK create an alias record.
+
 `setup aws` is one-time account preparation and is safe to repeat. It verifies
 the AWS identity, creates or reuses an immutable ECR repository, creates the
 management token in Secrets Manager only if the secret does not exist,
@@ -126,7 +133,7 @@ The old token keeps working until the old tasks stop.
 - an API Gateway HTTP API (throttled to 50 requests/s, burst 100) that reaches
   the tasks through a VPC link and Cloud Map; the tasks' security group admits
   only the VPC link;
-- ACM HTTPS on an API Gateway custom domain plus a Route 53 alias whose
+- ACM HTTPS on an API Gateway custom domain plus either an external-DNS CNAME or a Route 53 alias whose
   hostname matches the certificate (the generated endpoint is then disabled);
 - a private, encrypted, versioned S3 pack/archive bucket that expires
   superseded object versions after 30 days;

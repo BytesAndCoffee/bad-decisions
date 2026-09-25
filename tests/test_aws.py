@@ -137,7 +137,7 @@ def test_deploy_aws_persists_domain_flags(aws_env, monkeypatch):
     aws_env.write_text(BASE_ENV.replace("BAD_DECISIONS_ALLOW_HTTP=1\n", ""))
     monkeypatch.setattr(operations, "_run", _fake_aws())
     monkeypatch.setattr(operations, "_seed_bundled_aws", Mock(return_value=0))
-    flags = ["--certificate-arn", "arn:cert", "--domain-name", "cards.example.invalid", "--hosted-zone-id", "Z123"]
+    flags = ["--certificate-arn", "arn:cert", "--domain-name", "cards.example.invalid"]
     assert operations.deploy_aws(["--image", "example.invalid/bad-decisions:tag", "--yes", *flags]) == 0
     assert operations.deploy_aws(["--image", "example.invalid/bad-decisions:tag", "--yes"]) == 0
     saved = aws_env.read_text()
@@ -287,6 +287,19 @@ def test_stack_custom_domain_disables_generated_endpoint(monkeypatch):
     template.has_resource_properties("AWS::ApiGatewayV2::DomainName", {"DomainName": "cards.example.invalid"})
     template.resource_count_is("AWS::Route53::RecordSet", 1)
     template.has_resource_properties("AWS::ApiGatewayV2::Stage", {"DefaultRouteSettings": {"ThrottlingRateLimit": 50, "ThrottlingBurstLimit": 100}})
+
+
+def test_stack_custom_domain_supports_external_dns(monkeypatch):
+    template = _synth(
+        monkeypatch,
+        BAD_DECISIONS_ALLOW_HTTP=None,
+        BAD_DECISIONS_CERTIFICATE_ARN="arn:aws:acm:ca-west-1:123456789012:certificate/x",
+        BAD_DECISIONS_DOMAIN_NAME="bad-decisions.example.invalid",
+        BAD_DECISIONS_HOSTED_ZONE_ID=None,
+    )
+    template.has_resource_properties("AWS::ApiGatewayV2::DomainName", {"DomainName": "bad-decisions.example.invalid"})
+    template.resource_count_is("AWS::Route53::RecordSet", 0)
+    assert "ApiDomainTarget" in template.to_json()["Outputs"]
 
 
 def test_stack_expires_old_pack_versions(monkeypatch):

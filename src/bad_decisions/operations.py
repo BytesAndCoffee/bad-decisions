@@ -125,8 +125,8 @@ def setup_aws(argv: list[str]) -> int:
     parser.add_argument("--bootstrap", action="store_true", help="run cdk bootstrap even if the CDKToolkit stack exists (needs IAM permissions)")
     _add_domain_arguments(parser)
     args = parser.parse_args(argv)
-    if args.certificate_arn and (not args.domain_name or not args.hosted_zone_id):
-        parser.error("--certificate-arn requires --domain-name and --hosted-zone-id")
+    if args.certificate_arn and not args.domain_name:
+        parser.error("--certificate-arn requires --domain-name")
     _require_commands(parser, "aws", "npx")
     env = _aws_env(args.profile, args.region)
     identity = _run(["aws", "sts", "get-caller-identity", "--query", "Account", "--output", "text"], env=env, capture=True)
@@ -274,8 +274,8 @@ def deploy_aws(argv: list[str], *, confirm=input) -> int:
         values["BAD_DECISIONS_CAPACITY"] = args.capacity
     if not values.get("BAD_DECISIONS_CERTIFICATE_ARN") and values.get("BAD_DECISIONS_ALLOW_HTTP") != "1":
         parser.error("HTTPS requires --certificate-arn; use --allow-http only for a disposable smoke test")
-    if values.get("BAD_DECISIONS_CERTIFICATE_ARN") and (not values.get("BAD_DECISIONS_DOMAIN_NAME") or not values.get("BAD_DECISIONS_HOSTED_ZONE_ID")):
-        parser.error("HTTPS requires --domain-name and --hosted-zone-id so the certificate matches the public endpoint")
+    if values.get("BAD_DECISIONS_CERTIFICATE_ARN") and not values.get("BAD_DECISIONS_DOMAIN_NAME"):
+        parser.error("HTTPS requires --domain-name so the certificate matches the public endpoint")
     if not args.yes and not sys.stdin.isatty():
         parser.error("no terminal to confirm the diff; pass --yes to deploy unattended")
     _require_commands(parser, "aws", "npx", *(() if args.image else ("docker",)))
@@ -304,6 +304,8 @@ def deploy_aws(argv: list[str], *, confirm=input) -> int:
         "BAD_DECISIONS_AWS_SERVICE": deployed["ServiceName"],
         "BAD_DECISIONS_AWS_CONSEQUENCES_TABLE": deployed["ConsequencesTableName"],
     })
+    if deployed.get("ApiDomainTarget"):
+        values["BAD_DECISIONS_AWS_DOMAIN_TARGET"] = deployed["ApiDomainTarget"]
     _write_aws_env(values)
     _seed_bundled_aws(values)
     print(f"AWS service ready: {values['BAD_DECISIONS_AWS_ENDPOINT']}")

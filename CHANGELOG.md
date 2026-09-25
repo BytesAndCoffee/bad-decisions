@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.6.4]
+
+### Changed
+
+- AWS API custom domains now support external DNS providers such as Cloudflare without requiring a Route 53 hosted zone; deployments emit and save the API Gateway CNAME target.
+
 ## [1.6.3]
 
 ### Fixed

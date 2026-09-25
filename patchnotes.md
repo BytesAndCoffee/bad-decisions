@@ -132,3 +132,7 @@ Tracks fixes from the 2026-09-19 code review. Tick an item when its fix and test
 2026-09-24 - aws - Minimum-cost AWS stack: HTTP API + VPC link + Cloud Map replaces the ALB, public-subnet tasks replace interface endpoints, 0.25 vCPU/512 MiB Fargate Spot tasks (--capacity on-demand to opt out), API throttling, Python container health check, 30-day noncurrent S3 expiry, 10-image ECR retention, and bootstrap only when missing so setup aws works without IAM permissions. Tests: tests/test_aws.py (CLI and stack synthesis).
 
 2026-09-24 - release - Prepared lockstep 1.6.2 for the minimum-cost AWS stack.
+
+2026-09-24 - aws - Added external-DNS custom domains: Route 53 is optional and API Gateway emits a CNAME target for providers such as Cloudflare. Tests: tests/test_aws.py.
+
+2026-09-24 - release - Prepared lockstep 1.6.4 for external-DNS AWS custom domains.

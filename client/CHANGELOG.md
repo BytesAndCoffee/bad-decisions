@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.6.4]
+
+### Changed
+
+- Lockstep release with the Bad Decisions server package.
+
 ## [1.4.1]
 
 ### Fixed

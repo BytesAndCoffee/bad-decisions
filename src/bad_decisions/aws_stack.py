@@ -192,8 +192,8 @@ class BadDecisionsAwsStack(Stack):
         if certificate_arn:
             domain_name = os.getenv("BAD_DECISIONS_DOMAIN_NAME")
             hosted_zone_id = os.getenv("BAD_DECISIONS_HOSTED_ZONE_ID")
-            if not domain_name or not hosted_zone_id:
-                raise ValueError("HTTPS requires BAD_DECISIONS_DOMAIN_NAME and BAD_DECISIONS_HOSTED_ZONE_ID")
+            if not domain_name:
+                raise ValueError("HTTPS requires BAD_DECISIONS_DOMAIN_NAME")
             domain = apigwv2.DomainName(
                 self, "ApiDomain", domain_name=domain_name,
                 certificate=acm.Certificate.from_certificate_arn(self, "Certificate", certificate_arn),
@@ -202,13 +202,15 @@ class BadDecisionsAwsStack(Stack):
                 self, "Stage", http_api=api, stage_name="$default", auto_deploy=True, throttle=throttle,
                 domain_mapping=apigwv2.DomainMappingOptions(domain_name=domain),
             )
-            zone = route53.HostedZone.from_hosted_zone_attributes(
-                self, "HostedZone", hosted_zone_id=hosted_zone_id,
-                zone_name=os.getenv("BAD_DECISIONS_HOSTED_ZONE_NAME", domain_name),
-            )
-            route53.ARecord(self, "ApiAlias", zone=zone, record_name=domain_name, target=route53.RecordTarget.from_alias(
-                route53_targets.ApiGatewayv2DomainProperties(domain.regional_domain_name, domain.regional_hosted_zone_id)
-            ))
+            if hosted_zone_id:
+                zone = route53.HostedZone.from_hosted_zone_attributes(
+                    self, "HostedZone", hosted_zone_id=hosted_zone_id,
+                    zone_name=os.getenv("BAD_DECISIONS_HOSTED_ZONE_NAME", domain_name),
+                )
+                route53.ARecord(self, "ApiAlias", zone=zone, record_name=domain_name, target=route53.RecordTarget.from_alias(
+                    route53_targets.ApiGatewayv2DomainProperties(domain.regional_domain_name, domain.regional_hosted_zone_id)
+                ))
+            CfnOutput(self, "ApiDomainTarget", value=domain.regional_domain_name)
             api_url = f"https://{domain_name}"
         elif os.getenv("BAD_DECISIONS_ALLOW_HTTP") == "1":
             # No custom domain: the generated execute-api hostname (still HTTPS) for a smoke test.
