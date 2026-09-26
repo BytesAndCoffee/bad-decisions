@@ -6,8 +6,8 @@
     <meta name="description" content="Deal a hand with Bad Decisions.">
     <base href="__WEB_BASE__">
     <title>Bad Decisions — deal badly, professionally</title>
-    <link rel="icon" href="favicon.svg?v=1.6.4" type="image/svg+xml">
-    <link rel="stylesheet" href="style.css?v=1.6.4">
+    <link rel="icon" href="favicon.svg?v=1.7.0" type="image/svg+xml">
+    <link rel="stylesheet" href="style.css?v=1.7.0">
   </head>
   <body>
     <main class="shell">
@@ -37,10 +37,13 @@
           </div>
           <div id="packs" class="packs" aria-live="polite">Loading packs…</div>
           <p id="pack-summary" class="pack-summary">Finding the bad decisions…</p>
-          <label class="indexed-picker" for="indexed-packs">
+          <div class="indexed-picker">
             <span>INDEXED PACKS</span>
-            <select id="indexed-packs" disabled><option>Loading indexed packs…</option></select>
-          </label>
+            <button id="indexed-packs" type="button" disabled aria-haspopup="dialog" aria-controls="indexed-packs-modal">
+              <span id="indexed-pack-selection">Loading indexed packs…</span>
+              <b aria-hidden="true">Choose</b>
+            </button>
+          </div>
           <button id="deal" class="deal" type="button">
             <span>Deal a terrible hand</span>
             <b aria-hidden="true">→</b>
@@ -102,6 +105,27 @@
         <p class="consent-note">You can change this later. We're not Facebook.</p>
       </section>
     </div>
-    <script src="app.js?v=1.6.4" defer></script>
+    <div id="indexed-packs-modal" class="modal-backdrop" hidden>
+      <section class="pack-modal" role="dialog" aria-modal="true" aria-labelledby="indexed-packs-title">
+        <div class="pack-modal-heading">
+          <div>
+            <p class="eyebrow">EXPAND YOUR REGRETS</p>
+            <h2 id="indexed-packs-title">Choose indexed packs</h2>
+          </div>
+          <button id="close-indexed-packs" class="modal-close" type="button" aria-label="Close indexed pack selection">×</button>
+        </div>
+        <p>Select as many imported expansions as this particular mistake requires.</p>
+        <div class="pack-modal-tools">
+          <button id="all-indexed-packs" class="quiet-button" type="button">Select all</button>
+          <button id="clear-indexed-packs" class="quiet-button" type="button">Clear</button>
+        </div>
+        <div id="indexed-pack-options" class="indexed-pack-options"></div>
+        <div class="pack-modal-actions">
+          <button id="cancel-indexed-packs" type="button">Cancel</button>
+          <button id="apply-indexed-packs" type="button">Use selected packs</button>
+        </div>
+      </section>
+    </div>
+    <script src="app.js?v=1.7.0" defer></script>
   </body>
 </html>

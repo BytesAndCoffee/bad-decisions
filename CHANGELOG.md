@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.7.0]
+
+### Added
+
+- Indexed packs can now be selected in any combination from an accessible checkbox modal, with select-all, clear, staged apply/cancel, and keyboard dismissal controls.
+
 ## [1.6.4]
 
 ### Changed

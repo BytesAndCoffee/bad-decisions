@@ -1,3 +1,3 @@
 """Dependency-free, cross-platform client for Bad Decisions services."""
 
-__version__ = "1.6.4"
+__version__ = "1.7.0"

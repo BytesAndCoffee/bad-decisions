@@ -136,3 +136,4 @@ Tracks fixes from the 2026-09-19 code review. Tick an item when its fix and test
 2026-09-24 - aws - Added external-DNS custom domains: Route 53 is optional and API Gateway emits a CNAME target for providers such as Cloudflare. Tests: tests/test_aws.py.
 
 2026-09-24 - release - Prepared lockstep 1.6.4 for external-DNS AWS custom domains.
+2026-09-26 - web - Replaced the single indexed-pack dropdown with an accessible checkbox modal that supports staged multi-pack selection, select-all, clear, apply, cancel, backdrop dismissal, and Escape dismissal.

@@ -42,7 +42,14 @@ def test_api_success_metadata_and_cache():
         assert web.status_code == 200 and "Bad Decisions" in web.text
         assert '<base href="/web/">' in web.text
         assert client.get("/web", follow_redirects=False).status_code == 200
-        assert client.get("/web/app.js").status_code == 200
+        app_js = client.get("/web/app.js")
+        assert app_js.status_code == 200
+        assert 'id="indexed-packs-modal"' in web.text
+        assert 'id="indexed-pack-options"' in web.text
+        assert '<select id="indexed-packs"' not in web.text
+        assert 'let indexedSelection = new Set();' in app_js.text
+        assert 'indexedSelection = new Set(indexedDraft)' in app_js.text
+        assert 'return [...selected, ...indexedSelection];' in app_js.text
         favicon = client.get("/web/favicon.svg")
         assert favicon.headers["content-type"].startswith("image/svg+xml")
         packs = client.get("/v1/packs").json()

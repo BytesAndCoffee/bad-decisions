@@ -42,7 +42,13 @@ const resultElement = document.querySelector("#result");
 const emptyRoundElement = document.querySelector("#empty-round");
 const packSummaryElement = document.querySelector("#pack-summary");
 const indexedPacksElement = document.querySelector("#indexed-packs");
-let indexedPackIds = [];
+const indexedPackSelection = document.querySelector("#indexed-pack-selection");
+const indexedPacksModal = document.querySelector("#indexed-packs-modal");
+const indexedPackOptions = document.querySelector("#indexed-pack-options");
+let indexedPacks = [];
+let indexedSelection = new Set();
+let indexedDraft = new Set();
+let indexedModalReturnFocus = null;
 const apiBase = window.location.pathname.replace(/\/web\/?$/, "/v1");
 
 function apiUrl(path) {
@@ -55,9 +61,50 @@ function setStatus(message) {
 
 function selectedPacks() {
   const selected = [...document.querySelectorAll("input[name=pack]:checked")].map((input) => input.value);
-  if (indexedPacksElement.value === "__all_indexed__") return [...selected, ...indexedPackIds];
-  if (indexedPacksElement.value) selected.push(indexedPacksElement.value);
-  return selected;
+  return [...selected, ...indexedSelection];
+}
+
+function updateIndexedPackSelection() {
+  const count = indexedSelection.size;
+  indexedPackSelection.textContent = count ? `${count} indexed pack${count === 1 ? "" : "s"} selected` : "No indexed packs selected";
+}
+
+function renderIndexedPackOptions() {
+  indexedPackOptions.replaceChildren(...indexedPacks.map((pack) => {
+    const label = document.createElement("label");
+    label.className = "indexed-pack-option";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = pack.id;
+    input.checked = indexedDraft.has(pack.id);
+    input.addEventListener("change", () => {
+      if (input.checked) indexedDraft.add(pack.id);
+      else indexedDraft.delete(pack.id);
+    });
+    const text = document.createElement("span");
+    const name = document.createElement("strong");
+    name.textContent = pack.name;
+    const counts = document.createElement("small");
+    counts.textContent = `${pack.counts.black} prompts · ${pack.counts.white} answers`;
+    text.append(name, counts);
+    label.append(input, text);
+    return label;
+  }));
+}
+
+function closeIndexedPackModal() {
+  indexedPacksModal.hidden = true;
+  indexedModalReturnFocus?.focus();
+  indexedModalReturnFocus = null;
+}
+
+function openIndexedPackModal() {
+  if (!indexedPacks.length) return;
+  indexedDraft = new Set(indexedSelection);
+  renderIndexedPackOptions();
+  indexedModalReturnFocus = document.activeElement;
+  indexedPacksModal.hidden = false;
+  indexedPackOptions.querySelector("input")?.focus();
 }
 
 function updatePackSummary() {
@@ -70,9 +117,8 @@ async function loadPacks() {
     const response = await fetch(apiUrl("packs"), { headers: clientHeaders() });
     if (!response.ok) throw new Error("Could not load packs");
     const packs = await response.json();
-    const indexedPacks = packs.filter((pack) => pack.id.startsWith("pyx-"));
+    indexedPacks = packs.filter((pack) => pack.id.startsWith("pyx-"));
     const regularPacks = packs.filter((pack) => !pack.id.startsWith("pyx-"));
-    indexedPackIds = indexedPacks.map((pack) => pack.id);
     packsElement.replaceChildren(...regularPacks.map((pack) => {
       const label = document.createElement("label");
       label.className = "pack";
@@ -87,29 +133,10 @@ async function loadPacks() {
       input.addEventListener("change", updatePackSummary);
       return label;
     }));
-    const choices = [];
-    const none = document.createElement("option");
-    none.value = "";
-    none.textContent = indexedPacks.length ? "No indexed pack" : "No indexed packs available";
-    choices.push(none);
-    if (indexedPacks.length) {
-      const all = document.createElement("option");
-      all.value = "__all_indexed__";
-      all.textContent = `All indexed packs (${indexedPacks.length})`;
-      choices.push(all);
-      const group = document.createElement("optgroup");
-      group.label = "Choose one imported expansion";
-      indexedPacks.forEach((pack) => {
-        const option = document.createElement("option");
-        option.value = pack.id;
-        option.textContent = `${pack.name} (${pack.counts.black}/${pack.counts.white})`;
-        group.append(option);
-      });
-      choices.push(group);
-    }
-    indexedPacksElement.replaceChildren(...choices);
+    indexedSelection = new Set([...indexedSelection].filter((id) => indexedPacks.some((pack) => pack.id === id)));
     indexedPacksElement.disabled = !indexedPacks.length;
-    indexedPacksElement.addEventListener("change", updatePackSummary);
+    indexedPacksElement.querySelector("b").textContent = indexedPacks.length ? "Choose" : "Unavailable";
+    updateIndexedPackSelection();
     updatePackSummary();
     setStatus("");
   } catch (error) {
@@ -153,9 +180,18 @@ async function deal() {
 
 document.querySelector("#all-packs").addEventListener("click", () => {
   document.querySelectorAll("input[name=pack]").forEach((input) => { input.checked = true; });
+  indexedSelection = new Set(indexedPacks.map((pack) => pack.id));
+  updateIndexedPackSelection();
   updatePackSummary();
-  indexedPacksElement.value = indexedPackIds.length ? "__all_indexed__" : "";
 });
+indexedPacksElement.addEventListener("click", openIndexedPackModal);
+document.querySelector("#close-indexed-packs").addEventListener("click", closeIndexedPackModal);
+document.querySelector("#cancel-indexed-packs").addEventListener("click", closeIndexedPackModal);
+document.querySelector("#all-indexed-packs").addEventListener("click", () => { indexedDraft = new Set(indexedPacks.map((pack) => pack.id)); renderIndexedPackOptions(); });
+document.querySelector("#clear-indexed-packs").addEventListener("click", () => { indexedDraft.clear(); renderIndexedPackOptions(); });
+document.querySelector("#apply-indexed-packs").addEventListener("click", () => { indexedSelection = new Set(indexedDraft); updateIndexedPackSelection(); updatePackSummary(); closeIndexedPackModal(); });
+indexedPacksModal.addEventListener("click", (event) => { if (event.target === indexedPacksModal) closeIndexedPackModal(); });
+document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !indexedPacksModal.hidden) closeIndexedPackModal(); });
 dealButton.addEventListener("click", deal);
 loadPacks();
 feedbackElement.querySelectorAll("[data-vote]").forEach((button) => button.addEventListener("click", () => vote(button.dataset.vote)));
