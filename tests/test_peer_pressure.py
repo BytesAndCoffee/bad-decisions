@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import itertools
+import os
+import random
+import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 from types import MappingProxyType
 
@@ -9,6 +13,7 @@ from bad_decisions.api import create_app
 from bad_decisions.models import BlackCard, WhiteCard
 from bad_decisions.packs import Registry
 from bad_decisions.peer_pressure import PeerPressureError, PeerPressureService
+from bad_decisions.peer_pressure import service as service_module
 from conftest import make_pack
 from fastapi.testclient import TestClient
 
@@ -210,3 +215,240 @@ def test_http_protocol_uses_responsible_adult_and_protects_state(tmp_path, monke
         assert all("hand" not in player for player in state["players"])
         schema = client.get("/openapi.json").text.lower()
         assert "card czar" not in schema and "choose_peer_consequence" in schema
+
+
+# --- departures, streaming draws, and room creation -------------------------
+
+
+class Table:
+    """Alice (seat 0, first Responsible Adult), Bob, and Carol at one room, on a fake clock."""
+
+    def __init__(self, tmp_path, names=("Alice", "Bob", "Carol"), **options):
+        self.clock = [1_000]
+        self.service = PeerPressureService(
+            tmp_path, multiplayer_registry(), hand_size=3, disconnect_timeout_seconds=30, now=lambda: self.clock[0], **options
+        )
+        self.players = {}
+        for index, name in enumerate(names):
+            self.players[name] = self.service.join("ohno", name, create=index == 0)
+        self.requests = itertools.count(1000)
+
+    def creds(self, name):
+        return credentials(self.players[name])
+
+    def state(self, name):
+        return self.service.sync("ohno", *self.creds(name))["state"]
+
+    def act(self, name, action, **values):
+        revision = self.state(name)["room"]["revision"]
+        return getattr(self.service, action)("ohno", *self.creds(name), request(next(self.requests)), revision, **values)
+
+    def submit(self, name):
+        hand = self.state(name)["you"]["hand"]
+        return self.act(name, "submit", cards=[hand[0]["card_instance_id"]])
+
+    def pass_time(self, seconds, *, active=()):
+        """Advance the clock while only ``active`` players keep heartbeating."""
+        self.clock[0] += seconds
+        for name in active:
+            self.service.heartbeat("ohno", *self.creds(name), 0)
+
+    def adult(self, name="Bob"):
+        return self.state(name)["responsible_adult"]["name"]
+
+
+def test_vanished_responsible_adult_passes_the_role_and_the_round_continues(tmp_path):
+    table = Table(tmp_path)
+    table.act("Alice", "start")
+    table.submit("Bob")
+    table.submit("Carol")
+    assert table.state("Bob")["room"]["state"] == "JUDGING"
+    bob_hand = len(table.state("Bob")["you"]["hand"])
+
+    table.pass_time(31, active=("Bob", "Carol"))  # Alice stops heartbeating
+
+    bob = table.state("Bob")
+    assert bob["responsible_adult"]["name"] == "Bob"
+    assert bob["room"]["state"] == "JUDGING"
+    # Bob now judges, so his own decision went back to his hand instead of being judged by him.
+    assert len(bob["you"]["hand"]) == bob_hand + 1 and bob["you"]["submitted"] is False
+    decisions = bob["judging"]["decisions"]
+    assert len(decisions) == 1
+    table.act("Bob", "judge", submission_id=decisions[0]["submission_id"])
+    result = table.state("Carol")
+    assert result["result"]["winning_player"]["name"] == "Carol"
+    table.act("Bob", "advance")
+    assert table.adult() == "Carol"  # rotation continues from the new Responsible Adult
+
+
+def test_responsible_adult_leaving_before_anyone_submits_hands_over_the_round(tmp_path):
+    table = Table(tmp_path)
+    table.act("Alice", "start")
+    table.act("Alice", "leave")
+    assert table.adult() == "Bob"
+    table.submit("Carol")
+    bob = table.state("Bob")
+    assert bob["room"]["state"] == "JUDGING"
+    table.act("Bob", "judge", submission_id=bob["judging"]["decisions"][0]["submission_id"])
+    assert table.state("Carol")["room"]["state"] == "ROUND_RESULT"
+
+
+def test_successor_whose_decision_was_the_only_one_reopens_the_round(tmp_path):
+    table = Table(tmp_path)
+    table.act("Alice", "start")
+    table.submit("Bob")
+    table.act("Carol", "leave")
+    assert table.state("Bob")["room"]["state"] == "JUDGING"  # Bob's is the only decision
+    table.act("Alice", "leave")
+
+    bob = table.state("Bob")
+    assert bob["responsible_adult"]["name"] == "Bob"
+    assert bob["room"]["state"] == "PLAYING" and bob["judging"] is None
+    table.service.join("ohno", "Carol", player_id=table.players["Carol"]["player_id"], session_token=table.players["Carol"]["session_token"])
+    table.submit("Carol")
+    bob = table.state("Bob")
+    assert bob["room"]["state"] == "JUDGING" and len(bob["judging"]["decisions"]) == 1
+
+
+def test_responsible_adult_vanishing_at_the_result_lets_the_successor_advance(tmp_path):
+    table = Table(tmp_path)
+    table.act("Alice", "start")
+    table.submit("Bob")
+    table.submit("Carol")
+    alice = table.state("Alice")
+    table.act("Alice", "judge", submission_id=alice["judging"]["decisions"][0]["submission_id"])
+    scores = {player["name"]: player["score"] for player in table.state("Bob")["players"]}
+    table.pass_time(31, active=("Bob", "Carol"))
+    assert table.adult() == "Bob"
+    assert {player["name"]: player["score"] for player in table.state("Bob")["players"]} == scores
+    table.act("Bob", "advance")
+    assert table.state("Bob")["room"]["state"] == "PLAYING"
+    assert table.adult() == "Carol"
+
+
+def test_table_recovers_when_players_return_after_everyone_went_away(tmp_path):
+    table = Table(tmp_path)
+    table.act("Alice", "start")
+    table.pass_time(31)  # nobody heartbeats
+    table.pass_time(1, active=("Bob", "Carol"))  # Bob and Carol return; Alice does not
+    assert table.adult() == "Bob"
+    table.submit("Carol")
+    assert table.state("Bob")["room"]["state"] == "JUDGING"
+
+
+def test_returning_responsible_adult_does_not_take_the_role_back(tmp_path):
+    table = Table(tmp_path)
+    table.act("Alice", "start")
+    table.pass_time(31, active=("Bob", "Carol"))
+    table.pass_time(1, active=("Alice", "Bob", "Carol"))
+    assert table.adult("Alice") == "Bob"
+    table.submit("Alice")
+    table.submit("Carol")
+    assert table.state("Bob")["room"]["state"] == "JUDGING"
+
+
+def test_host_role_passes_when_the_room_opener_leaves_the_lobby(tmp_path):
+    table = Table(tmp_path, names=("Alice", "Bob", "Carol", "Dan"))
+    table.act("Alice", "leave")
+    bob = table.state("Bob")
+    assert bob["you"]["room_owner"] is True
+    assert table.state("Carol")["you"]["room_owner"] is False
+    with pytest.raises(PeerPressureError) as refused:
+        table.act("Carol", "start")
+    assert refused.value.reason == "not_responsible_adult"
+    table.act("Bob", "start")
+    assert table.adult() == "Bob"
+
+
+def test_rooms_stream_cards_instead_of_copying_decks(tmp_path):
+    table = Table(tmp_path)
+    table.act("Alice", "start")
+    with sqlite3.connect(tmp_path / "ohno.sqlite3") as connection:
+        tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        drawn = connection.execute("SELECT kind, COUNT(*) FROM drawn_cards GROUP BY kind").fetchall()
+    assert "question_deck" not in tables and "response_deck" not in tables
+    assert dict(drawn) == {"question": 1, "response": 9}  # one question, three hands of three
+
+
+def test_streamed_draws_never_repeat_and_report_exhaustion(tmp_path):
+    service = PeerPressureService(tmp_path, multiplayer_registry(), rng=random.Random(7))
+    service.create_room("deck")
+    connection = service._connect("deck")
+    try:
+        keys = [key for _ in range(8) for key, _card in service._draw(connection, "response", 5)]
+        assert len(keys) == len(set(keys)) == 40
+        with pytest.raises(PeerPressureError) as exhausted:
+            service._draw(connection, "response", 1)
+        assert exhausted.value.reason == "response_deck_exhausted"
+        questions = [key for _ in range(4) for key, _card in service._draw(connection, "question", 1)]
+        assert len(set(questions)) == 4
+        with pytest.raises(PeerPressureError) as no_questions:
+            service._draw(connection, "question", 1)
+        assert no_questions.value.reason == "question_deck_exhausted"
+    finally:
+        connection.close()
+
+
+def test_room_creation_cost_does_not_grow_with_the_registry(tmp_path):
+    big = make_pack(
+        "big",
+        black=tuple(BlackCard(id=f"q{i}", repr=f"Q{i} _", template=f"Q{i} {{}}", slots=1, pack="big") for i in range(2000)),
+        white=tuple(WhiteCard(id=f"r{i}", text=f"R{i}", pack="big") for i in range(8000)),
+    )
+    service = PeerPressureService(tmp_path, Registry(MappingProxyType({"big": big})))
+    service.create_room("huge")
+    with sqlite3.connect(tmp_path / "huge.sqlite3") as connection:
+        assert connection.execute("SELECT COUNT(*) FROM drawn_cards").fetchone()[0] == 0
+    assert (tmp_path / "huge.sqlite3").stat().st_size < 128 * 1024
+
+
+def test_rooms_created_with_full_decks_are_upgraded_without_repeating_cards(tmp_path):
+    service = PeerPressureService(tmp_path, multiplayer_registry(), hand_size=3)
+    alice = service.join("legacy", "Alice", create=True)
+    path = tmp_path / "legacy.sqlite3"
+    with sqlite3.connect(path) as connection:  # rebuild the pre-streaming layout
+        connection.executescript("""
+            DROP TABLE drawn_cards;
+            CREATE TABLE question_deck(position INTEGER PRIMARY KEY, card_key TEXT NOT NULL, card_id TEXT NOT NULL, pack_id TEXT NOT NULL,
+              representation TEXT NOT NULL, template TEXT NOT NULL, slots INTEGER NOT NULL, drawn INTEGER NOT NULL DEFAULT 0);
+            CREATE TABLE response_deck(position INTEGER PRIMARY KEY, card_key TEXT NOT NULL, response_id TEXT NOT NULL, pack_id TEXT NOT NULL,
+              response_text TEXT NOT NULL, drawn INTEGER NOT NULL DEFAULT 0);
+            PRAGMA user_version=0;
+        """)
+        connection.executemany(
+            "INSERT INTO response_deck VALUES(?,?,?,?,?,?)",
+            [(i, f"party:r{i}", f"r{i}", "party", f"Response {i}", int(i < 30)) for i in range(40)],
+        )
+        connection.execute("INSERT INTO question_deck VALUES(0,'party:q0','q0','party','Q','{}',1,1)")
+    assert service.sync("legacy", *credentials(alice))["state"]["players"][0]["name"] == "Alice"
+    with sqlite3.connect(path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == service_module.SCHEMA_VERSION
+        assert connection.execute("SELECT COUNT(*) FROM drawn_cards WHERE kind='response'").fetchone()[0] == 30
+        assert not connection.execute("SELECT 1 FROM sqlite_master WHERE name='response_deck'").fetchone()
+    connection = service._connect("legacy")
+    try:
+        fresh = {key for key, _card in service._draw(connection, "response", 10)}
+    finally:
+        connection.close()
+    assert fresh == {f"party:r{i}" for i in range(30, 40)}
+
+
+def test_room_creation_is_atomic_and_cleans_up(tmp_path, monkeypatch):
+    service = PeerPressureService(tmp_path, multiplayer_registry())
+
+    def lost_race(_source, destination):
+        destination.write_bytes(b"")  # someone else's room appeared first
+        raise FileExistsError(destination)
+
+    monkeypatch.setattr(service_module.os, "link", lost_race)
+    with pytest.raises(PeerPressureError) as exists:
+        service.create_room("racy")
+    assert exists.value.reason == "room_exists"
+    monkeypatch.undo()
+    assert [path.name for path in tmp_path.iterdir()] == ["racy.sqlite3"]  # no half-built leftovers
+
+    stale = tmp_path / f".old.{'0' * 16}{service_module.BUILDING_SUFFIX}"
+    stale.write_bytes(b"")
+    os.utime(stale, (0, 0))
+    service.cleanup_expired()
+    assert not stale.exists()

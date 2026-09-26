@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [1.8.3]
+
+### Changed
+
+- Peer Pressure streams cards from the loaded packs instead of copying every deck into each room: opening a room on a 6,000-card install drops from about 15 seconds to about 50 ms. Existing rooms are upgraded in place without repeating drawn cards.
+
+### Fixed
+
+- Peer Pressure tables no longer freeze when the Responsible Adult leaves or goes away: the role passes to the next connected player (whose own decision returns to their hand). The lobby host passes on too, so a departed room opener cannot block the start.
+- Peer Pressure rooms are created atomically, and each player's view is built from one consistent snapshot.
+
 ## [1.8.2]
 
 ### Added

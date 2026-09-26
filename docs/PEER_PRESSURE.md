@@ -7,19 +7,37 @@ Decisions. Start or rejoin a room from the terminal client:
 regret together ohno --name Michael
 ```
 
-The first participant opens the room and becomes its initial **Responsible
-Adult**. Once at least three people are present, that player starts the game.
+The first participant opens the room and hosts it: once at least three people
+are present, the host starts the game and becomes the first **Responsible
+Adult**. If the host leaves the lobby, the next connected player in seat order
+hosts instead.
 Everyone else submits a private response to the current question. The
 Responsible Adult sees the resulting decisions in randomized order, without
 submitter identities, and chooses the consequence. Scores are room-local and
 the role rotates by seating order.
+
+Players who stop heartbeating are marked away after the disconnect timeout
+(default 30 seconds), and a table never waits on them:
+
+- If the Responsible Adult leaves or goes away, the role passes to the next
+  connected player in seat order, in any phase. If that player already
+  submitted this round, their decision returns to their hand so they never judge
+  their own response. If that leaves nothing to judge, the round goes back to
+  collecting decisions.
+- Judging begins once every connected player has submitted.
+- A returning player rejoins with their hand and score; a returning former
+  Responsible Adult does not take the role back.
 
 Peer Pressure uses Bad Decisions-native language and presentation. It does not
 use third-party game logos, trade dress, or role names.
 
 ## State and privacy model
 
-Each room is a separate short-lived SQLite database. The server owns hands,
+Each room is a separate short-lived SQLite database, built privately and linked
+into place so a half-created room is never visible. Cards are streamed: a room
+records only the cards it has drawn, and each draw comes straight from the
+loaded packs, so opening a room costs the same however many packs are
+installed, and no card repeats within a room. The server owns hands,
 rounds, submissions, scores, role rotation, and the monotonically increasing
 room revision. A client receives only its own hand. During judgment it receives
 round-scoped opaque submission IDs and response text, never the submitting

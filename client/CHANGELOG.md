@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.8.3]
+
+### Changed
+
+- Lockstep release with the server's Peer Pressure fixes (Responsible Adult handoff, streamed cards); no client changes.
+
 ## [1.8.2]
 
 ### Changed
