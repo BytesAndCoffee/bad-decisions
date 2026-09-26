@@ -7,6 +7,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from . import __version__
+from .together import TogetherClient, load_session, run_together, save_session
 DEFAULT_API_URL = "https://bytes.coffee/bad-decisions"
 CONFIG_PATH = Path.home() / ".regret.env"
 ROUND_PATH = Path.home() / ".regret-last-round.json"
@@ -224,12 +225,38 @@ def _identity(argv: Sequence[str]) -> int:
     print("identity omitted" if config.get("REGRET_ANALYTICS_IDENTITY")=="off" else "identity enabled")
     return 0
 
+def _together(argv: Sequence[str]) -> int:
+    command=argparse.ArgumentParser(prog="regret together",description="Give in to Peer Pressure.")
+    command.add_argument("room"); command.add_argument("--name"); command.add_argument("--api-url",default=DEFAULT_API_URL)
+    command.add_argument("--timeout",type=float,default=10.0); command.add_argument("--heartbeat",type=float,default=5.0)
+    args=command.parse_args(argv)
+    if args.timeout<=0: command.error("--timeout must be greater than zero")
+    if args.heartbeat<=0: command.error("--heartbeat must be greater than zero")
+    try: base=_base_url(args.api_url)
+    except ValueError as exc: print(f"regret: {exc}",file=sys.stderr); return 1
+    saved=load_session(base,args.room)
+    config=_read_config()
+    name=args.name or (saved or {}).get("display_name") or config.get("REGRET_DISPLAY_NAME")
+    if not name and sys.stdin.isatty(): name=input("What should the table call you? ").strip()
+    if not name:
+        print("regret: --name is required when no saved room session exists",file=sys.stderr)
+        return 1
+    client=TogetherClient(base,args.room,args.timeout,_request_json)
+    try:
+        joined=client.join(name,saved)
+        save_session(base,args.room,{"player_id":joined["player_id"],"session_token":joined["session_token"],"display_name":name},_atomic_json)
+        return run_together(client,heartbeat_interval=args.heartbeat)
+    except (RuntimeError,OSError,KeyError,TypeError,ValueError) as exc:
+        print(f"regret: Peer Pressure unavailable: {exc}",file=sys.stderr)
+        return 1
+
 def run(argv: Sequence[str] | None=None) -> int:
     values=list(sys.argv[1:] if argv is None else argv)
     if values and values[0]=="feedback": return _feedback(values[1:])
     if values and values[0]=="provenance": return _provenance(values[1:])
     if values and values[0]=="identity": return _identity(values[1:])
     if values and values[0]=="consequences": return _consequences(values[1:])
+    if values and values[0]=="together": return _together(values[1:])
     if values and values[0]=="health": values[0]="--health"
     elif values and values[0]=="deal": values.pop(0)
     args=parser().parse_args(values)

@@ -1,4 +1,4 @@
-\.TH BAD-DECISIONS 1 "2026-09-24" "Bad Decisions 1.6.4" "User Commands"
+\.TH BAD-DECISIONS 1 "2026-09-26" "Bad Decisions 1.8.0" "User Commands"
 .SH NAME
 bad-decisions \- deal, validate, import, and inspect Bad Decisions card packs
 .SH SYNOPSIS
@@ -66,6 +66,10 @@ Rebuild aggregate counters. Requires an explicit absolute database path.
 .TP
 .BI consequences purge database --retention-days days
 Purge retained records and rebuild counters.
+.SH LOCAL DEPLOYMENT COMMANDS
+.TP
+.BI deploy local " [--wheel path] [--app-root path] [--timeout seconds]"
+Stage a version-matched server wheel for a root-owned release activator previously installed with sudo ./deploy.sh bootstrap-rootless. This application-only update does not grant access to service definitions, nginx, secrets, or existing immutable releases.
 .SH AWS COMMANDS
 .TP
 .BI setup aws " [--profile name] [--region region] [--bootstrap] [--certificate-arn arn] [--domain-name name] [--hosted-zone-id id] [--allow-http]"
@@ -107,6 +111,21 @@ Enable or disable voting while retaining server analytics.
 .TP
 .B BAD_DECISIONS_CONSEQUENCES_PUBLIC_STATS
 Enable public combination summaries.
+.TP
+.B BAD_DECISIONS_PEER_PRESSURE_DIR
+Absolute private directory for ephemeral per-room SQLite databases. All workers serving one deployment must share this local directory.
+.TP
+.B BAD_DECISIONS_PEER_PRESSURE_ROOM_TTL_SECONDS
+Room lifetime in seconds before its ephemeral database is deleted.
+.TP
+.B BAD_DECISIONS_PEER_PRESSURE_HAND_SIZE
+Number of private responses held by each participant.
+.TP
+.B BAD_DECISIONS_PEER_PRESSURE_MINIMUM_PLAYERS
+Minimum connected participants required before the Responsible Adult may start.
+.TP
+.B BAD_DECISIONS_PEER_PRESSURE_DISCONNECT_TIMEOUT_SECONDS
+Heartbeat grace period before a participant is marked away without deleting their room slot, hand, score, or submission.
 .SH FILES
 .TP
 .I /var/lib/bad-decisions/consequences.sqlite3

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -19,6 +20,11 @@ class Settings:
     consequences_feedback_ttl_seconds: int = 7 * 24 * 60 * 60
     consequences_retention_days: int = 90
     management_token: str | None = None
+    peer_pressure_dir: str | None = None
+    peer_pressure_room_ttl_seconds: int = 6 * 60 * 60
+    peer_pressure_hand_size: int = 10
+    peer_pressure_minimum_players: int = 3
+    peer_pressure_disconnect_timeout_seconds: int = 30
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -28,6 +34,12 @@ class Settings:
         consequences_db = os.getenv("BAD_DECISIONS_CONSEQUENCES_DB")
         if consequences_db and not Path(consequences_db).is_absolute():
             raise ValueError("BAD_DECISIONS_CONSEQUENCES_DB must be an absolute path")
+        peer_pressure_dir = os.getenv(
+            "BAD_DECISIONS_PEER_PRESSURE_DIR",
+            str(Path(tempfile.gettempdir()) / "bad-decisions-peer-pressure"),
+        )
+        if not Path(peer_pressure_dir).is_absolute():
+            raise ValueError("BAD_DECISIONS_PEER_PRESSURE_DIR must be an absolute path")
 
         def boolean(name: str, default: bool) -> bool:
             value = os.getenv(name)
@@ -62,4 +74,9 @@ class Settings:
             consequences_feedback_ttl_seconds=feedback_ttl,
             consequences_retention_days=retention_days,
             management_token=os.getenv("BAD_DECISIONS_MANAGEMENT_TOKEN"),
+            peer_pressure_dir=peer_pressure_dir,
+            peer_pressure_room_ttl_seconds=positive("BAD_DECISIONS_PEER_PRESSURE_ROOM_TTL_SECONDS", 6 * 60 * 60),
+            peer_pressure_hand_size=positive("BAD_DECISIONS_PEER_PRESSURE_HAND_SIZE", 10),
+            peer_pressure_minimum_players=positive("BAD_DECISIONS_PEER_PRESSURE_MINIMUM_PLAYERS", 3),
+            peer_pressure_disconnect_timeout_seconds=positive("BAD_DECISIONS_PEER_PRESSURE_DISCONNECT_TIMEOUT_SECONDS", 30),
         )

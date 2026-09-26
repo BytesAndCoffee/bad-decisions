@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import platform
@@ -12,6 +13,7 @@ import subprocess
 import tempfile
 from datetime import datetime, timezone
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -244,6 +246,80 @@ def deploy(argv: list[str]) -> int:
     return subprocess.run([str(script)], check=False).returncode
 
 
+def deploy_local(argv: list[str]) -> int:
+    """Stage one immutable wheel for the root-owned local release activator."""
+    parser = argparse.ArgumentParser(
+        prog="bad-decisions deploy local",
+        description="Stage a wheel for a previously bootstrapped, rootless local deployment.",
+    )
+    parser.add_argument("--wheel", type=Path, help="server wheel (default: the matching wheel under ./dist)")
+    parser.add_argument("--app-root", type=Path, default=Path("/opt/bad-decisions"))
+    parser.add_argument("--timeout", type=float, default=180.0)
+    args = parser.parse_args(argv)
+    _require_linux()
+    if not args.app_root.is_absolute() or args.app_root == Path("/"):
+        parser.error("--app-root must be a non-root absolute path")
+    if args.timeout <= 0:
+        parser.error("--timeout must be positive")
+    expected = f"bad_decisions-{__version__}-py3-none-any.whl"
+    wheel = args.wheel or (Path.cwd() / "dist" / expected)
+    if not wheel.is_file():
+        parser.error(f"wheel not found: {wheel}; build it first or pass --wheel")
+    if wheel.name != expected:
+        parser.error(f"wheel must be the running command's {__version__} release ({expected})")
+
+    incoming = args.app_root / "incoming"
+    activation = args.app_root / "activation"
+    if not incoming.is_dir() or not activation.is_dir():
+        parser.error("rootless deployment is not bootstrapped; run sudo ./deploy.sh bootstrap-rootless once")
+    release_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ-") + secrets.token_hex(4)
+    stage = incoming / release_id
+    try:
+        stage.mkdir(mode=0o750)
+        staged_wheel = stage / wheel.name
+        with wheel.open("rb") as source, staged_wheel.open("xb") as destination:
+            shutil.copyfileobj(source, destination)
+        staged_wheel.chmod(0o640)
+        digest = hashlib.sha256(staged_wheel.read_bytes()).hexdigest()
+        payload = {"release_id": release_id, "wheel": wheel.name, "sha256": digest, "version": __version__}
+        request = activation / "request.json"
+        temporary = activation / f".request-{release_id}.json"
+        with temporary.open("x", encoding="utf-8") as output:
+            json.dump(payload, output, sort_keys=True)
+            output.write("\n")
+            output.flush()
+            os.fsync(output.fileno())
+        temporary.chmod(0o640)
+        try:
+            os.link(temporary, request)
+        except FileExistsError:
+            parser.error("another local activation request is already pending")
+        finally:
+            temporary.unlink(missing_ok=True)
+    except PermissionError:
+        shutil.rmtree(stage, ignore_errors=True)
+        parser.error("cannot stage a release; log out and back in after bootstrap so the deployment group applies")
+
+    deadline = time.monotonic() + args.timeout
+    result_path = activation / "result.json"
+    while time.monotonic() < deadline:
+        try:
+            result = json.loads(result_path.read_text(encoding="utf-8"))
+        except (FileNotFoundError, PermissionError, UnicodeError, json.JSONDecodeError):
+            time.sleep(0.25)
+            continue
+        if result.get("release_id") != release_id:
+            time.sleep(0.25)
+            continue
+        if result.get("status") == "ok":
+            print(f"Deployment complete: bad-decisions {result.get('version', __version__)} ({release_id})")
+            return 0
+        print(f"Deployment failed: {result.get('message', 'activation failed')}", file=sys.stderr)
+        return 1
+    print("Deployment request timed out; inspect journalctl -u bad-decisions-activate.service", file=sys.stderr)
+    return 1
+
+
 def _read_aws_env() -> dict[str, str]:
     if not AWS_ENV.is_file():
         return {}
@@ -441,7 +517,11 @@ def run(argv: list[str]) -> int:
     if command == "serve":
         return serve(rest)
     if command == "deploy":
-        return deploy_aws(rest[1:]) if rest and rest[0] == "aws" else deploy(rest)
+        if rest and rest[0] == "aws":
+            return deploy_aws(rest[1:])
+        if rest and rest[0] == "local":
+            return deploy_local(rest[1:])
+        return deploy(rest)
     if command == "rotate-token":
         return rotate_token_aws(rest[1:]) if rest and rest[0] == "aws" else _usage_error("rotate-token requires aws")
     if command == "status":

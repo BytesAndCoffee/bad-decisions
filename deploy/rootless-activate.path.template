@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch for staged Bad Decisions releases
+
+[Path]
+PathExists=@APP_ROOT@/activation/request.json
+Unit=@SERVICE_NAME@-activate.service
+
+[Install]
+WantedBy=multi-user.target

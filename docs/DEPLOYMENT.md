@@ -52,6 +52,37 @@ immutable release, atomically switches `current`, restarts the service, and
 retains the prior healthy release for rollback. Inspect service logs with
 `journalctl -u <APP_NAME> -n 100 --no-pager`.
 
+## Rootless application updates
+
+After the first privileged deployment, root can install a narrow release
+activator and grant one existing account permission to stage wheels:
+
+```bash
+sudo DEPLOY_USER="$USER" PORT=8000 ./deploy.sh bootstrap-rootless
+```
+
+Log out and back in once so the new deployment-group membership applies. Future
+application-only updates need no sudo:
+
+```bash
+.venv/bin/python -m build .
+bad-decisions deploy local
+```
+
+`deploy local` accepts only the wheel for its own version, records its SHA-256,
+and atomically places a request in the activator inbox. The root-owned systemd
+helper validates the fixed request schema and artifact, builds the virtual
+environment as the unprivileged service account, freezes the immutable release,
+switches `current`, restarts the service, checks `/healthz`, and restores the
+previous release on failure. The staging account cannot edit nginx, service
+units, environment/secrets, the activator, or existing releases. Changes to
+those resources still use the privileged `deploy.sh` path.
+
+Optional non-default values used by the original install must also be passed to
+`bootstrap-rootless` (`APP_ROOT`, `SERVICE_NAME`, `SERVICE_USER`, `BIND_HOST`,
+`PORT`, and `PYTHON`). Use `--app-root` with `deploy local` if it is not
+`/opt/bad-decisions`.
+
 ## Rollback
 
 A failed deploy rolls itself back automatically (config backups, then the

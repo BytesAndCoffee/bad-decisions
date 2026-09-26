@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+## [1.8.0]
+
+### Added
+
+- Added Peer Pressure: ephemeral server-authoritative multiplayer with isolated SQLite rooms, private hands, anonymous decisions, Responsible Adult rotation, heartbeat synchronization, idempotent revisions, reconnection, and `regret together ROOM_ID`.
+
+## [1.7.1]
+
+### Fixed
+
+- Made indexed-pack modal scrolling responsive by avoiding full-page backdrop repaints and isolating the scrolling list.
+
 ## [1.7.0]
 
 ### Added

@@ -11,6 +11,9 @@
 
 Tracks fixes from the 2026-09-19 code review. Tick an item when its fix and test are done.
 
+- [x] Keep indexed-pack modal scrolling on its own paint layer and avoid repainting a blurred full-page backdrop.
+- [x] Add Peer Pressure multiplayer with isolated ephemeral room databases, privacy-safe projections, idempotent revisioned mutations, and Responsible Adult terminology.
+
 ## Should fix
 - [x] 1. Catalog indexer (`deploy/object-archive/indexer/catalog.py`): add per-member size and compression-ratio limits; catch `zlib.error`/`RuntimeError`/`TypeError` per archive so one bad object can't 503 the catalog; align the 8 MiB limit with the 5 MiB client limit.
 - [x] 2. Catalog endpoint: cache the payload with a TTL, and add nginx `proxy_cache` and `limit_req` to `nginx-carddeck-catalog.conf.template`.
@@ -137,3 +140,4 @@ Tracks fixes from the 2026-09-19 code review. Tick an item when its fix and test
 
 2026-09-24 - release - Prepared lockstep 1.6.4 for external-DNS AWS custom domains.
 2026-09-26 - web - Replaced the single indexed-pack dropdown with an accessible checkbox modal that supports staged multi-pack selection, select-all, clear, apply, cancel, backdrop dismissal, and Escape dismissal.
+2026-09-26 - deployment - Added a one-time privileged bootstrap and narrow systemd release activator so later version-matched local wheel deployments can run without sudo while preserving immutable releases, health-checked rollback, and the nginx/unit/secret privilege boundary.

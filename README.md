@@ -116,6 +116,7 @@ that is between you and the stew.
 - [CardDeck format](docs/CARDDECK.md)
 - [Remote imports](docs/REMOTE_IMPORTS.md)
 - [Attribution and content rights](docs/ATTRIBUTION.md)
+- [Peer Pressure multiplayer](docs/PEER_PRESSURE.md)
 - [Deployment](docs/DEPLOYMENT.md)
 - [Release process](docs/RELEASING.md)
 - [Changelog](CHANGELOG.md)
@@ -138,6 +139,21 @@ in the loaded registry, so custom `BAD_DECISIONS_PACK_DIR` registries need no `b
 
 `/docs` exposes OpenAPI documentation. Errors use a stable JSON envelope and
 request responses include a request ID.
+
+## Peer Pressure (multiplayer)
+
+The Regret client can join a real-time, ephemeral room:
+
+```bash
+regret together ohno --name Michael
+```
+
+Peer Pressure keeps one SQLite database per room, uses authenticated room-local
+sessions, heartbeats, optimistic revisions, and idempotent mutations, and
+projects a private view to each player. The rotating judge is the **Responsible
+Adult**; submitted decisions stay anonymous until a winner is chosen. See
+[PEER_PRESSURE.md](docs/PEER_PRESSURE.md) for the game loop, privacy boundary,
+protocol, API, and deployment controls.
 
 
 ## Consequences (optional analytics and feedback)

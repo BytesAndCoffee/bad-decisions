@@ -14,6 +14,18 @@ regret provenance --json
 regret --list-packs
 ```
 
+Join an ephemeral multiplayer room with Peer Pressure:
+
+```bash
+regret together ohno --name Michael
+```
+
+The first participant is the initial Responsible Adult. Regret securely caches
+the room-local reconnect capability, maintains heartbeats while connected, and
+automatically resynchronizes stale state. Peer Pressure identity is separate
+from Consequences analytics identity. See the
+[multiplayer documentation](../docs/PEER_PRESSURE.md).
+
 Consequences is opt-in and disabled until you choose:
 
 ```bash

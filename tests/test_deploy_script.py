@@ -21,6 +21,13 @@ def test_smoke_test_does_not_hard_code_the_base_pack():
     assert not any("packs=base" in item for item in SCRIPT)
 
 
+def test_peer_pressure_state_is_private_and_outside_releases():
+    source = "\n".join(SCRIPT)
+    assert "PEER_PRESSURE_DIR=${APP_ROOT}/peer-pressure" in source
+    assert 'install -d -o "${SERVICE_USER}" -g "${SERVICE_USER}" -m 0700 "${PEER_PRESSURE_DIR}"' in source
+    assert "BAD_DECISIONS_PEER_PRESSURE_DIR=%s" in source
+
+
 # --- deploy.sh rollback -----------------------------------------------------
 # rollback.sh only rewrites APP_ROOT/current and good-releases, so it runs
 # unprivileged here with systemctl and curl replaced by stubs found first on PATH.

@@ -1,0 +1,11 @@
+[Unit]
+Description=Activate a staged Bad Decisions release
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/@APP_NAME@-activate --app-root @APP_ROOT@ --service-name @SERVICE_NAME@ --service-user @SERVICE_USER@ --deploy-group @DEPLOY_GROUP@ --bind-host @BIND_HOST@ --port @PORT@ --python @PYTHON@
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+NoNewPrivileges=true

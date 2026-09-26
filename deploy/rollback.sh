@@ -21,7 +21,7 @@ PORT=${PORT:-8000}
 RELEASES_DIR=${APP_ROOT}/releases
 CURRENT_LINK=${APP_ROOT}/current
 GOOD_FILE=${APP_ROOT}/good-releases
-ID_PATTERN='^[0-9]{8}T[0-9]{6}Z$'
+ID_PATTERN='^[0-9]{8}T[0-9]{6}Z(-[0-9a-f]{8})?$'
 
 if [[ $# -gt 1 ]]; then
   echo "Usage: deploy.sh rollback [RELEASE_ID]" >&2

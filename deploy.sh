@@ -25,6 +25,7 @@ NGINX_SITE_CONFIG=${NGINX_SITE_CONFIG:-}
 PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-}
 NGINX_ZONE=${NGINX_ZONE:-bad_decisions}
 RELEASES_DIR=${APP_ROOT}/releases
+PEER_PRESSURE_DIR=${APP_ROOT}/peer-pressure
 CURRENT_LINK=${APP_ROOT}/current
 UNIT_FILE=/etc/systemd/system/${SERVICE_NAME}.service
 NGINX_LIMIT=/etc/nginx/conf.d/${APP_NAME}.limit.conf
@@ -46,8 +47,12 @@ fi
 if [[ ${1:-} == rollback ]]; then
   export APP_NAME SERVICE_NAME APP_ROOT BIND_HOST PORT
   exec bash "${SCRIPT_DIR}/deploy/rollback.sh" "${@:2}"
+elif [[ ${1:-} == bootstrap-rootless ]]; then
+  [[ $# -eq 1 ]] || { echo "Usage: deploy.sh bootstrap-rootless" >&2; exit 1; }
+  export APP_NAME SERVICE_NAME SERVICE_USER APP_ROOT BIND_HOST PORT PYTHON
+  exec bash "${SCRIPT_DIR}/deploy/bootstrap-rootless.sh"
 elif [[ $# -gt 0 ]]; then
-  echo "Usage: deploy.sh [rollback [RELEASE_ID]]" >&2
+  echo "Usage: deploy.sh [rollback [RELEASE_ID] | bootstrap-rootless]" >&2
   exit 1
 fi
 if [[ ! -x ${PYTHON} ]] || [[ ! -x ${BUILD_PYTHON} ]]; then
@@ -82,6 +87,7 @@ fi
 if ! id -u "${SERVICE_USER}" >/dev/null 2>&1; then
   useradd --system --home /nonexistent --shell /usr/sbin/nologin "${SERVICE_USER}"
 fi
+install -d -o "${SERVICE_USER}" -g "${SERVICE_USER}" -m 0700 "${PEER_PRESSURE_DIR}"
 
 RELEASE_ID=$(date -u +%Y%m%dT%H%M%SZ)
 RELEASE_DIR=${RELEASES_DIR}/${RELEASE_ID}
@@ -145,6 +151,9 @@ if grep -q '^BAD_DECISIONS_ROOT_PATH=' "${ENV_FILE}"; then
   sed -i "s|^BAD_DECISIONS_ROOT_PATH=.*|BAD_DECISIONS_ROOT_PATH=${ROOT_PATH}|" "${ENV_FILE}"
 else
   printf '\nBAD_DECISIONS_ROOT_PATH=%s\n' "${ROOT_PATH}" >> "${ENV_FILE}"
+fi
+if ! grep -q '^BAD_DECISIONS_PEER_PRESSURE_DIR=' "${ENV_FILE}"; then
+  printf 'BAD_DECISIONS_PEER_PRESSURE_DIR=%s\n' "${PEER_PRESSURE_DIR}" >> "${ENV_FILE}"
 fi
 sed \
   -e "s|@SERVICE_USER@|${SERVICE_USER}|g" \

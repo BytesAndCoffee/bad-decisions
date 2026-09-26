@@ -1,5 +1,19 @@
 # Changelog
 
+## [Unreleased]
+
+## [1.8.0]
+
+### Added
+
+- Added `regret together ROOM_ID`, the interactive Peer Pressure multiplayer client with protected reconnect sessions, background heartbeats, and automatic authoritative resynchronization.
+
+## [1.7.1]
+
+### Changed
+
+- Lockstep release with the Bad Decisions server package.
+
 ## [1.7.0]
 
 ### Changed

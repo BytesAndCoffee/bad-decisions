@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from importlib.resources import files
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, StrictBool
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt
 
 from fastapi import FastAPI, Body, Header, Query, Request
 from fastapi.exceptions import RequestValidationError
@@ -23,12 +23,48 @@ from .engine import generate_from_resolved
 from .errors import BadDecisionsError
 from .models import Round
 from .packs import Registry, load_registry, resolve_pools
+from .peer_pressure import PeerPressureError, PeerPressureService
 from .settings import Settings
 
 REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
 class FeedbackInput(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     enjoyed: StrictBool
+
+
+class PeerModel(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+
+class RoomInput(PeerModel):
+    room: str
+
+
+class JoinInput(PeerModel):
+    display_name: str
+    player_id: str | None = None
+    session_token: str | None = None
+    create: StrictBool = True
+
+
+class SessionInput(PeerModel):
+    player_id: str
+
+
+class HeartbeatInput(SessionInput):
+    revision: StrictInt = Field(ge=0)
+
+
+class MutationInput(HeartbeatInput):
+    request_id: str
+
+
+class SubmissionInput(MutationInput):
+    card_instance_ids: list[str]
+
+
+class JudgmentInput(MutationInput):
+    submission_id: str
 
 
 WEB_ASSETS = {"index.html": "text/html; charset=utf-8", "app.js": "application/javascript; charset=utf-8", "style.css": "text/css; charset=utf-8", "favicon.svg": "image/svg+xml"}
@@ -61,6 +97,15 @@ def create_app() -> FastAPI:
             )
         else:
             app.state.consequences = None
+        app.state.peer_pressure = PeerPressureService(
+            settings.peer_pressure_dir,
+            app.state.registry,
+            room_ttl_seconds=settings.peer_pressure_room_ttl_seconds,
+            hand_size=settings.peer_pressure_hand_size,
+            minimum_players=settings.peer_pressure_minimum_players,
+            disconnect_timeout_seconds=settings.peer_pressure_disconnect_timeout_seconds,
+        )
+        app.state.peer_pressure.cleanup_expired()
         app.state.ready = True
         yield
         app.state.ready = False
@@ -107,6 +152,10 @@ def create_app() -> FastAPI:
     async def validation_error(_request: Request, exc: RequestValidationError):
         return JSONResponse(envelope("request_validation", "Request validation failed", {"errors": exc.errors()}), status_code=422)
 
+    @app.exception_handler(PeerPressureError)
+    async def peer_pressure_error(_request: Request, exc: PeerPressureError):
+        return JSONResponse(exc.nack(), status_code=exc.status)
+
     @app.exception_handler(StarletteHTTPException)
     async def http_error(_request: Request, exc: StarletteHTTPException):
         if exc.status_code == 404:
@@ -150,6 +199,10 @@ Inspect the loaded registry:
 Portable packs:
   bad-decisions pack validate example.carddeck
   Format documentation: CARDDECK.md
+
+Peer Pressure multiplayer:
+  regret together ROOM_ID
+  Protocol documentation: PEER_PRESSURE.md
 
 Service interfaces:
   Interactive API docs: {prefix}/docs
@@ -273,5 +326,74 @@ Service interfaces:
         if value is None:
             return JSONResponse(envelope("combination_not_found", "Combination not found"), status_code=404)
         return value
+
+    def peer_service(request: Request) -> PeerPressureService:
+        return request.app.state.peer_pressure
+
+    def peer_token(authorization: str | None) -> str:
+        if not authorization or not authorization.startswith("Bearer ") or not authorization[7:]:
+            raise PeerPressureError("invalid_session", "Valid room credentials are required", status=401)
+        return authorization[7:]
+
+    @app.post("/v1/peer-pressure/rooms", status_code=201)
+    def create_peer_room(body: RoomInput, request: Request):
+        return peer_service(request).create_room(body.room)
+
+    @app.post("/v1/peer-pressure/rooms/{room}/join")
+    def join_peer_room(room: str, body: JoinInput, request: Request):
+        return peer_service(request).join(
+            room,
+            body.display_name,
+            player_id=body.player_id,
+            session_token=body.session_token,
+            create=body.create,
+        )
+
+    @app.post("/v1/peer-pressure/rooms/{room}/sync")
+    def sync_peer_room(room: str, body: SessionInput, request: Request, authorization: Annotated[str | None, Header()] = None):
+        return peer_service(request).sync(room, body.player_id, peer_token(authorization))
+
+    @app.post("/v1/peer-pressure/rooms/{room}/heartbeat")
+    def heartbeat_peer_room(room: str, body: HeartbeatInput, request: Request, authorization: Annotated[str | None, Header()] = None):
+        return peer_service(request).heartbeat(room, body.player_id, peer_token(authorization), body.revision)
+
+    def peer_mutation(body: MutationInput, request: Request, authorization: str | None, action: str, **values):
+        service = peer_service(request)
+        token = peer_token(authorization)
+        method = getattr(service, action)
+        return method(request.path_params["room"], body.player_id, token, body.request_id, body.revision, **values)
+
+    @app.post("/v1/peer-pressure/rooms/{room}/leave")
+    def leave_peer_room(room: str, body: MutationInput, request: Request, authorization: Annotated[str | None, Header()] = None):
+        return peer_mutation(body, request, authorization, "leave")
+
+    @app.post("/v1/peer-pressure/rooms/{room}/start")
+    def start_peer_room(room: str, body: MutationInput, request: Request, authorization: Annotated[str | None, Header()] = None):
+        return peer_mutation(body, request, authorization, "start")
+
+    @app.post("/v1/peer-pressure/rooms/{room}/submit")
+    def submit_peer_decision(room: str, body: SubmissionInput, request: Request, authorization: Annotated[str | None, Header()] = None):
+        return peer_mutation(body, request, authorization, "submit", cards=body.card_instance_ids)
+
+    @app.post("/v1/peer-pressure/rooms/{room}/judge")
+    def choose_peer_consequence(room: str, body: JudgmentInput, request: Request, authorization: Annotated[str | None, Header()] = None):
+        return peer_mutation(body, request, authorization, "judge", submission_id=body.submission_id)
+
+    @app.post("/v1/peer-pressure/rooms/{room}/advance")
+    def advance_peer_room(room: str, body: MutationInput, request: Request, authorization: Annotated[str | None, Header()] = None):
+        return peer_mutation(body, request, authorization, "advance")
+
+    @app.get("/v1/peer-pressure/rooms/{room}/state")
+    def peer_room_state(
+        room: str,
+        request: Request,
+        x_peer_pressure_player: Annotated[str | None, Header()] = None,
+        authorization: Annotated[str | None, Header()] = None,
+    ):
+        return peer_service(request).project(room, x_peer_pressure_player or "", peer_token(authorization), touch=True)
+
+    @app.delete("/v1/peer-pressure/rooms/{room}")
+    def end_peer_room(room: str, body: MutationInput, request: Request, authorization: Annotated[str | None, Header()] = None):
+        return peer_mutation(body, request, authorization, "end")
 
     return app

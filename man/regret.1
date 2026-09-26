@@ -1,4 +1,4 @@
-\.TH REGRET 1 "2026-09-24" "Bad Decisions Client 1.3.1" "User Commands"
+\.TH REGRET 1 "2026-09-26" "Bad Decisions Client 1.8.0" "User Commands"
 .SH NAME
 regret \- deal rounds from a Bad Decisions API
 .SH SYNOPSIS
@@ -22,6 +22,9 @@ regret \- deal rounds from a Bad Decisions API
 .br
 .B regret consequences
 .RI {status|enjoy|regret|enable|disable}
+.br
+.B regret together
+.RI room " [--name display-name] [--api-url url] [--heartbeat seconds]"
 .SH DESCRIPTION
 .B regret
 is the dependency-light terminal client for a Bad Decisions service. It deals rounds, lists packs, checks health, records optional feedback, and prints provenance from the last local draw.
@@ -77,6 +80,9 @@ Enable voting and stable-ID pseudonymous vote telemetry.
 .TP
 .BI consequences regret
 Disable voting and vote telemetry entirely.
+.TP
+.BI together room
+Join or reconnect to an ephemeral Peer Pressure multiplayer room. The first participant is the initial Responsible Adult. The client maintains authenticated heartbeats, submits private responses, and resynchronizes stale room state automatically. Use --name when no saved room session exists.
 .SH CONSENT
 On the first interactive deal, an unset or stale consent preference prompts once. Choose Enjoy Consequences or Regret Consequences. The choice and consent schema version are stored locally and survive upgrades. Pressing Enter chooses regret. Non-interactive invocations never block for consent.
 .SH FILES
@@ -86,8 +92,11 @@ Atomic local preferences and pseudonymous identity state.
 .TP
 .I ~/.regret-last-round.json
 The last draw's provenance and, when eligible, its feedback capability.
+.TP
+.I ~/.regret-peer-pressure.json
+Protected room-local player IDs and reconnect capabilities. Written atomically with mode 0600. These identities are independent of Consequences.
 .SH PRIVACY
-No account is required. A stable pseudonymous identifier is used only when Consequences is enabled. Disabling Consequences disables voting and its telemetry. The client does not use this identifier for update checks; version checks are cached and use the configured API health endpoint.
+No account is required. A stable pseudonymous identifier is used only when Consequences is enabled. Disabling Consequences disables voting and its telemetry. The client does not use this identifier for update checks or Peer Pressure; version checks are cached and use the configured API health endpoint. Peer Pressure sends only the authenticated room-local identity and state needed for gameplay.
 .SH EXIT STATUS
 .TP
 .B 0
