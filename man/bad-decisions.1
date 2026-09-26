@@ -69,7 +69,7 @@ Purge retained records and rebuild counters.
 .SH LOCAL DEPLOYMENT COMMANDS
 .TP
 .BI deploy local " [--wheel path] [--requirements path] [--app-root path] [--timeout seconds]"
-Deploy the installed version, so pip install --upgrade bad-decisions followed by this command updates the server. The wheel is ./dist's matching build, --wheel, or else this version's wheel downloaded from PyPI and checked against its published SHA-256; the pinned requirements.lock ships with the package. Stage them for a root-owned release activator previously installed with sudo ./deploy.sh bootstrap-rootless. This application-only update does not grant access to service definitions, nginx, secrets, or existing immutable releases.
+Deploy the installed version, so pip install --upgrade bad-decisions followed by this command updates the server. The wheel is ./dist's matching build, --wheel, or else this version's wheel downloaded from PyPI and checked against its published SHA-256; the pinned requirements.lock ships with the package. It warns when PyPI has a newer version than the installed command. On failure, the tail of APP_ROOT/activation/log.txt is printed. Stage them for a root-owned release activator previously installed with sudo ./deploy.sh bootstrap-rootless. This application-only update does not grant access to service definitions, nginx, secrets, or existing immutable releases.
 .TP
 .BI rollback local " [release-id] [--app-root path] [--timeout seconds]"
 Ask the same activator to switch back to the newest known-good release that is not current, or to release-id, with the rules of sudo ./deploy.sh rollback: a failed health check restores the serving release, and success drops newer entries from the good-releases watermark.

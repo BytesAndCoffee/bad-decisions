@@ -73,7 +73,9 @@ bad-decisions rollback local 20260102T000000Z  # a specific release
 `deploy local` deploys exactly the installed version. It uses
 `./dist/bad_decisions-<version>-py3-none-any.whl` when run from a source
 checkout that built one, or `--wheel`; otherwise it downloads that version's
-wheel from PyPI and checks it against PyPI's published SHA-256. The wheel ships
+wheel from PyPI and checks it against PyPI's published SHA-256. It warns when
+PyPI already has a newer version than the installed command (the index can lag
+for a few minutes after a release), because it always deploys the installed one. The wheel ships
 the version's `requirements.lock` (override with `--requirements`). It stages
 both files, records their SHA-256 digests, and atomically places a request in the activator inbox.
 The root-owned systemd helper validates the fixed request schema, reads the
@@ -104,6 +106,11 @@ sudo ./deploy.sh rollback                    # the last good release
 sudo ./deploy.sh rollback 20260102T000000Z   # a specific release under $APP_ROOT/releases
 bad-decisions rollback local [RELEASE_ID]    # the same, without sudo, after bootstrap-rootless
 ```
+
+Each activation also writes `$APP_ROOT/activation/log.txt` (its output,
+including pip's, readable by the deployment group), and `deploy local` and
+`rollback local` print its tail on failure, so diagnosing one does not need
+journal access.
 
 Both commands follow the same rules below (the test suite runs each rollback
 scenario through both); `rollback local` asks the root-owned activator to do it.

@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.8.2]
+
+### Changed
+
+- Lockstep release with the server's prefix-safe trailing-slash redirects and rootless deployment diagnostics; no client changes.
+
 ## [1.8.1]
 
 ### Changed

@@ -43,6 +43,7 @@ def _unprivileged_root(monkeypatch):
     """Let the activator treat the test user as root; it never runs real commands here."""
     monkeypatch.setattr(activator, "ROOT_UID", os.getuid())
     monkeypatch.setattr(activator.time, "sleep", lambda _seconds: None)
+    monkeypatch.setattr(operations, "_latest_published_version", lambda: None)
 
 
 def test_local_deploy_stages_digests_and_atomic_request(tmp_path, monkeypatch, capsys):
@@ -534,3 +535,65 @@ def test_hostile_rollback_targets_fail_with_a_result_the_sender_recognizes(tmp_p
     assert _result(app)["release_id"] == RELEASE_ID and _result(app)["status"] == "error"
     assert (app / "current").resolve().name == PREVIOUS_ID
     assert host.restarts == 0
+
+
+# --- activator log and outdated-version warning -----------------------------
+
+def test_failed_activation_publishes_a_group_readable_log(tmp_path, monkeypatch):
+    app, _incoming, _wheel, _request = _request_tree(tmp_path)
+    _with_previous_release(app)
+    victim = tmp_path / "victim"
+    victim.write_text("keep")
+    (app / "activation/log.txt").symlink_to(victim)
+    _FakeHost(monkeypatch, healthy=False)
+
+    assert activator.main(_activation_args(app)) == 1
+
+    log = app / "activation/log.txt"
+    assert victim.read_text() == "keep" and not log.is_symlink()
+    lines = log.read_text().splitlines()
+    assert lines[0] == f"request {RELEASE_ID}"
+    assert "activation failed: new release failed its health check" in lines
+    assert log.stat().st_mode & 0o777 == 0o640
+    assert not isinstance(activator.sys.stderr, activator._Tee), "main restores stderr"
+
+
+def test_command_output_reaches_the_log(monkeypatch):
+    tee = activator._Tee(io.StringIO())
+    monkeypatch.setattr(activator.sys, "stderr", tee)
+    with pytest.raises(activator.ActivationError, match="failed \\(3\\)"):
+        activator._run(["sh", "-c", "echo resolver said no; exit 3"])
+    assert "resolver said no" in tee.captured.getvalue()
+    assert "resolver said no" in tee.stream.getvalue()
+
+
+@pytest.mark.parametrize("first_line,shown", [(f"request {RELEASE_ID}", True), ("request 20260101T000000Z-00000000", False)])
+def test_failed_local_deploy_prints_only_its_own_log(tmp_path, monkeypatch, capsys, first_line, shown):
+    app = _local_app(tmp_path, monkeypatch)
+    _fake_pypi(monkeypatch, b"published-wheel")
+    (app / "activation/log.txt").write_text(f"{first_line}\nCollecting fastapi==0.116.1\nactivation failed: boom\n")
+    (app / "activation/result.json").write_text(json.dumps({"release_id": RELEASE_ID, "status": "error", "message": "boom"}))
+    assert operations.deploy_local(["--app-root", str(app)]) == 1
+    err = capsys.readouterr().err
+    assert "Deployment failed: boom" in err
+    assert ("Collecting fastapi==0.116.1" in err) is shown
+
+
+@pytest.mark.parametrize("latest,warned", [("99.0.0", True), (__version__, False), ("1.0.0", False), ("2.0.0rc1", False), (None, False)])
+def test_deploy_local_warns_when_pypi_is_newer(tmp_path, monkeypatch, capsys, latest, warned):
+    app = _local_app(tmp_path, monkeypatch)
+    _fake_pypi(monkeypatch, b"published-wheel")
+    monkeypatch.setattr(operations, "_latest_published_version", lambda: latest)
+    (app / "activation/result.json").write_text(json.dumps({"release_id": RELEASE_ID, "status": "ok", "version": __version__}))
+    assert operations.deploy_local(["--app-root", str(app)]) == 0
+    assert ("pip install --upgrade bad-decisions" in capsys.readouterr().err) is warned
+
+
+def test_latest_version_lookup_fails_quietly(monkeypatch):
+    monkeypatch.undo()
+
+    def offline(*_args, **_kwargs):
+        raise operations.urllib.error.URLError("offline")
+
+    monkeypatch.setattr(operations.urllib.request, "urlopen", offline)
+    assert operations._latest_published_version() is None

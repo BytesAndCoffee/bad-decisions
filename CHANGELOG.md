@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [1.8.2]
+
+### Added
+
+- `deploy local` warns when PyPI has a newer version than the installed command, and `deploy local`/`rollback local` print the activator's log on failure (no journal access needed).
+
+### Fixed
+
+- Trailing-slash URLs behind a path prefix redirect within the prefix: `/bad-decisions/docs/` went to `/docs` and 404'd.
+
 ## [1.8.1]
 
 ### Added

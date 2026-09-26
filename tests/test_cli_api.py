@@ -3,6 +3,7 @@ from __future__ import annotations
 import subprocess
 import sys
 
+import pytest
 from fastapi.testclient import TestClient
 
 from bad_decisions.api import create_app
@@ -77,6 +78,25 @@ def test_web_client_works_with_proxy_root_path(monkeypatch):
         assert '<base href="/bad-decisions/web/">' in client.get("/web").text
         assert client.get("/web/style.css").status_code == 200
         assert client.get("/web/../api.py").status_code == 404
+
+
+@pytest.mark.parametrize("root_path,prefix", [("/bad-decisions", "/bad-decisions"), ("", "")])
+def test_trailing_slash_redirects_keep_the_proxy_prefix(monkeypatch, root_path, prefix):
+    # nginx strips /bad-decisions before proxying; Starlette's own redirect dropped it
+    # and sent /bad-decisions/docs/ to /docs.
+    monkeypatch.setenv("BAD_DECISIONS_ROOT_PATH", root_path)
+    with TestClient(create_app()) as client:
+        for path in ("/docs/", "/healthz/", "/v1/packs/", "/v1/packs/base/"):
+            response = client.get(path, follow_redirects=False)
+            assert response.status_code == 307
+            assert response.headers["location"] == prefix + path.rstrip("/")
+        response = client.get("/v1/round/?packs=base", follow_redirects=False)
+        assert response.headers["location"] == f"{prefix}/v1/round?packs=base"
+        for path in ("/no-such-path/", "//evil.example/"):
+            response = client.get(f"http://testserver{path}", follow_redirects=False)
+            assert response.status_code == 404, path
+            assert response.json()["error"]["code"] == "path_not_found"
+        assert client.get("/docs").status_code == 200
 
 
 def test_api_normalized_errors():

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
 import os
 import re
@@ -37,6 +38,7 @@ ROLLBACK_FIELDS = {"action", "request_id", "target"}
 MAX_REQUEST_BYTES = 4096
 MAX_WHEEL_BYTES = 64 * 1024 * 1024
 MAX_LOCK_BYTES = 256 * 1024
+MAX_LOG_BYTES = 256 * 1024
 DIRECTORY_FLAGS = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
 READ_FLAGS = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_NOCTTY | os.O_CLOEXEC
 # The owner of trusted directories and of the frozen release. Tests substitute
@@ -46,6 +48,22 @@ ROOT_UID = 0
 
 class ActivationError(RuntimeError):
     pass
+
+
+class _Tee(io.TextIOBase):
+    """Copy everything written to stderr (journal) into a log the deploy group can read."""
+
+    def __init__(self, stream):
+        self.stream = stream
+        self.captured = io.StringIO()
+
+    def write(self, text: str) -> int:
+        self.stream.write(text)
+        self.captured.write(text)
+        return len(text)
+
+    def flush(self) -> None:
+        self.stream.flush()
 
 
 def _terminate(signum, _frame):
@@ -180,7 +198,9 @@ def load_staged(app_root: Path, value: dict[str, str]) -> tuple[bytes, bytes]:
 
 
 def _run(command: list[str]) -> None:
-    completed = subprocess.run(command, check=False)
+    completed = subprocess.run(command, check=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace")
+    if completed.stdout:
+        sys.stderr.write(completed.stdout)
     if completed.returncode:
         raise ActivationError(f"command failed ({completed.returncode}): {' '.join(command)}")
 
@@ -272,24 +292,34 @@ def _record_good(app_root: Path, release_id: str, previous: Path | None) -> None
     os.replace(temporary, path)
 
 
+def _publish(activation_fd: int, name: str, data: bytes, group_gid: int) -> None:
+    """Replace ``name`` in the group-writable activation directory without following links."""
+    temporary = f".{name}-{os.urandom(8).hex()}"
+    descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600, dir_fd=activation_fd)
+    try:
+        view = memoryview(data)
+        while view:
+            view = view[os.write(descriptor, view):]
+        os.fchown(descriptor, ROOT_UID, group_gid)
+        os.fchmod(descriptor, 0o640)
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+    os.replace(temporary, name, src_dir_fd=activation_fd, dst_dir_fd=activation_fd)
+
+
 def _write_result(app_root: Path, group_gid: int, payload: dict[str, str]) -> None:
-    """Publish the result in the group-writable activation directory without following links."""
+    """Publish this run's log (first line names the request) and then its result."""
     app_fd = _open_directory(app_root)
     try:
         activation_fd = _open_directory("activation", app_fd, group_writable=True)
     finally:
         os.close(app_fd)
     try:
-        temporary = f".result-{os.urandom(8).hex()}.json"
-        descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600, dir_fd=activation_fd)
-        try:
-            os.write(descriptor, (json.dumps(payload, sort_keys=True) + "\n").encode("utf-8"))
-            os.fchown(descriptor, ROOT_UID, group_gid)
-            os.fchmod(descriptor, 0o640)
-            os.fsync(descriptor)
-        finally:
-            os.close(descriptor)
-        os.replace(temporary, "result.json", src_dir_fd=activation_fd, dst_dir_fd=activation_fd)
+        if isinstance(sys.stderr, _Tee):
+            log = sys.stderr.captured.getvalue().encode("utf-8", "replace")[-MAX_LOG_BYTES:]
+            _publish(activation_fd, "log.txt", f"request {payload['release_id']}\n".encode() + log, group_gid)
+        _publish(activation_fd, "result.json", (json.dumps(payload, sort_keys=True) + "\n").encode("utf-8"), group_gid)
     finally:
         os.close(activation_fd)
 
@@ -493,6 +523,8 @@ def main(argv: list[str] | None = None) -> int:
         print("--app-root must be absolute", file=sys.stderr)
         return 2
     previous_handler = signal.signal(signal.SIGTERM, _terminate)
+    journal = sys.stderr
+    sys.stderr = _Tee(journal)
     state: dict[str, str] = {}
     try:
         value = read_request(args.app_root, state)
@@ -503,15 +535,16 @@ def main(argv: list[str] | None = None) -> int:
         release_id = activate(args, state, value)
     except BaseException as exc:
         message = str(exc) if isinstance(exc, ActivationError) else f"{type(exc).__name__}: {exc}"
+        print(f"activation failed: {message}", file=sys.stderr)
         try:
             import grp
             _write_result(args.app_root, grp.getgrnam(args.deploy_group).gr_gid, {"release_id": state.get("release_id", "unknown"), "status": "error", "message": message})
         except Exception as result_error:
             print(f"warning: could not write activation result: {result_error}", file=sys.stderr)
-        print(f"activation failed: {message}", file=sys.stderr)
         return 1
     finally:
         _cleanup_request(args.app_root, state.get("stage"))
+        sys.stderr = journal
         signal.signal(signal.SIGTERM, previous_handler)
     print(f"activated {release_id}")
     return 0

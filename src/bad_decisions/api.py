@@ -14,8 +14,9 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt
 
 from fastapi import FastAPI, Body, Header, Query, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.routing import Match
 
 from . import __version__
 from .consequences import ConsequencesStore, valid_uuid
@@ -111,6 +112,9 @@ def create_app() -> FastAPI:
         app.state.ready = False
 
     app = FastAPI(title="Bad Decisions API", version=__version__, lifespan=lifespan, root_path=settings.root_path)
+    # Starlette's own slash redirect drops root_path when the proxy strips the
+    # prefix (it sent /bad-decisions/docs/ to /docs); http_error redirects instead.
+    app.router.redirect_slashes = False
 
     @app.middleware("http")
     async def request_context(request: Request, call_next):
@@ -157,8 +161,16 @@ def create_app() -> FastAPI:
         return JSONResponse(exc.nack(), status_code=exc.status)
 
     @app.exception_handler(StarletteHTTPException)
-    async def http_error(_request: Request, exc: StarletteHTTPException):
+    async def http_error(request: Request, exc: StarletteHTTPException):
         if exc.status_code == 404:
+            path = request.scope["path"]
+            stripped = path.rstrip("/")
+            if stripped and stripped != path and not stripped.startswith("//") and any(
+                route.matches({**request.scope, "path": stripped})[0] != Match.NONE for route in app.router.routes
+            ):
+                query = request.scope.get("query_string", b"").decode("latin-1")
+                target = request.scope.get("root_path", "").rstrip("/") + stripped + (f"?{query}" if query else "")
+                return RedirectResponse(target, status_code=307)
             return JSONResponse(envelope("path_not_found", "Path not found"), status_code=404)
         return JSONResponse(envelope("http_error", "HTTP error", {"status": exc.status_code}), status_code=exc.status_code)
 

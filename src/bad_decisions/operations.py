@@ -247,6 +247,8 @@ def deploy(argv: list[str]) -> int:
 
 
 PYPI_RELEASE_JSON = "https://pypi.org/pypi/bad-decisions/{version}/json"
+PYPI_PROJECT_JSON = "https://pypi.org/pypi/bad-decisions/json"
+ACTIVATION_LOG_LINES = 40
 MAX_WHEEL_BYTES = 64 * 1024 * 1024
 ACTIVATION_UNIT = "bad-decisions-activate.service"
 
@@ -288,6 +290,46 @@ def _download_release_wheel(expected: str, destination: Path) -> Path:
     if digest.hexdigest() != match["digests"]["sha256"]:
         raise RuntimeError(f"{expected} from PyPI does not match its published SHA-256")
     return wheel
+
+
+def _latest_published_version() -> str | None:
+    """PyPI's newest bad-decisions version, or None when it cannot be determined quickly."""
+    try:
+        with urllib.request.urlopen(PYPI_PROJECT_JSON, timeout=5) as response:
+            version = json.load(response)["info"]["version"]
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    return version if isinstance(version, str) else None
+
+
+def _release_key(version: str) -> tuple[int, ...] | None:
+    parts = version.split(".")
+    return tuple(int(part) for part in parts) if all(part.isdigit() for part in parts) else None
+
+
+def _warn_if_outdated() -> None:
+    latest = _latest_published_version()
+    latest_key, current_key = _release_key(latest or ""), _release_key(__version__)
+    if latest_key and current_key and latest_key > current_key:
+        print(
+            f"warning: PyPI has bad-decisions {latest}, but this command is {__version__}, so {__version__} will be deployed. "
+            "Run pip install --upgrade bad-decisions first (right after a release the index can lag for a few minutes).",
+            file=sys.stderr,
+        )
+
+
+def _print_activation_log(activation: Path, request_id: str) -> None:
+    """Show the tail of the activator's log for this request (the journal needs adm)."""
+    log = activation / "log.txt"
+    try:
+        lines = log.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return
+    if not lines or lines[0] != f"request {request_id}":
+        return
+    print(f"Activator log ({log}, last {ACTIVATION_LOG_LINES} lines):", file=sys.stderr)
+    for line in lines[1:][-ACTIVATION_LOG_LINES:]:
+        print(f"  {line}", file=sys.stderr)
 
 
 def _local_request_id() -> str:
@@ -361,6 +403,7 @@ def deploy_local(argv: list[str]) -> int:
     lock = args.requirements or _release_lock()
     if lock is None or not lock.is_file():
         parser.error(f"requirements lock not found: {lock or 'not shipped with this install'}; pass --requirements")
+    _warn_if_outdated()
 
     with tempfile.TemporaryDirectory(prefix="bad-decisions-wheel-") as downloads:
         wheel = args.wheel or Path.cwd() / "dist" / expected
@@ -394,12 +437,12 @@ def deploy_local(argv: list[str]) -> int:
             parser.error("cannot stage a release; log out and back in after bootstrap so the deployment group applies")
 
     result = _await_local_result(activation, release_id, args.timeout)
-    if result is None:
-        return 1
-    if result.get("status") == "ok":
+    if result is not None and result.get("status") == "ok":
         print(f"Deployment complete: bad-decisions {result.get('version', __version__)} ({release_id})")
         return 0
-    print(f"Deployment failed: {result.get('message', 'activation failed')}", file=sys.stderr)
+    if result is not None:
+        print(f"Deployment failed: {result.get('message', 'activation failed')}", file=sys.stderr)
+    _print_activation_log(activation, release_id)
     return 1
 
 
@@ -420,12 +463,12 @@ def rollback_local(argv: list[str]) -> int:
     except PermissionError:
         parser.error("cannot submit a rollback; log out and back in after bootstrap so the deployment group applies")
     result = _await_local_result(activation, request_id, args.timeout)
-    if result is None:
-        return 1
-    if result.get("status") == "ok":
+    if result is not None and result.get("status") == "ok":
         print(f"Rollback complete: serving {result.get('target')} (was {result.get('previous')})")
         return 0
-    print(f"Rollback failed: {result.get('message', 'activation failed')}", file=sys.stderr)
+    if result is not None:
+        print(f"Rollback failed: {result.get('message', 'activation failed')}", file=sys.stderr)
+    _print_activation_log(activation, request_id)
     return 1
 
 
