@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import grp
 import hashlib
+import io
 import importlib.util
 import json
 import os
@@ -388,7 +389,8 @@ def test_invalid_request_is_removed_so_the_path_unit_stops(tmp_path, monkeypatch
     host = _FakeHost(monkeypatch)
     assert activator.main(_activation_args(app)) == 1
     assert not (app / "activation/request.json").exists()
-    assert _result(app)["release_id"] == "unknown"
+    assert _result(app)["release_id"] == RELEASE_ID  # the sender sees the rejection instead of timing out
+    assert not (app / "incoming" / RELEASE_ID).exists()
     assert host.commands == []
 
 
@@ -413,3 +415,122 @@ def test_bootstrap_assets_keep_the_privilege_boundary_narrow():
     assert "User=@" not in service
     for directive in ("TimeoutStartSec=", "ProtectSystem=full", "NoNewPrivileges=true", "RestrictSUIDSGID=true", "PrivateTmp=true"):
         assert directive in service
+
+
+# --- pip-installed deploy local and rollback local --------------------------
+
+class _Response(io.BytesIO):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_exc):
+        self.close()
+
+
+def _fake_pypi(monkeypatch, wheel_bytes: bytes, *, digest: str | None = None, missing: bool = False):
+    expected = f"bad_decisions-{__version__}-py3-none-any.whl"
+    requested = []
+
+    def urlopen(url, timeout=None):
+        requested.append(url)
+        if url == operations.PYPI_RELEASE_JSON.format(version=__version__):
+            if missing:
+                raise operations.urllib.error.HTTPError(url, 404, "Not Found", None, None)
+            files = [
+                {"filename": f"bad_decisions-{__version__}.tar.gz", "url": "https://files.example/sdist", "digests": {"sha256": "0" * 64}},
+                {"filename": expected, "url": "https://files.example/wheel", "digests": {"sha256": digest or hashlib.sha256(wheel_bytes).hexdigest()}},
+            ]
+            return _Response(json.dumps({"urls": files}).encode())
+        assert url == "https://files.example/wheel"
+        return _Response(wheel_bytes)
+
+    monkeypatch.setattr(operations.urllib.request, "urlopen", urlopen)
+    return requested
+
+
+def _local_app(tmp_path, monkeypatch):
+    app = tmp_path / "app"
+    (app / "incoming").mkdir(parents=True)
+    (app / "activation").mkdir()
+    monkeypatch.setattr(operations, "datetime", _FixedDatetime)
+    monkeypatch.setattr(operations.secrets, "token_hex", lambda _size: "deadbeef")
+    monkeypatch.setattr(operations.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(operations.time, "sleep", lambda _seconds: None)
+    monkeypatch.chdir(tmp_path)  # no ./dist: behaves like a plain pip install
+    return app
+
+
+def test_pip_installed_deploy_local_downloads_this_version_and_ships_its_lock(tmp_path, monkeypatch, capsys):
+    app = _local_app(tmp_path, monkeypatch)
+    requested = _fake_pypi(monkeypatch, b"published-wheel")
+    (app / "activation/result.json").write_text(json.dumps({"release_id": RELEASE_ID, "status": "ok", "version": __version__}))
+
+    assert operations.deploy_local(["--app-root", str(app)]) == 0
+
+    stage = app / "incoming" / RELEASE_ID
+    assert (stage / f"bad_decisions-{__version__}-py3-none-any.whl").read_bytes() == b"published-wheel"
+    assert (stage / "requirements.lock").read_bytes() == (ROOT / "requirements.lock").read_bytes()
+    assert requested[0].endswith(f"/bad-decisions/{__version__}/json")
+    captured = capsys.readouterr()
+    assert "Downloading" in captured.err and "Deployment complete" in captured.out
+
+
+@pytest.mark.parametrize("kwargs,message", [
+    ({"digest": "f" * 64}, "published SHA-256"),
+    ({"missing": True}, "not published on PyPI"),
+])
+def test_pip_installed_deploy_local_refuses_unverified_or_missing_wheels(tmp_path, monkeypatch, capsys, kwargs, message):
+    app = _local_app(tmp_path, monkeypatch)
+    _fake_pypi(monkeypatch, b"published-wheel", **kwargs)
+    assert operations.deploy_local(["--app-root", str(app)]) == 1
+    assert message in capsys.readouterr().err
+    assert list((app / "incoming").iterdir()) == []
+    assert not (app / "activation/request.json").exists()
+
+
+def test_release_lock_is_packaged_with_the_wheel():
+    assert operations._release_lock().read_bytes() == (ROOT / "requirements.lock").read_bytes()
+    pyproject = (ROOT / "pyproject.toml").read_text()
+    assert '"requirements.lock" = "bad_decisions/requirements.lock"' in pyproject
+
+
+@pytest.mark.parametrize("target", [None, PREVIOUS_ID])
+def test_rollback_local_submits_request_and_reports_result(tmp_path, monkeypatch, capsys, target):
+    app = _local_app(tmp_path, monkeypatch)
+    (app / "activation/result.json").write_text(json.dumps(
+        {"release_id": RELEASE_ID, "status": "ok", "action": "rollback", "target": PREVIOUS_ID, "previous": "20260926T000000Z"}
+    ))
+    argv = ["--app-root", str(app), *([target] if target else [])]
+    assert operations.run(["rollback", "local", *argv]) == 0
+    request = json.loads((app / "activation/request.json").read_text())
+    assert request == {"action": "rollback", "request_id": RELEASE_ID, "target": target}
+    assert activator.parse_request(json.dumps(request).encode()) == request
+    assert f"serving {PREVIOUS_ID}" in capsys.readouterr().out
+
+
+def test_rollback_requires_the_local_target(capsys):
+    assert operations.run(["rollback"]) == 2
+    assert "deploy.sh rollback" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("request_value", [
+    {"action": "rm", "request_id": RELEASE_ID, "target": None},
+    {"action": "rollback", "request_id": RELEASE_ID, "target": None, "wheel": "x"},
+    {"action": "rollback", "request_id": "../../x", "target": None},
+    {"action": "rollback", "request_id": RELEASE_ID},
+])
+def test_activator_rejects_hostile_rollback_requests(request_value):
+    with pytest.raises(activator.ActivationError):
+        activator.parse_request(json.dumps(request_value).encode())
+
+
+@pytest.mark.parametrize("target", [7, ["x"], "../x", "", "20260101T000000Z/.."])
+def test_hostile_rollback_targets_fail_with_a_result_the_sender_recognizes(tmp_path, monkeypatch, target):
+    app, _incoming, _wheel, _request = _request_tree(tmp_path)
+    _with_previous_release(app)
+    host = _FakeHost(monkeypatch)
+    _write_request(app, {"action": "rollback", "request_id": RELEASE_ID, "target": target})
+    assert activator.main(_activation_args(app)) == 1
+    assert _result(app)["release_id"] == RELEASE_ID and _result(app)["status"] == "error"
+    assert (app / "current").resolve().name == PREVIOUS_ID
+    assert host.restarts == 0

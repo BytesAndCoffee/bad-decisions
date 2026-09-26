@@ -194,7 +194,7 @@ def _run_consequences(argv: Sequence[str]) -> int:
 
 def run(argv: Sequence[str] | None = None, *, sleep=time.sleep) -> int:
     values = list(sys.argv[1:] if argv is None else argv)
-    if values and values[0] in {"setup", "serve", "deploy", "rotate-token", "status", "reload", "stop"}:
+    if values and values[0] in {"setup", "serve", "deploy", "rollback", "rotate-token", "status", "reload", "stop"}:
         return operations.run(values)
     if values and values[0] == "pack":
         return _run_pack(values[1:])

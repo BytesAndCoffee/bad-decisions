@@ -2,7 +2,16 @@
 
 ## [Unreleased]
 
+## [1.8.1]
+
+### Added
+
+- `bad-decisions rollback local [RELEASE_ID]` rolls back a rootless install without sudo, with the same rules as `deploy.sh rollback`.
+- `pip install --upgrade bad-decisions && bad-decisions deploy local` redeploys without a checkout: the wheel ships its `requirements.lock`, and `deploy local` downloads its own version's wheel from PyPI (SHA-256 checked) when no local build exists.
+
 ## [1.8.0]
+
+Tagged but not published to PyPI; its changes first ship there in 1.8.1.
 
 ### Added
 

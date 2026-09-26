@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "bad-decisions"
-version = "1.8.0"
+version = "1.8.1"
 description = "Reusable engine and service for fill-in-the-blank party card games"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -34,6 +34,10 @@ bad-decisions = "bad_decisions.cli:main"
 [tool.hatch.build.targets.wheel]
 packages = ["src/bad_decisions"]
 include = ["src/bad_decisions/data/**", "src/bad_decisions/web/**"]
+
+# `bad-decisions deploy local` stages this version's exact dependency pins.
+[tool.hatch.build.targets.wheel.force-include]
+"requirements.lock" = "bad_decisions/requirements.lock"
 
 [tool.hatch.build.targets.sdist]
 include = ["src", "tests", "scripts", "deploy", "imports", "LICENSES", "*.md", "*.py", "pyproject.toml", "requirements*.lock", "man", "docs"]

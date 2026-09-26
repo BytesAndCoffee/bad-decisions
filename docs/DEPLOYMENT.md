@@ -62,16 +62,20 @@ sudo DEPLOY_USER="$USER" PORT=8000 ./deploy.sh bootstrap-rootless
 ```
 
 Log out and back in once so the new deployment-group membership applies. Future
-application-only updates need no sudo:
+application-only updates need no sudo and no checkout:
 
 ```bash
-.venv/bin/python -m build .
-bad-decisions deploy local
+pip install --upgrade bad-decisions && bad-decisions deploy local
+bad-decisions rollback local                   # the last good release
+bad-decisions rollback local 20260102T000000Z  # a specific release
 ```
 
-`deploy local` accepts only the wheel for its own version, stages it with
-`requirements.lock` (from the current directory, or `--requirements`), records
-both SHA-256 digests, and atomically places a request in the activator inbox.
+`deploy local` deploys exactly the installed version. It uses
+`./dist/bad_decisions-<version>-py3-none-any.whl` when run from a source
+checkout that built one, or `--wheel`; otherwise it downloads that version's
+wheel from PyPI and checks it against PyPI's published SHA-256. The wheel ships
+the version's `requirements.lock` (override with `--requirements`). It stages
+both files, records their SHA-256 digests, and atomically places a request in the activator inbox.
 The root-owned systemd helper validates the fixed request schema, reads the
 staged files through descriptors that refuse symlinks, FIFOs, and hard links,
 and copies the verified bytes into a private directory. The lock may contain
@@ -85,8 +89,10 @@ those resources still use the privileged `deploy.sh` path.
 
 Optional non-default values used by the original install must also be passed to
 `bootstrap-rootless` (`APP_ROOT`, `SERVICE_NAME`, `SERVICE_USER`, `BIND_HOST`,
-`PORT`, and `PYTHON`). Use `--app-root` with `deploy local` if it is not
-`/opt/bad-decisions`.
+`PORT`, and `PYTHON`). Use `--app-root` with `deploy local` and
+`rollback local` if it is not `/opt/bad-decisions`. Rerun `bootstrap-rootless`
+from a newer checkout to update the root-owned activator itself; it is
+idempotent.
 
 ## Rollback
 
@@ -96,7 +102,11 @@ previous release). To go back on demand after a deploy that passed its checks:
 ```bash
 sudo ./deploy.sh rollback                    # the last good release
 sudo ./deploy.sh rollback 20260102T000000Z   # a specific release under $APP_ROOT/releases
+bad-decisions rollback local [RELEASE_ID]    # the same, without sudo, after bootstrap-rootless
 ```
+
+Both commands follow the same rules below (the test suite runs each rollback
+scenario through both); `rollback local` asks the root-owned activator to do it.
 
 `$APP_ROOT/good-releases` is the watermark: release IDs, oldest first, that
 passed every `deploy.sh` health check (the last 20; a first deploy after

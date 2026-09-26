@@ -28,22 +28,38 @@ def test_peer_pressure_state_is_private_and_outside_releases():
     assert "BAD_DECISIONS_PEER_PRESSURE_DIR=%s" in source
 
 
-# --- deploy.sh rollback -----------------------------------------------------
+# --- deploy.sh rollback and bad-decisions rollback local --------------------
 # rollback.sh only rewrites APP_ROOT/current and good-releases, so it runs
 # unprivileged here with systemctl and curl replaced by stubs found first on PATH.
+# Every scenario below also runs through the rootless activator's rollback
+# request, so both paths keep the same rules. `script_only` marks tests about
+# bash mechanics (argv parsing, its current.new temp link).
 
+import contextlib
+import importlib.util
+import io
+import json
 import os
 import subprocess
+from types import SimpleNamespace
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 ROLLBACK = ROOT / "deploy" / "rollback.sh"
 OLD, MID, NEW = "20260101T000000Z", "20260102T000000Z", "20260103T000000Z"
+_SPEC = importlib.util.spec_from_file_location("bad_decisions_rollback_activator", ROOT / "deploy" / "activate-release.py")
+activator = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(activator)
 
 
-@pytest.fixture
-def host(tmp_path):
+def script_only(host):
+    if host.kind != "script":
+        pytest.skip("exercises rollback.sh mechanics")
+
+
+@pytest.fixture(params=["script", "rootless"])
+def host(tmp_path, request, monkeypatch):
     app_root = tmp_path / "app"
     for release in (OLD, MID, NEW):
         python = app_root / "releases" / release / ".venv" / "bin" / "python"
@@ -60,10 +76,30 @@ def host(tmp_path):
     for stub in stubs.iterdir():
         stub.chmod(0o755)
 
+    kind = request.param
+    if kind == "rootless":
+        import grp
+
+        app_root.chmod(0o755)
+        (app_root / "releases").chmod(0o755)
+        for name in ("activation", "incoming"):
+            (app_root / name).mkdir(mode=0o770)
+        monkeypatch.setattr(activator, "ROOT_UID", os.getuid())
+
+        def fake_run(command):
+            with log.open("a") as output:
+                output.write(" ".join(command[1:]) + "\n")
+
+        monkeypatch.setattr(activator, "_run", fake_run)
+        monkeypatch.setattr(activator, "_healthy", lambda _url, _version, _attempts: not (tmp_path / "unhealthy").exists())
+        group = grp.getgrgid(os.getgid()).gr_name
+
     class Host:
         app = app_root
 
         def run(self, *args):
+            if kind == "rootless":
+                return self.run_rootless(*args)
             env = {
                 "PATH": f"{stubs}:{os.environ['PATH']}",
                 "APP_ROOT": str(app_root),
@@ -71,6 +107,22 @@ def host(tmp_path):
             }
             return subprocess.run(["bash", str(ROLLBACK), *args], env=env, capture_output=True, text=True)
 
+        def run_rootless(self, *args):
+            assert len(args) <= 1, "the rollback local CLI accepts one release id"
+            request_id = "20260926T120000Z-0123abcd"
+            (app_root / "activation" / "request.json").write_text(json.dumps(
+                {"action": "rollback", "request_id": request_id, "target": args[0] if args else None}
+            ))
+            stdout, stderr = io.StringIO(), io.StringIO()
+            with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                code = activator.main([
+                    "--app-root", str(app_root), "--service-name", "svc", "--service-user", "nobody",
+                    "--deploy-group", group, "--port", "8000", "--health-attempts", "1",
+                ])
+            assert not (app_root / "activation" / "request.json").exists()
+            result = json.loads((app_root / "activation" / "result.json").read_text())
+            assert result["release_id"] == request_id and result["status"] == ("ok" if code == 0 else "error")
+            return SimpleNamespace(returncode=code, stdout=stdout.getvalue(), stderr=stderr.getvalue())
         def current(self):
             return os.path.basename(os.path.realpath(app_root / "current"))
 
@@ -86,7 +138,9 @@ def host(tmp_path):
         def watermark(self):
             return (app_root / "good-releases").read_text().split()
 
-    return Host()
+    host = Host()
+    host.kind = kind
+    return host
 
 
 def test_rollback_defaults_to_the_last_good_release(host):
@@ -175,7 +229,8 @@ def test_rollback_rejects_symlinked_and_incomplete_releases(host, tmp_path):
 
 def test_rollback_refuses_current_release_extra_args_and_missing_link(host):
     assert host.run(NEW).returncode == 1
-    assert host.run(OLD, MID).returncode == 1
+    if host.kind == "script":
+        assert host.run(OLD, MID).returncode == 1
     assert host.current() == NEW
     (host.app / "current").unlink()
     assert host.run().returncode == 1
@@ -218,6 +273,7 @@ def test_rollback_watermark_caps_history_at_twenty(host):
 
 
 def test_stale_current_new_directory_blocks_activation_loudly(host):
+    script_only(host)
     (host.app / "current.new").mkdir()
     result = host.run(MID)
     assert result.returncode == 1
@@ -230,6 +286,7 @@ def test_stale_current_new_directory_blocks_activation_loudly(host):
 
 @pytest.mark.skipif(os.geteuid() == 0, reason="root ignores directory permissions")
 def test_unwritable_app_root_fails_instead_of_reporting_success(host):
+    script_only(host)
     host.app.chmod(0o555)
     try:
         result = host.run(MID)

@@ -33,6 +33,7 @@ SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 LOCK_LINE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*==[A-Za-z0-9.+!]+$")
 LOCK_NAME = "requirements.lock"
 REQUEST_FIELDS = {"release_id", "wheel", "sha256", "version", "requirements_sha256"}
+ROLLBACK_FIELDS = {"action", "request_id", "target"}
 MAX_REQUEST_BYTES = 4096
 MAX_WHEEL_BYTES = 64 * 1024 * 1024
 MAX_LOCK_BYTES = 256 * 1024
@@ -88,11 +89,26 @@ def _read_regular(dir_fd: int, name: str, limit: int) -> bytes:
         os.close(descriptor)
 
 
-def parse_request(raw: bytes) -> dict[str, str]:
+def parse_request(raw: bytes, state: dict[str, str] | None = None) -> dict[str, str]:
+    """Validate a request; record its id in ``state`` as soon as that alone is valid,
+    so a request rejected later still gets a result its sender recognizes."""
+    state = {} if state is None else state
     try:
         value = json.loads(raw.decode("utf-8"))
     except (UnicodeError, json.JSONDecodeError) as exc:
         raise ActivationError("activation request is not valid JSON") from exc
+    if isinstance(value, dict) and "action" in value:
+        # {"action": "rollback", "request_id": ID, "target": RELEASE_ID or null}
+        if value.get("action") != "rollback" or set(value) != ROLLBACK_FIELDS or not isinstance(value["request_id"], str):
+            raise ActivationError("activation request has unexpected fields")
+        if not RELEASE_RE.fullmatch(value["request_id"]):
+            raise ActivationError("invalid request id")
+        state["release_id"] = value["request_id"]
+        if value["target"] is not None and not (isinstance(value["target"], str) and GOOD_RE.fullmatch(value["target"])):
+            raise ActivationError("invalid rollback target")
+        return value
+    if isinstance(value, dict) and isinstance(value.get("release_id"), str) and RELEASE_RE.fullmatch(value["release_id"]):
+        state["release_id"] = state["stage"] = value["release_id"]
     if not isinstance(value, dict) or set(value) != REQUEST_FIELDS or not all(isinstance(value[key], str) for key in REQUEST_FIELDS):
         raise ActivationError("activation request has unexpected fields")
     if not RELEASE_RE.fullmatch(value["release_id"]):
@@ -116,15 +132,30 @@ def validate_lock(raw: bytes) -> None:
         raise ActivationError("requirements lock may contain only name==version pins")
 
 
-def load_request(app_root: Path) -> tuple[dict[str, str], bytes, bytes]:
-    """Validate the pending request and return it with the verified wheel and lock bytes."""
+def read_request(app_root: Path, state: dict[str, str] | None = None) -> dict:
+    """Read and validate the pending deploy or rollback request."""
     app_fd = _open_directory(app_root)
     try:
         activation_fd = _open_directory("activation", app_fd, group_writable=True)
-        try:
-            value = parse_request(_read_regular(activation_fd, "request.json", MAX_REQUEST_BYTES))
-        finally:
-            os.close(activation_fd)
+    finally:
+        os.close(app_fd)
+    try:
+        return parse_request(_read_regular(activation_fd, "request.json", MAX_REQUEST_BYTES), state)
+    finally:
+        os.close(activation_fd)
+
+
+def load_request(app_root: Path) -> tuple[dict[str, str], bytes, bytes]:
+    """Validate a pending deploy request and return it with the verified wheel and lock bytes."""
+    value = read_request(app_root)
+    if "action" in value:
+        raise ActivationError("expected a deploy request")
+    return value, *load_staged(app_root, value)
+
+
+def load_staged(app_root: Path, value: dict[str, str]) -> tuple[bytes, bytes]:
+    app_fd = _open_directory(app_root)
+    try:
         incoming_fd = _open_directory("incoming", app_fd, group_writable=True)
     finally:
         os.close(app_fd)
@@ -145,7 +176,7 @@ def load_request(app_root: Path) -> tuple[dict[str, str], bytes, bytes]:
     if hashlib.sha256(lock).hexdigest() != value["requirements_sha256"]:
         raise ActivationError("staged requirements digest does not match request")
     validate_lock(lock)
-    return value, wheel, lock
+    return wheel, lock
 
 
 def _run(command: list[str]) -> None:
@@ -215,11 +246,12 @@ def _atomic_symlink(target: Path, link: Path) -> None:
     os.replace(temporary, link)
 
 
-def _healthy(url: str, version: str, attempts: int = 30) -> bool:
+def _healthy(url: str, version: str | None, attempts: int = 30) -> bool:
+    """Wait for /healthz to answer 200 (and report ``version`` when one is expected)."""
     for _ in range(attempts):
         try:
             with urllib.request.urlopen(url, timeout=2) as response:
-                if response.status == 200 and json.loads(response.read(4096)).get("version") == version:
+                if response.status == 200 and (version is None or json.loads(response.read(4096)).get("version") == version):
                     return True
         except (OSError, ValueError, AttributeError):
             pass
@@ -290,13 +322,101 @@ def _cleanup_request(app_root: Path, release_id: str | None) -> None:
         os.close(app_fd)
 
 
-def activate(args: argparse.Namespace, state: dict[str, str]) -> str:
+def _usable_release(releases: Path, release_id: str) -> bool:
+    """Same test as rollback.sh: a plain release directory with an executable venv python."""
+    if not GOOD_RE.fullmatch(release_id):
+        return False
+    try:
+        if not stat.S_ISDIR((releases / release_id).lstat().st_mode):
+            return False
+    except OSError:
+        return False
+    return os.access(releases / release_id / ".venv/bin/python", os.X_OK)
+
+
+def select_rollback_target(app_root: Path, current_id: str, explicit: str | None) -> str:
+    """Choose the rollback target exactly as deploy/rollback.sh does."""
+    releases = app_root / "releases"
+    good = app_root / "good-releases"
+    target = None
+    if explicit is not None:
+        if not _usable_release(releases, explicit):
+            raise ActivationError(f"Release {explicit} is not a usable release under {releases}.")
+        target = explicit
+    elif good.is_file():
+        # Watermark: the newest release that passed its health checks, other than the current one.
+        for candidate in good.read_text(encoding="ascii", errors="replace").splitlines():
+            if candidate != current_id and _usable_release(releases, candidate):
+                target = candidate
+        if target is None:
+            raise ActivationError(f"No known-good release other than {current_id} in {good}. Name one explicitly: bad-decisions rollback local RELEASE_ID")
+    else:
+        print(f"warning: {good} does not exist (host deployed before it was kept);", file=sys.stderr)
+        print(f"warning: using the newest usable release older than {current_id}, which is not verified good.", file=sys.stderr)
+        for entry in sorted(os.listdir(releases)):
+            if entry < current_id and _usable_release(releases, entry):
+                target = entry
+        if target is None:
+            raise ActivationError(f"No earlier release than {current_id} to roll back to.")
+    if target == current_id:
+        raise ActivationError(f"Release {target} is already current.")
+    return target
+
+
+def _rollback_watermark(app_root: Path, target: str) -> None:
+    """Keep valid IDs only, sorted, up to and including the target: everything newer is dropped."""
+    path = app_root / "good-releases"
+    existing = path.read_text(encoding="ascii", errors="replace").splitlines() if path.is_file() else []
+    entries = sorted({item for item in existing if GOOD_RE.fullmatch(item)} | {target})
+    temporary = path.with_suffix(".new")
+    kept = [item for item in entries if item <= target][-20:]
+    temporary.write_text("".join(f"{item}\n" for item in kept), encoding="ascii")
+    os.replace(temporary, path)
+
+
+def rollback(args: argparse.Namespace, value: dict, state: dict[str, str]) -> dict[str, str]:
+    """Switch ``current`` back to a known-good release; restore the serving one on failure."""
+    import grp
+
+    app_root = args.app_root
+    state["release_id"] = value["request_id"]
+    current = app_root / "current"
+    if not current.is_symlink():
+        raise ActivationError(f"No current release at {current}; nothing to roll back.")
+    current_dir = current.resolve(strict=True)
+    current_id = current_dir.name
+    target = select_rollback_target(app_root, current_id, value["target"])
+    deploy_gid = grp.getgrnam(args.deploy_group).gr_gid
+    print(f"Rolling back {args.service_name}: {current_id} -> {target}", file=sys.stderr)
+    try:
+        _atomic_symlink(app_root / "releases" / target, current)
+        _run(["systemctl", "restart", args.service_name])
+        if not _healthy(f"http://{args.bind_host}:{args.port}/healthz", None, args.health_attempts):
+            raise ActivationError("health check failed")
+    except BaseException as exc:
+        print(f"Release {target} could not be activated or failed its health check; restoring {current_id}.", file=sys.stderr)
+        try:
+            _atomic_symlink(current_dir, current)
+            _run(["systemctl", "restart", args.service_name])
+        except (OSError, ActivationError) as restore_error:
+            print(f"RESTORE FAILED: {args.service_name} may be on the wrong release; check {current}: {restore_error}", file=sys.stderr)
+        raise ActivationError(f"rollback to {target} failed ({exc}); restored {current_id}") from exc
+    try:
+        _rollback_watermark(app_root, target)
+    except OSError as exc:
+        print(f"warning: could not update {app_root / 'good-releases'}: {exc}", file=sys.stderr)
+    result = {"release_id": value["request_id"], "status": "ok", "action": "rollback", "target": target, "previous": current_id}
+    _write_result(app_root, deploy_gid, result)
+    return result
+
+
+def activate(args: argparse.Namespace, state: dict[str, str], value: dict[str, str]) -> str:
     import grp
     import pwd
 
     app_root = args.app_root
-    value, wheel_bytes, lock_bytes = load_request(app_root)
-    release_id = state["release_id"] = value["release_id"]
+    release_id = state["release_id"] = state["stage"] = value["release_id"]
+    wheel_bytes, lock_bytes = load_staged(app_root, value)
     app_fd = _open_directory(app_root)
     try:
         releases_fd = _open_directory("releases", app_fd)
@@ -375,7 +495,12 @@ def main(argv: list[str] | None = None) -> int:
     previous_handler = signal.signal(signal.SIGTERM, _terminate)
     state: dict[str, str] = {}
     try:
-        release_id = activate(args, state)
+        value = read_request(args.app_root, state)
+        if "action" in value:
+            outcome = rollback(args, value, state)
+            print(f"rolled back {outcome['previous']} -> {outcome['target']}")
+            return 0
+        release_id = activate(args, state, value)
     except BaseException as exc:
         message = str(exc) if isinstance(exc, ActivationError) else f"{type(exc).__name__}: {exc}"
         try:
@@ -386,7 +511,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"activation failed: {message}", file=sys.stderr)
         return 1
     finally:
-        _cleanup_request(args.app_root, state.get("release_id"))
+        _cleanup_request(args.app_root, state.get("stage"))
         signal.signal(signal.SIGTERM, previous_handler)
     print(f"activated {release_id}")
     return 0

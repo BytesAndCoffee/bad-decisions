@@ -2,7 +2,15 @@
 
 ## [Unreleased]
 
+## [1.8.1]
+
+### Changed
+
+- Lockstep release with the server's rootless rollback and pip-only local redeploys. 1.8.0 was tagged but not published to PyPI, so this is the first published release with `regret together`.
+
 ## [1.8.0]
+
+Tagged but not published to PyPI; see 1.8.1.
 
 ### Added
 

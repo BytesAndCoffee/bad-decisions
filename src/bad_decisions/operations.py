@@ -246,88 +246,186 @@ def deploy(argv: list[str]) -> int:
     return subprocess.run([str(script)], check=False).returncode
 
 
-def deploy_local(argv: list[str]) -> int:
-    """Stage one immutable wheel for the root-owned local release activator."""
-    parser = argparse.ArgumentParser(
-        prog="bad-decisions deploy local",
-        description="Stage a wheel for a previously bootstrapped, rootless local deployment.",
-    )
-    parser.add_argument("--wheel", type=Path, help="server wheel (default: the matching wheel under ./dist)")
-    parser.add_argument("--requirements", type=Path, default=Path("requirements.lock"), help="pinned dependency lock installed before the wheel (default: ./requirements.lock)")
-    parser.add_argument("--app-root", type=Path, default=Path("/opt/bad-decisions"))
-    parser.add_argument("--timeout", type=float, default=900.0)
-    args = parser.parse_args(argv)
-    _require_linux()
-    if not args.app_root.is_absolute() or args.app_root == Path("/"):
-        parser.error("--app-root must be a non-root absolute path")
-    if args.timeout <= 0:
-        parser.error("--timeout must be positive")
-    expected = f"bad_decisions-{__version__}-py3-none-any.whl"
-    wheel = args.wheel or (Path.cwd() / "dist" / expected)
-    if not wheel.is_file():
-        parser.error(f"wheel not found: {wheel}; build it first or pass --wheel")
-    if wheel.name != expected:
-        parser.error(f"wheel must be the running command's {__version__} release ({expected})")
-    if not args.requirements.is_file():
-        parser.error(f"requirements lock not found: {args.requirements}; run from a source checkout or pass --requirements")
+PYPI_RELEASE_JSON = "https://pypi.org/pypi/bad-decisions/{version}/json"
+MAX_WHEEL_BYTES = 64 * 1024 * 1024
+ACTIVATION_UNIT = "bad-decisions-activate.service"
 
-    incoming = args.app_root / "incoming"
-    activation = args.app_root / "activation"
+
+def _release_lock() -> Path | None:
+    """The dependency lock for this exact version: packaged in the wheel, or the source checkout's."""
+    for candidate in (Path(__file__).with_name("requirements.lock"), Path(__file__).resolve().parents[2] / "requirements.lock"):
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _download_release_wheel(expected: str, destination: Path) -> Path:
+    """Fetch this version's wheel from PyPI and check it against PyPI's published SHA-256."""
+    url = PYPI_RELEASE_JSON.format(version=__version__)
+    try:
+        with urllib.request.urlopen(url, timeout=30) as response:
+            files = json.load(response).get("urls", [])
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError(f"bad-decisions {__version__} is not published on PyPI (HTTP {exc.code}); build a wheel and pass --wheel") from exc
+    except (urllib.error.URLError, ValueError) as exc:
+        raise RuntimeError(f"cannot read PyPI release metadata: {exc}") from exc
+    match = next((item for item in files if isinstance(item, dict) and item.get("filename") == expected), None)
+    if not match or not str(match.get("url", "")).startswith("https://") or not match.get("digests", {}).get("sha256"):
+        raise RuntimeError(f"PyPI has no {expected} for bad-decisions {__version__}; build a wheel and pass --wheel")
+    wheel = destination / expected
+    digest = hashlib.sha256()
+    total = 0
+    try:
+        with urllib.request.urlopen(match["url"], timeout=60) as response, wheel.open("xb") as output:
+            while chunk := response.read(1024 * 1024):
+                total += len(chunk)
+                if total > MAX_WHEEL_BYTES:
+                    raise RuntimeError(f"{expected} from PyPI is unexpectedly large")
+                digest.update(chunk)
+                output.write(chunk)
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"cannot download {expected} from PyPI: {exc}") from exc
+    if digest.hexdigest() != match["digests"]["sha256"]:
+        raise RuntimeError(f"{expected} from PyPI does not match its published SHA-256")
+    return wheel
+
+
+def _local_request_id() -> str:
+    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ-") + secrets.token_hex(4)
+
+
+def _local_inbox(parser: argparse.ArgumentParser, app_root: Path, timeout: float) -> tuple[Path, Path]:
+    _require_linux()
+    if not app_root.is_absolute() or app_root == Path("/"):
+        parser.error("--app-root must be a non-root absolute path")
+    if timeout <= 0:
+        parser.error("--timeout must be positive")
+    incoming = app_root / "incoming"
+    activation = app_root / "activation"
     if not incoming.is_dir() or not activation.is_dir():
         parser.error("rootless deployment is not bootstrapped; run sudo ./deploy.sh bootstrap-rootless once")
-    release_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ-") + secrets.token_hex(4)
-    stage = incoming / release_id
-    try:
-        stage.mkdir(mode=0o750)
-        digests = {}
-        for source_path, name in ((wheel, wheel.name), (args.requirements, "requirements.lock")):
-            staged = stage / name
-            with source_path.open("rb") as source, staged.open("xb") as destination:
-                shutil.copyfileobj(source, destination)
-            staged.chmod(0o640)
-            digests[name] = hashlib.sha256(staged.read_bytes()).hexdigest()
-        payload = {
-            "release_id": release_id,
-            "wheel": wheel.name,
-            "sha256": digests[wheel.name],
-            "requirements_sha256": digests["requirements.lock"],
-            "version": __version__,
-        }
-        request = activation / "request.json"
-        temporary = activation / f".request-{release_id}.json"
-        with temporary.open("x", encoding="utf-8") as output:
-            json.dump(payload, output, sort_keys=True)
-            output.write("\n")
-            output.flush()
-            os.fsync(output.fileno())
-        temporary.chmod(0o640)
-        try:
-            os.link(temporary, request)
-        except FileExistsError:
-            parser.error("another local activation request is already pending")
-        finally:
-            temporary.unlink(missing_ok=True)
-    except PermissionError:
-        shutil.rmtree(stage, ignore_errors=True)
-        parser.error("cannot stage a release; log out and back in after bootstrap so the deployment group applies")
+    return incoming, activation
 
-    deadline = time.monotonic() + args.timeout
+
+def _submit_local_request(parser: argparse.ArgumentParser, activation: Path, request_id: str, payload: dict) -> None:
+    """Publish one request atomically; the activator's path unit fires when it appears."""
+    request = activation / "request.json"
+    temporary = activation / f".request-{request_id}.json"
+    with temporary.open("x", encoding="utf-8") as output:
+        json.dump(payload, output, sort_keys=True)
+        output.write("\n")
+        output.flush()
+        os.fsync(output.fileno())
+    temporary.chmod(0o640)
+    try:
+        os.link(temporary, request)
+    except FileExistsError:
+        parser.error("another local activation request is already pending")
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _await_local_result(activation: Path, request_id: str, timeout: float) -> dict | None:
+    deadline = time.monotonic() + timeout
     result_path = activation / "result.json"
     while time.monotonic() < deadline:
         try:
             result = json.loads(result_path.read_text(encoding="utf-8"))
         except (FileNotFoundError, PermissionError, UnicodeError, json.JSONDecodeError):
-            time.sleep(0.25)
-            continue
-        if result.get("release_id") != release_id:
-            time.sleep(0.25)
-            continue
-        if result.get("status") == "ok":
-            print(f"Deployment complete: bad-decisions {result.get('version', __version__)} ({release_id})")
-            return 0
-        print(f"Deployment failed: {result.get('message', 'activation failed')}", file=sys.stderr)
+            result = None
+        if isinstance(result, dict) and result.get("release_id") == request_id:
+            return result
+        time.sleep(0.25)
+    print(f"Request timed out; inspect journalctl -u {ACTIVATION_UNIT}", file=sys.stderr)
+    return None
+
+
+def deploy_local(argv: list[str]) -> int:
+    """Stage one immutable wheel for the root-owned local release activator."""
+    parser = argparse.ArgumentParser(
+        prog="bad-decisions deploy local",
+        description="Deploy this installed version through a previously bootstrapped, rootless local activator.",
+    )
+    parser.add_argument("--wheel", type=Path, help="server wheel (default: ./dist's matching wheel, else this version's wheel from PyPI)")
+    parser.add_argument("--requirements", type=Path, help="pinned dependency lock (default: the lock shipped with this version)")
+    parser.add_argument("--app-root", type=Path, default=Path("/opt/bad-decisions"))
+    parser.add_argument("--timeout", type=float, default=900.0)
+    args = parser.parse_args(argv)
+    incoming, activation = _local_inbox(parser, args.app_root, args.timeout)
+    expected = f"bad_decisions-{__version__}-py3-none-any.whl"
+    if args.wheel is not None:
+        if not args.wheel.is_file():
+            parser.error(f"wheel not found: {args.wheel}")
+        if args.wheel.name != expected:
+            parser.error(f"wheel must be the running command's {__version__} release ({expected})")
+    lock = args.requirements or _release_lock()
+    if lock is None or not lock.is_file():
+        parser.error(f"requirements lock not found: {lock or 'not shipped with this install'}; pass --requirements")
+
+    with tempfile.TemporaryDirectory(prefix="bad-decisions-wheel-") as downloads:
+        wheel = args.wheel or Path.cwd() / "dist" / expected
+        if args.wheel is None and not wheel.is_file():
+            print(f"Downloading {expected} from PyPI", file=sys.stderr)
+            try:
+                wheel = _download_release_wheel(expected, Path(downloads))
+            except RuntimeError as exc:
+                print(f"bad-decisions deploy local: {exc}", file=sys.stderr)
+                return 1
+        release_id = _local_request_id()
+        stage = incoming / release_id
+        try:
+            stage.mkdir(mode=0o750)
+            digests = {}
+            for source_path, name in ((wheel, wheel.name), (lock, "requirements.lock")):
+                staged = stage / name
+                with source_path.open("rb") as source, staged.open("xb") as destination:
+                    shutil.copyfileobj(source, destination)
+                staged.chmod(0o640)
+                digests[name] = hashlib.sha256(staged.read_bytes()).hexdigest()
+            _submit_local_request(parser, activation, release_id, {
+                "release_id": release_id,
+                "wheel": wheel.name,
+                "sha256": digests[wheel.name],
+                "requirements_sha256": digests["requirements.lock"],
+                "version": __version__,
+            })
+        except PermissionError:
+            shutil.rmtree(stage, ignore_errors=True)
+            parser.error("cannot stage a release; log out and back in after bootstrap so the deployment group applies")
+
+    result = _await_local_result(activation, release_id, args.timeout)
+    if result is None:
         return 1
-    print("Deployment request timed out; inspect journalctl -u bad-decisions-activate.service", file=sys.stderr)
+    if result.get("status") == "ok":
+        print(f"Deployment complete: bad-decisions {result.get('version', __version__)} ({release_id})")
+        return 0
+    print(f"Deployment failed: {result.get('message', 'activation failed')}", file=sys.stderr)
+    return 1
+
+
+def rollback_local(argv: list[str]) -> int:
+    """Ask the root-owned local activator to switch back to a known-good release."""
+    parser = argparse.ArgumentParser(
+        prog="bad-decisions rollback local",
+        description="Roll back a rootless local deployment, with the same rules as sudo ./deploy.sh rollback.",
+    )
+    parser.add_argument("release_id", nargs="?", help="release under APP_ROOT/releases (default: the newest known-good release that is not current)")
+    parser.add_argument("--app-root", type=Path, default=Path("/opt/bad-decisions"))
+    parser.add_argument("--timeout", type=float, default=180.0)
+    args = parser.parse_args(argv)
+    _incoming, activation = _local_inbox(parser, args.app_root, args.timeout)
+    request_id = _local_request_id()
+    try:
+        _submit_local_request(parser, activation, request_id, {"action": "rollback", "request_id": request_id, "target": args.release_id})
+    except PermissionError:
+        parser.error("cannot submit a rollback; log out and back in after bootstrap so the deployment group applies")
+    result = _await_local_result(activation, request_id, args.timeout)
+    if result is None:
+        return 1
+    if result.get("status") == "ok":
+        print(f"Rollback complete: serving {result.get('target')} (was {result.get('previous')})")
+        return 0
+    print(f"Rollback failed: {result.get('message', 'activation failed')}", file=sys.stderr)
     return 1
 
 
@@ -533,6 +631,8 @@ def run(argv: list[str]) -> int:
         if rest and rest[0] == "local":
             return deploy_local(rest[1:])
         return deploy(rest)
+    if command == "rollback":
+        return rollback_local(rest[1:]) if rest and rest[0] == "local" else _usage_error("rollback requires local (privileged installs use sudo ./deploy.sh rollback)")
     if command == "rotate-token":
         return rotate_token_aws(rest[1:]) if rest and rest[0] == "aws" else _usage_error("rotate-token requires aws")
     if command == "status":
