@@ -4,6 +4,9 @@
 deliberately parameterized: it does not name a provider, host, domain, user
 home, or pre-existing nginx site.
 
+For the short version (defaults, first install, rootless updates, and when the
+privileged path is still needed), see [EASY_DEPLOY.md](EASY_DEPLOY.md).
+
 Install Python 3.12 with venv support, nginx, and curl. Build and test the
 project first. The script must run as root because it creates a service account,
 release directory, systemd unit, environment file, and nginx configuration.

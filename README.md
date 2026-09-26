@@ -117,6 +117,7 @@ that is between you and the stew.
 - [Remote imports](docs/REMOTE_IMPORTS.md)
 - [Attribution and content rights](docs/ATTRIBUTION.md)
 - [Peer Pressure multiplayer](docs/PEER_PRESSURE.md)
+- [Easy deploy](docs/EASY_DEPLOY.md)
 - [Deployment](docs/DEPLOYMENT.md)
 - [Release process](docs/RELEASING.md)
 - [Changelog](CHANGELOG.md)
@@ -224,7 +225,10 @@ sudo NGINX_SITE_CONFIG=/etc/nginx/sites-available/example.com \
 
 The deployer creates an unprivileged service account, immutable wheel releases,
 a `bad-decisions.service` unit, and optional loopback nginx proxy configuration.
-See [DEPLOYMENT.md](docs/DEPLOYMENT.md).
+After a one-time `bootstrap-rootless`, updates need no sudo:
+`pip install --upgrade bad-decisions && bad-decisions deploy local`.
+Start with [EASY_DEPLOY.md](docs/EASY_DEPLOY.md); [DEPLOYMENT.md](docs/DEPLOYMENT.md)
+is the full reference.
 
 ### AWS-native deployment
 
