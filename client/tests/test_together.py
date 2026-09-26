@@ -78,3 +78,59 @@ def test_together_requires_name_without_saved_session(tmp_path, monkeypatch, cap
     monkeypatch.setattr(cli.sys.stdin, "isatty", lambda: False)
     assert cli.run(["together", "ohno", "--api-url", "https://example.invalid"]) == 1
     assert "--name is required" in capsys.readouterr().err
+
+
+def _nack(monkeypatch, status, body):
+    import io
+    import json
+    from urllib.error import HTTPError
+
+    def urlopen(request, timeout=None):
+        raise HTTPError(request.full_url, status, "refused", {}, io.BytesIO(json.dumps(body).encode()))
+
+    monkeypatch.setattr(cli, "urlopen", urlopen)
+
+
+def test_peer_pressure_nacks_keep_their_reason_and_message(monkeypatch):
+    _nack(monkeypatch, 409, {"type": "NACK", "reason": "display_name_taken", "message": "That display name is already in this room", "resync": False})
+    try:
+        cli._request_json("https://example.invalid/v1/peer-pressure/rooms/test/join", timeout=1, method="POST", payload={})
+    except RuntimeError as exc:
+        assert str(exc) == "display_name_taken: That display name is already in this room"
+    else:
+        raise AssertionError("expected a RuntimeError")
+
+
+def test_api_error_envelopes_are_still_reported(monkeypatch):
+    _nack(monkeypatch, 404, {"error": {"code": "pack_not_found", "message": "Unknown pack", "details": {}}})
+    try:
+        cli._request_json("https://example.invalid/v1/packs/x", timeout=1)
+    except RuntimeError as exc:
+        assert str(exc) == "pack_not_found: Unknown pack"
+
+
+def test_together_explains_a_taken_name(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(cli, "load_session", lambda *_args: None)
+    _nack(monkeypatch, 409, {"type": "NACK", "reason": "display_name_taken", "message": "That display name is already in this room", "resync": False})
+    assert cli.run(["together", "test", "--name", "michael"]) == 1
+    err = capsys.readouterr().err
+    assert "display_name_taken: That display name is already in this room" in err
+    assert "--name" in err and "HTTP 409" not in err
+
+
+def test_stale_revision_nack_triggers_a_resync(monkeypatch):
+    synced = []
+
+    def request_json(url, **kwargs):
+        if url.endswith("/submit"):
+            raise RuntimeError("stale_revision: Room state changed; synchronize and try again")
+        synced.append(url)
+        return {"type": "SYNACK", "revision": 9, "state": {"room": {"revision": 9}}}, {}
+
+    client = TogetherClient("https://example.invalid", "ohno", 4, request_json)
+    client.player_id, client.session_token, client.revision = "player_1", "token", 4
+    try:
+        client.mutate("submit", card_instance_ids=["card_1"])
+    except RuntimeError:
+        pass
+    assert synced and client.revision == 9

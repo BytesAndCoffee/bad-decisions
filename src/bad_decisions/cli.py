@@ -66,6 +66,8 @@ def pack_parser() -> argparse.ArgumentParser:
     initialized.add_argument("registry_dir", type=Path)
     publish_aws = commands.add_parser("publish-aws", help="publish a CardDeck to configured AWS storage")
     publish_aws.add_argument("arguments", nargs=argparse.REMAINDER)
+    replace_local = commands.add_parser("replace-local", help="replace one named pack in a rootless local install (see bad-decisions pack replace-local -h)", add_help=False)
+    replace_local.add_argument("arguments", nargs=argparse.REMAINDER)
     list_aws = commands.add_parser("list-aws", help="print the configured AWS CardDeck catalog")
     seed_aws = commands.add_parser("seed-aws", help="seed missing bundled packs into configured AWS storage")
     return result
@@ -117,6 +119,8 @@ def _interactive(resolved, registry) -> int:
 
 
 def _run_pack(argv: Sequence[str]) -> int:
+    if argv and argv[0] == "replace-local":
+        return operations.pack_replace_local(list(argv[1:]))
     args = pack_parser().parse_args(argv)
     if args.command == "publish-aws":
         return operations.publish_aws_pack([str(args.arguments[0])] + list(args.arguments[1:])) if args.arguments else operations.publish_aws_pack([])

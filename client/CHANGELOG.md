@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.8.4]
+
+### Fixed
+
+- `regret together` reported Peer Pressure refusals as a bare `HTTP 409`: the protocol NACK's reason and message are now shown, with a hint for a taken display name or a table that already started, and stale-revision refusals trigger the intended resync.
+
 ## [1.8.3]
 
 ### Changed

@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import secrets
 import shutil
 import subprocess
@@ -336,10 +337,47 @@ def _local_request_id() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ-") + secrets.token_hex(4)
 
 
+def _inside_managed_release(candidate: str | os.PathLike[str], app_root: Path) -> bool:
+    """Whether ``candidate`` lives in APP_ROOT/current or APP_ROOT/releases (resolving links)."""
+    roots = {app_root / "current", app_root / "releases"}
+    roots |= {Path(os.path.realpath(root)) for root in list(roots)}
+    for path in {Path(os.path.abspath(candidate)), Path(os.path.realpath(candidate))}:
+        if any(path == root or root in path.parents for root in roots):
+            return True
+    return False
+
+
+def _check_management_install(app_root: Path) -> str | None:
+    """Refuse to manage a deployment from inside its own frozen release.
+
+    Releases are deliberately unreadable to the deployment group, and a command
+    that lives in the release it replaces breaks on the next deploy. Returns an
+    error message for the running command; only warns about PATH.
+    """
+    running = [sys.executable, sys.prefix, *(sys.argv[:1] if sys.argv and sys.argv[0] else [])]
+    link = Path.home() / ".local" / "bin" / "bad-decisions"
+    remedy = (
+        "Install a separate management copy instead:\n"
+        "    pipx install bad-decisions        # later: pipx upgrade bad-decisions\n"
+        f"If {link} is a symlink into {app_root}, remove it first (rm {link}); "
+        "never link the management command into a deployed release. See docs/EASY_DEPLOY.md."
+    )
+    if any(_inside_managed_release(path, app_root) for path in running):
+        return f"this bad-decisions runs from the deployed release under {app_root} ({os.path.realpath(sys.prefix)}).\n{remedy}"
+    on_path = shutil.which("bad-decisions")
+    if on_path and _inside_managed_release(on_path, app_root):
+        print(f"warning: the bad-decisions on your PATH ({on_path}) points into {app_root}.\n{remedy}", file=sys.stderr)
+    return None
+
+
 def _local_inbox(parser: argparse.ArgumentParser, app_root: Path, timeout: float) -> tuple[Path, Path]:
     _require_linux()
     if not app_root.is_absolute() or app_root == Path("/"):
         parser.error("--app-root must be a non-root absolute path")
+    problem = _check_management_install(app_root)
+    if problem:
+        print(f"{parser.prog}: {problem}", file=sys.stderr)
+        raise SystemExit(2)
     if timeout <= 0:
         parser.error("--timeout must be positive")
     incoming = app_root / "incoming"
@@ -443,6 +481,71 @@ def deploy_local(argv: list[str]) -> int:
     if result is not None:
         print(f"Deployment failed: {result.get('message', 'activation failed')}", file=sys.stderr)
     _print_activation_log(activation, release_id)
+    return 1
+
+
+def pack_replace_local(argv: list[str]) -> int:
+    """Replace one named pack in a rootless install's registry through the root activator."""
+    from .archive import _read_archive
+    from .errors import PackConfigurationError
+    from .models import ID_PATTERN
+    from .remote import _download_archive
+
+    parser = argparse.ArgumentParser(
+        prog="bad-decisions pack replace-local",
+        description="Replace OLD_PACK_ID in a rootless local install with the HTTPS CardDeck archive at URL, "
+        "which must declare --new-id. The activator restores the old pack if the service does not come back healthy with it.",
+    )
+    parser.add_argument("old_pack_id", help="the pack to remove; <registry>/<OLD_PACK_ID>.json must exist")
+    parser.add_argument("url", help="HTTPS .carddeck archive of the replacement pack")
+    parser.add_argument("--new-id", required=True, help="pack id the archive must declare; must not exist yet")
+    parser.add_argument("--app-root", type=Path, default=Path("/opt/bad-decisions"))
+    parser.add_argument("--timeout", type=float, default=180.0)
+    args = parser.parse_args(argv)
+    pattern = re.compile(ID_PATTERN)
+    for label, value in (("OLD_PACK_ID", args.old_pack_id), ("--new-id", args.new_id)):
+        if not pattern.fullmatch(value) or len(value) > 128:
+            parser.error(f"{label} must be a pack id ({ID_PATTERN})")
+    if args.old_pack_id == args.new_id:
+        parser.error("the new pack id must differ from the old one")
+    incoming, activation = _local_inbox(parser, args.app_root, args.timeout)
+
+    with tempfile.TemporaryDirectory(prefix="bad-decisions-pack-") as downloads:
+        try:
+            archive = _download_archive(args.url, Path(downloads), "replacement", expected_id=args.new_id)
+            _manifest, _pack, payload, _license, _attribution = _read_archive(archive)
+        except PackConfigurationError as exc:
+            print(f"{parser.prog}: {exc.message}", file=sys.stderr)
+            return 1
+    request_id = _local_request_id()
+    stage = incoming / request_id
+    try:
+        stage.mkdir(mode=0o750)
+        staged = stage / "pack.json"
+        with staged.open("xb") as output:
+            output.write(payload)
+        staged.chmod(0o640)
+        _submit_local_request(parser, activation, request_id, {
+            "action": "replace_pack",
+            "request_id": request_id,
+            "old_pack_id": args.old_pack_id,
+            "new_pack_id": args.new_id,
+            "pack_sha256": hashlib.sha256(staged.read_bytes()).hexdigest(),
+        })
+    except PermissionError:
+        shutil.rmtree(stage, ignore_errors=True)
+        parser.error("cannot stage the pack; log out and back in after bootstrap so the deployment group applies")
+    except SystemExit:
+        shutil.rmtree(stage, ignore_errors=True)
+        raise
+
+    result = _await_local_result(activation, request_id, args.timeout)
+    if result is not None and result.get("status") == "ok":
+        print(f"Replaced pack {args.old_pack_id} with {args.new_id} ({request_id})")
+        return 0
+    if result is not None:
+        print(f"Pack replacement failed: {result.get('message', 'activation failed')}", file=sys.stderr)
+    _print_activation_log(activation, request_id)
     return 1
 
 

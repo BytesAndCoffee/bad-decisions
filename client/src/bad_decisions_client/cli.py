@@ -147,7 +147,10 @@ def _request_json(url: str, *, timeout: float, method: str="GET", payload: dict[
             return json.loads(response.read().decode("utf-8")), getattr(response, "headers", {})
     except HTTPError as exc:
         try:
-            body=json.loads(exc.read().decode("utf-8")); error=body.get("error",{}); raise RuntimeError(f"{error.get('code')}: {error.get('message')}" if error.get("code") else error.get("message",f"HTTP {exc.code}")) from exc
+            body=json.loads(exc.read().decode("utf-8"))
+            # Peer Pressure refusals are protocol NACKs rather than the API's error envelope.
+            if isinstance(body,dict) and body.get("type")=="NACK": raise RuntimeError(f"{body.get('reason')}: {body.get('message')}") from exc
+            error=body.get("error",{}) if isinstance(body,dict) else {}; raise RuntimeError(f"{error.get('code')}: {error.get('message')}" if error.get("code") else error.get("message",f"HTTP {exc.code}")) from exc
         except (UnicodeDecodeError,json.JSONDecodeError): raise RuntimeError(f"HTTP {exc.code}: {exc.reason}") from exc
     except (URLError,TimeoutError) as exc: raise RuntimeError(f"Cannot reach API: {exc.reason if isinstance(exc,URLError) else exc}") from exc
 
@@ -225,6 +228,11 @@ def _identity(argv: Sequence[str]) -> int:
     print("identity omitted" if config.get("REGRET_ANALYTICS_IDENTITY")=="off" else "identity enabled")
     return 0
 
+TOGETHER_HINTS = {
+    "display_name_taken": "someone at that table already uses that name. If it was you on another device, rejoin from there; otherwise choose another with --name.",
+    "game_in_progress": "that table has already started, and new players can only join before the first round. Try another room name.",
+}
+
 def _together(argv: Sequence[str]) -> int:
     command=argparse.ArgumentParser(prog="regret together",description="Give in to Peer Pressure.")
     command.add_argument("room"); command.add_argument("--name"); command.add_argument("--api-url",default=DEFAULT_API_URL)
@@ -248,6 +256,8 @@ def _together(argv: Sequence[str]) -> int:
         return run_together(client,heartbeat_interval=args.heartbeat)
     except (RuntimeError,OSError,KeyError,TypeError,ValueError) as exc:
         print(f"regret: Peer Pressure unavailable: {exc}",file=sys.stderr)
+        hint=next((text for reason,text in TOGETHER_HINTS.items() if str(exc).startswith(f"{reason}:")),None)
+        if hint: print(f"regret: {hint}",file=sys.stderr)
         return 1
 
 def run(argv: Sequence[str] | None=None) -> int:

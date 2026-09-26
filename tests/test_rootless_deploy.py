@@ -597,3 +597,52 @@ def test_latest_version_lookup_fails_quietly(monkeypatch):
 
     monkeypatch.setattr(operations.urllib.request, "urlopen", offline)
     assert operations._latest_published_version() is None
+
+
+# --- the management command must not run from the release it manages --------
+
+def _release_tree(app: Path) -> Path:
+    release = app / "releases" / "20260926T000000Z-00000000"
+    (release / ".venv" / "bin").mkdir(parents=True)
+    (release / ".venv" / "bin" / "bad-decisions").write_text("#!/bin/sh\n")
+    (app / "current").symlink_to(release)
+    return release
+
+
+@pytest.mark.parametrize("via", ["prefix", "symlinked argv0"])
+def test_management_commands_refuse_to_run_from_the_deployed_release(tmp_path, monkeypatch, capsys, via):
+    app = _local_app(tmp_path, monkeypatch)
+    release = _release_tree(app)
+    if via == "prefix":
+        monkeypatch.setattr(operations.sys, "prefix", str(release / ".venv"))
+    else:
+        link = tmp_path / "bin" / "bad-decisions"
+        link.parent.mkdir()
+        link.symlink_to(app / "current" / ".venv" / "bin" / "bad-decisions")
+        monkeypatch.setattr(operations.sys, "argv", [str(link), "deploy", "local"])
+    for command in (operations.deploy_local, operations.rollback_local):
+        with pytest.raises(SystemExit) as refused:
+            command(["--app-root", str(app)])
+        assert refused.value.code == 2
+        err = capsys.readouterr().err
+        assert "runs from the deployed release" in err and "pipx install bad-decisions" in err
+    assert list((app / "incoming").iterdir()) == []
+    assert not (app / "activation/request.json").exists()
+
+
+def test_path_command_pointing_into_the_release_is_only_a_warning(tmp_path, monkeypatch, capsys):
+    app = _local_app(tmp_path, monkeypatch)
+    _release_tree(app)
+    link = tmp_path / "bin" / "bad-decisions"
+    link.parent.mkdir()
+    link.symlink_to(app / "current" / ".venv" / "bin" / "bad-decisions")
+    monkeypatch.setattr(operations.shutil, "which", lambda _name: str(link))
+    _fake_pypi(monkeypatch, b"published-wheel")
+    (app / "activation/result.json").write_text(json.dumps({"release_id": RELEASE_ID, "status": "ok", "version": __version__}))
+    assert operations.deploy_local(["--app-root", str(app)]) == 0
+    err = capsys.readouterr().err
+    assert f"warning: the bad-decisions on your PATH ({link}) points into {app}" in err
+
+
+def test_unrelated_installs_pass_the_management_check(tmp_path):
+    assert operations._check_management_install(tmp_path / "not-installed") is None

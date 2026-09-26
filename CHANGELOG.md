@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [1.8.4]
+
+### Added
+
+- `bad-decisions pack replace-local OLD_ID URL --new-id NEW_ID` replaces one named pack in a rootless install's registry through the root activator (enabled by `bootstrap-rootless` with `PACK_DIR`): HTTPS download within CardDeck limits, full validation, a no-overwrite publish, a health and `/v1/packs` check, and exact restoration of the previous files on failure.
+
+### Changed
+
+- The web indexed-pack chooser selects Pretend You're Xyzzy imports by provenance (their source edition) instead of a `pyx-` id prefix, so renamed packs such as `furry` stay there, and each option shows its short pack id.
+- Local management commands refuse to run from inside the deployed release (for example through a symlink into `APP_ROOT/current`) and explain how to install them separately with pipx; `EASY_DEPLOY.md` documents the migration.
+
 ## [1.8.3]
 
 ### Changed

@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-"""Root-owned, narrowly scoped activator for staged Bad Decisions wheels.
+"""Root-owned, narrowly scoped activator for staged Bad Decisions wheels and packs.
 
 Everything under ``incoming/`` and ``activation/`` is writable by the deployment
 group, so every access there is descriptor-relative, refuses symlinks, FIFOs,
 and hard links, and is size-capped. Root copies the verified wheel and lock into
 a private directory before the service user installs them, so the bytes that
 were hashed are the bytes that get installed.
+
+It also replaces one named pack in the configured registry (``--pack-dir``):
+the registry directory belongs to the service, so every operation there is
+descriptor-relative and never follows a name, and any failure restores the
+exact previous files.
 """
 
 from __future__ import annotations
@@ -35,6 +40,13 @@ LOCK_LINE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*==[A-Za-z0-9.+!]+$")
 LOCK_NAME = "requirements.lock"
 REQUEST_FIELDS = {"release_id", "wheel", "sha256", "version", "requirements_sha256"}
 ROLLBACK_FIELDS = {"action", "request_id", "target"}
+REPLACE_FIELDS = {"action", "request_id", "old_pack_id", "new_pack_id", "pack_sha256"}
+# Mirrors bad_decisions.models.ID_PATTERN and archive.MAX_MEMBER_BYTES (guarded by a
+# drift test): the activator never imports project code.
+PACK_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+MAX_PACK_ID = 128
+MAX_PACK_BYTES = 2 * 1024 * 1024
+STAGED_PACK = "pack.json"
 MAX_REQUEST_BYTES = 4096
 MAX_WHEEL_BYTES = 64 * 1024 * 1024
 MAX_LOCK_BYTES = 256 * 1024
@@ -115,6 +127,21 @@ def parse_request(raw: bytes, state: dict[str, str] | None = None) -> dict[str, 
         value = json.loads(raw.decode("utf-8"))
     except (UnicodeError, json.JSONDecodeError) as exc:
         raise ActivationError("activation request is not valid JSON") from exc
+    if isinstance(value, dict) and value.get("action") == "replace_pack":
+        # {"action": "replace_pack", "request_id": ID, "old_pack_id": ..., "new_pack_id": ..., "pack_sha256": ...}
+        if set(value) != REPLACE_FIELDS or not all(isinstance(value[key], str) for key in REPLACE_FIELDS):
+            raise ActivationError("activation request has unexpected fields")
+        if not RELEASE_RE.fullmatch(value["request_id"]):
+            raise ActivationError("invalid request id")
+        state["release_id"] = state["stage"] = value["request_id"]
+        for key in ("old_pack_id", "new_pack_id"):
+            if not valid_pack_id(value[key]):
+                raise ActivationError(f"invalid {key.replace('_', ' ')}")
+        if value["old_pack_id"] == value["new_pack_id"]:
+            raise ActivationError("old and new pack ids must differ")
+        if not SHA256_RE.fullmatch(value["pack_sha256"]):
+            raise ActivationError("invalid digest")
+        return value
     if isinstance(value, dict) and "action" in value:
         # {"action": "rollback", "request_id": ID, "target": RELEASE_ID or null}
         if value.get("action") != "rollback" or set(value) != ROLLBACK_FIELDS or not isinstance(value["request_id"], str):
@@ -137,6 +164,10 @@ def parse_request(raw: bytes, state: dict[str, str] | None = None) -> dict[str, 
     if not SHA256_RE.fullmatch(value["sha256"]) or not SHA256_RE.fullmatch(value["requirements_sha256"]):
         raise ActivationError("invalid digest")
     return value
+
+
+def valid_pack_id(value: object) -> bool:
+    return isinstance(value, str) and len(value) <= MAX_PACK_ID and PACK_ID_RE.fullmatch(value) is not None
 
 
 def validate_lock(raw: bytes) -> None:
@@ -440,6 +471,256 @@ def rollback(args: argparse.Namespace, value: dict, state: dict[str, str]) -> di
     return result
 
 
+def load_staged_pack(app_root: Path, value: dict[str, str]) -> bytes:
+    """Read the staged pack JSON (no links, FIFOs, or oversize) and check its digest and ids."""
+    app_fd = _open_directory(app_root)
+    try:
+        incoming_fd = _open_directory("incoming", app_fd, group_writable=True)
+    finally:
+        os.close(app_fd)
+    try:
+        try:
+            stage_fd = os.open(value["request_id"], DIRECTORY_FLAGS, dir_fd=incoming_fd)
+        except OSError as exc:
+            raise ActivationError("staged pack must be in a plain directory") from exc
+        try:
+            payload = _read_regular(stage_fd, STAGED_PACK, MAX_PACK_BYTES)
+        finally:
+            os.close(stage_fd)
+    finally:
+        os.close(incoming_fd)
+    if hashlib.sha256(payload).hexdigest() != value["pack_sha256"]:
+        raise ActivationError("staged pack digest does not match request")
+    if _declared_pack_id(payload) != value["new_pack_id"]:
+        raise ActivationError("staged pack does not declare the requested new pack id")
+    return payload
+
+
+def _declared_pack_id(payload: bytes) -> str | None:
+    """The pack's metadata.id when every card also belongs to it; None for anything malformed."""
+    try:
+        pack = json.loads(payload.decode("utf-8"))
+        pack_id = pack["metadata"]["id"]
+        cards = [*pack["black"], *pack["white"]]
+    except (UnicodeError, ValueError, KeyError, TypeError):
+        return None
+    if not valid_pack_id(pack_id) or not all(isinstance(card, dict) and card.get("pack") == pack_id for card in cards):
+        return None
+    return pack_id
+
+
+def _open_registry(pack_dir: Path, service_uid: int) -> int:
+    """Open the configured registry: root- or service-owned, not a symlink, not group/other writable."""
+    try:
+        descriptor = os.open(pack_dir, DIRECTORY_FLAGS)
+    except OSError as exc:
+        raise ActivationError(f"pack registry is not a plain directory: {pack_dir}") from exc
+    info = os.fstat(descriptor)
+    if info.st_uid not in (ROOT_UID, service_uid) or info.st_mode & 0o022:
+        os.close(descriptor)
+        raise ActivationError(f"pack registry has unsafe ownership or permissions: {pack_dir}")
+    return descriptor
+
+
+def _registry_pack(pack_fd: int, name: str) -> tuple[os.stat_result, bytes]:
+    try:
+        descriptor = os.open(name, READ_FLAGS, dir_fd=pack_fd)
+    except FileNotFoundError as exc:
+        raise ActivationError(f"pack {name} is not in the registry") from exc
+    except OSError as exc:
+        raise ActivationError(f"registry entry {name} is not a plain file") from exc
+    try:
+        info = os.fstat(descriptor)
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_size > MAX_PACK_BYTES:
+            raise ActivationError(f"registry entry {name} is not a plain, singly linked pack file")
+        data = os.read(descriptor, MAX_PACK_BYTES + 1)
+        if len(data) > MAX_PACK_BYTES:
+            raise ActivationError(f"registry entry {name} is too large")
+        return info, data
+    finally:
+        os.close(descriptor)
+
+
+def _refuse_collisions(pack_fd: int, new_id: str, old_name: str) -> None:
+    """The new id must be unused: no ``<new>.json`` and no other pack declaring it."""
+    new_name = f"{new_id}.json"
+    for name in os.listdir(pack_fd):
+        if name == new_name:
+            raise ActivationError(f"pack {new_id} already exists in the registry")
+        if name.endswith(".json") and name != old_name:
+            _info, data = _registry_pack(pack_fd, name)
+            try:
+                declared = json.loads(data.decode("utf-8"))["metadata"]["id"]
+            except (UnicodeError, ValueError, KeyError, TypeError) as exc:
+                raise ActivationError(f"cannot read registry entry {name}") from exc
+            if declared == new_id:
+                raise ActivationError(f"pack {new_id} is already declared by {name}")
+
+
+def _publish_pack(pack_fd: int, name: str, payload: bytes, like: os.stat_result) -> tuple[int, int]:
+    """Write, fsync, and link ``name`` into place; fails rather than overwrite. Returns (dev, ino)."""
+    temporary = f".{name}.replace-{os.urandom(8).hex()}"
+    descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600, dir_fd=pack_fd)
+    try:
+        try:
+            view = memoryview(payload)
+            while view:
+                view = view[os.write(descriptor, view):]
+            os.fchown(descriptor, like.st_uid, like.st_gid)
+            os.fchmod(descriptor, stat.S_IMODE(like.st_mode) & 0o644)
+            os.fsync(descriptor)
+            published = os.fstat(descriptor)
+        finally:
+            os.close(descriptor)
+        try:
+            os.link(temporary, name, src_dir_fd=pack_fd, dst_dir_fd=pack_fd, follow_symlinks=False)
+        except FileExistsError as exc:
+            raise ActivationError(f"pack file {name} appeared during replacement") from exc
+    finally:
+        try:
+            os.unlink(temporary, dir_fd=pack_fd)
+        except FileNotFoundError:
+            pass
+    os.fsync(pack_fd)
+    return published.st_dev, published.st_ino
+
+
+def _same_file(pack_fd: int, name: str, identity: tuple[int, int]) -> bool:
+    try:
+        info = os.stat(name, dir_fd=pack_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        return False
+    return (info.st_dev, info.st_ino) == identity
+
+
+def _validate_with_release(args: argparse.Namespace, payload: bytes, new_id: str) -> None:
+    """Strict schema validation, as the service user, by the deployed release's own code."""
+    private = Path(tempfile.mkdtemp(prefix="bad-decisions-pack-"))
+    try:
+        staged = private / STAGED_PACK
+        staged.write_bytes(payload)
+        staged.chmod(0o444)
+        private.chmod(0o755)
+        check = (
+            "import sys; from bad_decisions.models import Pack; "
+            "pack = Pack.model_validate_json(open(sys.argv[1], 'rb').read()); "
+            "sys.exit(0 if pack.metadata.id == sys.argv[2] else 3)"
+        )
+        _as_user(args.service_user, [str(args.app_root / "current/.venv/bin/python"), "-I", "-c", check, str(staged), new_id])
+    except ActivationError as exc:
+        raise ActivationError(f"the deployed release rejected the new pack ({exc})") from exc
+    finally:
+        shutil.rmtree(private, ignore_errors=True)
+
+
+def _runtime_pack_ids(args: argparse.Namespace) -> set[str]:
+    with urllib.request.urlopen(f"http://{args.bind_host}:{args.port}/v1/packs", timeout=5) as response:
+        return {entry["id"] for entry in json.loads(response.read(8 * 1024 * 1024))}
+
+
+def _backup_pack(app_root: Path, request_id: str, name: str, data: bytes) -> None:
+    """Keep a root-only copy of the replaced pack under APP_ROOT/backups."""
+    app_fd = _open_directory(app_root)
+    try:
+        try:
+            os.mkdir("backups", 0o755, dir_fd=app_fd)
+        except FileExistsError:
+            pass
+        backups_fd = _open_directory("backups", app_fd)
+    finally:
+        os.close(app_fd)
+    try:
+        os.mkdir(f"pack-{request_id}", 0o700, dir_fd=backups_fd)
+        backup_fd = _open_directory(f"pack-{request_id}", backups_fd)
+        try:
+            descriptor = os.open(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600, dir_fd=backup_fd)
+            try:
+                os.write(descriptor, data)
+                os.fsync(descriptor)
+            finally:
+                os.close(descriptor)
+        finally:
+            os.close(backup_fd)
+    finally:
+        os.close(backups_fd)
+
+
+def replace_pack(args: argparse.Namespace, value: dict[str, str], state: dict[str, str]) -> dict[str, str]:
+    """Replace one explicitly named registry pack with a staged, validated one.
+
+    Publish ``<new>.json`` (never overwriting), retire ``<old>.json`` by an atomic
+    rename, restart, and require /healthz plus /v1/packs to show the new id and not
+    the old one. Any failure renames the old file back (same inode, so content,
+    mode, owner, and mtime are exact), removes the new file only if it is ours,
+    and restarts the service again if it had been restarted.
+    """
+    import grp
+    import pwd
+
+    if args.pack_dir is None:
+        raise ActivationError("pack management is not enabled; rerun bootstrap-rootless with PACK_DIR set")
+    old_id, new_id, request_id = value["old_pack_id"], value["new_pack_id"], value["request_id"]
+    old_name, new_name = f"{old_id}.json", f"{new_id}.json"
+    payload = load_staged_pack(args.app_root, value)
+    service = pwd.getpwnam(args.service_user)
+    deploy_gid = grp.getgrnam(args.deploy_group).gr_gid
+    _validate_with_release(args, payload, new_id)
+    pack_fd = _open_registry(args.pack_dir, service.pw_uid)
+    retired = f".{old_name}.replaced-{request_id}"
+    published: tuple[int, int] | None = None
+    moved = restarted = False
+    try:
+        old_info, old_data = _registry_pack(pack_fd, old_name)
+        if _declared_pack_id(old_data) != old_id:
+            raise ActivationError(f"{old_name} does not declare pack id {old_id}")
+        _refuse_collisions(pack_fd, new_id, old_name)
+        _backup_pack(args.app_root, request_id, old_name, old_data)
+        published = _publish_pack(pack_fd, new_name, payload, old_info)
+        print(f"published {new_name}", file=sys.stderr)
+        os.rename(old_name, retired, src_dir_fd=pack_fd, dst_dir_fd=pack_fd)
+        moved = True
+        if not _same_file(pack_fd, retired, (old_info.st_dev, old_info.st_ino)):
+            raise ActivationError(f"{old_name} changed during replacement")
+        os.fsync(pack_fd)
+        print(f"retired {old_name}", file=sys.stderr)
+        restarted = True
+        _run(["systemctl", "restart", args.service_name])
+        if not _healthy(f"http://{args.bind_host}:{args.port}/healthz", None, args.health_attempts):
+            raise ActivationError("health check failed after the replacement")
+        runtime = _runtime_pack_ids(args)
+        if new_id not in runtime or old_id in runtime:
+            raise ActivationError(f"the service does not expose {new_id} without {old_id}")
+        os.unlink(retired, dir_fd=pack_fd)
+        os.fsync(pack_fd)
+        result = {"release_id": request_id, "status": "ok", "action": "replace_pack", "old_pack_id": old_id, "new_pack_id": new_id}
+        _write_result(args.app_root, deploy_gid, result)
+        return result
+    except BaseException:
+        print(f"pack replacement failed; restoring {old_name}", file=sys.stderr)
+        try:
+            if published is not None and _same_file(pack_fd, new_name, published):
+                os.unlink(new_name, dir_fd=pack_fd)
+            if moved:
+                try:
+                    os.stat(old_name, dir_fd=pack_fd, follow_symlinks=False)
+                    print(f"RESTORE FAILED: {old_name} reappeared; the original is still at {retired}", file=sys.stderr)
+                except FileNotFoundError:
+                    os.rename(retired, old_name, src_dir_fd=pack_fd, dst_dir_fd=pack_fd)
+            os.fsync(pack_fd)
+        except OSError as restore_error:
+            print(f"RESTORE FAILED: {restore_error}; a copy of {old_name} is in {args.app_root}/backups/pack-{request_id}", file=sys.stderr)
+        if restarted:
+            try:
+                _run(["systemctl", "restart", args.service_name])
+                if not _healthy(f"http://{args.bind_host}:{args.port}/healthz", None, args.health_attempts):
+                    print("warning: the service is still unhealthy after restoring the registry", file=sys.stderr)
+            except ActivationError as restart_error:
+                print(f"warning: restart after restoring the registry failed: {restart_error}", file=sys.stderr)
+        raise
+    finally:
+        os.close(pack_fd)
+
+
 def activate(args: argparse.Namespace, state: dict[str, str], value: dict[str, str]) -> str:
     import grp
     import pwd
@@ -515,12 +796,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--port", type=int, required=True)
     parser.add_argument("--python", default="/usr/bin/python3.12")
     parser.add_argument("--health-attempts", type=int, default=30)
+    parser.add_argument("--pack-dir", type=Path, help="pack registry that replace_pack requests may change (disabled when unset)")
     args = parser.parse_args(argv)
     if os.geteuid() != ROOT_UID:
         print("release activator must run as root", file=sys.stderr)
         return 2
-    if not args.app_root.is_absolute():
-        print("--app-root must be absolute", file=sys.stderr)
+    if not args.app_root.is_absolute() or (args.pack_dir is not None and not args.pack_dir.is_absolute()):
+        print("--app-root and --pack-dir must be absolute", file=sys.stderr)
         return 2
     previous_handler = signal.signal(signal.SIGTERM, _terminate)
     journal = sys.stderr
@@ -528,6 +810,10 @@ def main(argv: list[str] | None = None) -> int:
     state: dict[str, str] = {}
     try:
         value = read_request(args.app_root, state)
+        if value.get("action") == "replace_pack":
+            outcome = replace_pack(args, value, state)
+            print(f"replaced pack {outcome['old_pack_id']} with {outcome['new_pack_id']}")
+            return 0
         if "action" in value:
             outcome = rollback(args, value, state)
             print(f"rolled back {outcome['previous']} -> {outcome['target']}")

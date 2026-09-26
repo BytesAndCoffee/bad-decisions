@@ -95,7 +95,24 @@ those resources still use the privileged `deploy.sh` path.
 Optional non-default values used by the original install must also be passed to
 `bootstrap-rootless` (`APP_ROOT`, `SERVICE_NAME`, `SERVICE_USER`, `BIND_HOST`,
 `PORT`, and `PYTHON`). Use `--app-root` with `deploy local` and
-`rollback local` if it is not `/opt/bad-decisions`. Rerun `bootstrap-rootless`
+`rollback local` if it is not `/opt/bad-decisions`.
+
+Pass `PACK_DIR` (the service's `BAD_DECISIONS_PACK_DIR`) to `bootstrap-rootless`
+to enable `bad-decisions pack replace-local OLD_ID URL --new-id NEW_ID`. The
+client downloads and fully validates the HTTPS CardDeck archive and stages only
+its canonical `pack.json`, with an exact request (`old_pack_id`, `new_pack_id`,
+`pack_sha256`). The activator re-reads the staged file without following links,
+validates it with the deployed release's schema as the service user, and
+requires `OLD_ID.json` to be a plain, singly linked file declaring `OLD_ID` and
+`NEW_ID` to be unused. It publishes `NEW_ID.json` with a no-overwrite link,
+retires the old file by atomic rename, restarts, and checks `/healthz` and
+`/v1/packs`; on failure it renames the old file back and removes only the file
+it created. The registry directory itself stays owned by the service or root
+and is never made group-writable.
+
+Run the management command from its own install (`pipx install bad-decisions`),
+never through a link into `$APP_ROOT/current`: releases are not readable by the
+deployment group, and the local commands refuse to run from inside a release. Rerun `bootstrap-rootless`
 from a newer checkout to update the root-owned activator itself; it is
 idempotent.
 

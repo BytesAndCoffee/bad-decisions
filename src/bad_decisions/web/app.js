@@ -69,6 +69,15 @@ function updateIndexedPackSelection() {
   indexedPackSelection.textContent = count ? `${count} indexed pack${count === 1 ? "" : "s"} selected` : "No indexed packs selected";
 }
 
+// Packs imported from Pretend You're Xyzzy go in the indexed-pack chooser. Decide by
+// provenance (the importer's source edition), not by id: a renamed pack keeps its sources.
+const PYX_EDITION = "Pretend You're Xyzzy SQL card set ";
+
+function isIndexedPack(pack) {
+  const fromPyx = (pack.sources || []).some((source) => String(source?.edition ?? "").startsWith(PYX_EDITION));
+  return fromPyx || pack.id.startsWith("pyx-");
+}
+
 function renderIndexedPackOptions() {
   indexedPackOptions.replaceChildren(...indexedPacks.map((pack) => {
     const label = document.createElement("label");
@@ -85,7 +94,7 @@ function renderIndexedPackOptions() {
     const name = document.createElement("strong");
     name.textContent = pack.name;
     const counts = document.createElement("small");
-    counts.textContent = `${pack.counts.black} prompts · ${pack.counts.white} answers`;
+    counts.textContent = `${pack.id} · ${pack.counts.black} prompts · ${pack.counts.white} answers`;
     text.append(name, counts);
     label.append(input, text);
     return label;
@@ -117,8 +126,8 @@ async function loadPacks() {
     const response = await fetch(apiUrl("packs"), { headers: clientHeaders() });
     if (!response.ok) throw new Error("Could not load packs");
     const packs = await response.json();
-    indexedPacks = packs.filter((pack) => pack.id.startsWith("pyx-"));
-    const regularPacks = packs.filter((pack) => !pack.id.startsWith("pyx-"));
+    indexedPacks = packs.filter(isIndexedPack);
+    const regularPacks = packs.filter((pack) => !isIndexedPack(pack));
     packsElement.replaceChildren(...regularPacks.map((pack) => {
       const label = document.createElement("label");
       label.className = "pack";

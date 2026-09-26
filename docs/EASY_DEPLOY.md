@@ -67,21 +67,44 @@ This installs a root-owned release activator and adds `DEPLOY_USER` to the
 `bad-decisions-deploy` group. It adds no sudoers rule. **Log out and back in**
 so the new group applies (`id -nG` should list `bad-decisions-deploy`).
 
-## 3. Everyday: deploy and roll back (no sudo)
-
-Install the command once in its own virtualenv (system pip is locked on current
-Ubuntu):
+If the service loads packs from a registry directory (`BAD_DECISIONS_PACK_DIR`),
+pass it as `PACK_DIR` to also allow replacing a named pack without sudo (see
+"Replace a pack" below):
 
 ```bash
-python3.12 -m venv ~/.venvs/bad-decisions
-. ~/.venvs/bad-decisions/bin/activate
+sudo DEPLOY_USER="$USER" PACK_DIR=/path/to/registry ./deploy.sh bootstrap-rootless
+```
+
+## 3. Everyday: deploy and roll back (no sudo)
+
+Install the management command once, on its own, with pipx (or in any virtualenv
+you own):
+
+```bash
+pipx install bad-decisions
+```
+
+Never point the management command into the deployment, for example a symlink
+to `/opt/bad-decisions/current/.venv/bin/bad-decisions`. Deployed releases are
+locked so the deployment group cannot read them, and a command living inside the
+release it replaces breaks as soon as that release changes. The local commands
+refuse to run from there and print how to fix it. To migrate an existing
+symlink:
+
+```bash
+ls -l ~/.local/bin/bad-decisions   # confirm it points into /opt/bad-decisions
+rm ~/.local/bin/bad-decisions      # remove only such a symlink, never an unrelated program
+pipx install bad-decisions
+hash -r && bad-decisions --version
 ```
 
 Deploy the latest release:
 
 ```bash
-pip install --upgrade bad-decisions && bad-decisions deploy local
+pipx upgrade bad-decisions && bad-decisions deploy local
 ```
+
+(In a plain virtualenv: `pip install --upgrade bad-decisions && bad-decisions deploy local`.)
 
 `deploy local` deploys exactly the installed version. It downloads that
 version's wheel from PyPI, checks its SHA-256, and installs it with the pinned
@@ -100,7 +123,27 @@ bad-decisions rollback local 20260102T000000Z  # a specific release (see /opt/ba
 Repeating a plain rollback steps further back; it never rolls forward. To go
 forward again, deploy, or name the newer release explicitly.
 
-If you use a non-default `APP_ROOT`, add `--app-root PATH` to both commands.
+If you use a non-default `APP_ROOT`, add `--app-root PATH` to these commands.
+
+### Replace a pack
+
+With `PACK_DIR` bootstrapped, one named pack can be swapped for a public CardDeck
+archive, for example after a pack is renamed:
+
+```bash
+bad-decisions pack replace-local OLD_PACK_ID \
+  https://objects.example.com/packs/new-id.carddeck --new-id NEW_ID
+```
+
+The command downloads the archive over HTTPS within the usual CardDeck limits,
+validates it fully, and requires it to declare `NEW_ID`. The activator then
+checks it again with the deployed release's own schema. It publishes
+`NEW_ID.json` (never overwriting an existing pack), retires `OLD_PACK_ID.json`,
+restarts the service, and requires `/healthz` and `/v1/packs` to show `NEW_ID`
+and no longer show `OLD_PACK_ID`. Any failure restores the exact previous files
+and restarts the service again. A copy of the replaced pack is kept under
+`APP_ROOT/backups/pack-<request id>/`. Nothing else in the registry can be
+changed this way, and the API itself still never modifies packs.
 
 ### If something goes wrong
 
@@ -113,6 +156,9 @@ If you use a non-default `APP_ROOT`, add `--app-root PATH` to both commands.
   predates the group change. Log out and back in.
 - **"another local activation request is already pending":** wait for it to
   finish. Only one request runs at a time.
+- **"runs from the deployed release":** the command is a link into the
+  deployment. Install it separately (see the migration steps above).
+- **"pack management is not enabled":** rerun `bootstrap-rootless` with `PACK_DIR`.
 - **Timed out:** read `activation/log.txt`, or with journal access,
   `journalctl -u bad-decisions-activate.service`.
 
@@ -128,7 +174,9 @@ when a change touches anything outside a release:
 | `PORT`, `BIND_HOST`, `WORKERS`, `SERVICE_USER`, or the systemd unit | `sudo ... ./deploy.sh`, then rerun `bootstrap-rootless` with the same values (the activator's unit records `PORT`, `BIND_HOST`, and `SERVICE_USER`) |
 | Python interpreter (`PYTHON`) | `sudo PYTHON=... ./deploy.sh`, then rerun `bootstrap-rootless` with the same `PYTHON` |
 | A release note says it needs new host directories, environment keys, or unit changes | `sudo CONFIGURE_NGINX=0 PORT=... ./deploy.sh` from that version's checkout |
-| A new version changes the activator (`deploy/activate-release.py`) | `sudo DEPLOY_USER=... ./deploy.sh bootstrap-rootless` from that version's checkout (safe to rerun) |
+| A new version changes the activator (`deploy/activate-release.py`) | `sudo DEPLOY_USER=... ./deploy.sh bootstrap-rootless` from that version's checkout (safe to rerun; pass `PACK_DIR` again if you use it) |
+| Enable or move the pack registry for `pack replace-local` | `sudo DEPLOY_USER=... PACK_DIR=... ./deploy.sh bootstrap-rootless` |
+| Add or remove packs other than a one-for-one replacement | `sudo bad-decisions pack import ...` into the registry, then `sudo systemctl restart bad-decisions` |
 | Secrets or settings in `/etc/bad-decisions/bad-decisions.env` | edit with sudo, then `sudo systemctl restart bad-decisions` |
 | Rootless path unavailable (activator broken, not bootstrapped) | `sudo CONFIGURE_NGINX=0 PORT=... ./deploy.sh`, or `sudo ./deploy.sh rollback [RELEASE_ID]` |
 

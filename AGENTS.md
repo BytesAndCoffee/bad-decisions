@@ -30,6 +30,10 @@ validation, licenses, backups, and ZIP-bomb defenses are not.
   hostile-input tests.
 - Preserve the API's immutable-runtime model. Packs are loaded at startup; do
   not add API endpoints that import, upload, edit, or otherwise mutate packs.
+- On a rootless host, registry changes go only through `bad-decisions pack
+  replace-local` and the root activator's `replace_pack` action: one explicitly
+  named pack, no-overwrite publish, and exact restore on failure. Never make the
+  registry group-writable or add another path into it.
 - `BAD_DECISIONS_PACK_DIR` replaces the bundled registry. Use `bad-decisions pack init-registry`
   before importing a portable pack when bundled packs should remain available.
 - An omitted `packs` selector means every pack in the loaded registry (API
@@ -61,6 +65,9 @@ validation, licenses, backups, and ZIP-bomb defenses are not.
 ## Agent conduct
 
 - Use the repo venv: `.venv/bin/python`. Never install into the system Python.
+- Run local management commands (`deploy local`, `rollback local`,
+  `pack replace-local`) from an independent install (pipx, or the checkout's
+  `.venv`), never through a link into `$APP_ROOT/current`.
 - Do not run `deploy.sh`, `bad-decisions deploy`, `twine upload`, or `git push`
   unless the user asks. Pushing a `v*` tag publishes both packages to PyPI, so
   treat it like `twine upload`. Leave changes uncommitted unless asked to commit.

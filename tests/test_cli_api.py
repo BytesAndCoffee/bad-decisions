@@ -168,3 +168,34 @@ def test_management_status_requires_configured_bearer(monkeypatch):
         accepted = client.get("/v1/manage/status", headers={"Authorization": "Bearer correct-token"})
         assert accepted.status_code == 200
         assert accepted.json() == {"status": "ok", "version": __version__, "pack_count": 3}
+
+
+def _node_eval(script: str) -> str:
+    import shutil
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+    return subprocess.run([node, "-e", script], check=True, capture_output=True, text=True).stdout
+
+
+def test_indexed_packs_are_chosen_by_provenance_and_show_their_id():
+    import json
+    import re
+    from pathlib import Path
+
+    app_js = (Path(__file__).resolve().parents[1] / "src" / "bad_decisions" / "web" / "app.js").read_text()
+    constant = re.search(r'^const PYX_EDITION = .*;$', app_js, re.M).group(0)
+    function = re.search(r"^function isIndexedPack\(pack\) \{.*?^\}", app_js, re.M | re.S).group(0)
+    pyx_source = {"origin": "https://github.com/ajanata/PretendYoureXyzzy/blob/x/cah_cards.sql", "edition": "Pretend You're Xyzzy SQL card set 100228: [CUSTOM] Something"}
+    packs = [
+        {"id": "furry", "sources": [pyx_source]},                           # renamed PYX pack: still indexed
+        {"id": "pyx-103-base-game-canada", "sources": [dict(pyx_source, edition="Pretend You're Xyzzy SQL card set 103: Base Game (Canada)")]},
+        {"id": "pyx-legacy", "sources": []},                               # id prefix is still honored
+        {"id": "base", "sources": [{"origin": "https://s3.amazonaws.com/cah/CAH_MainGame.pdf", "edition": "Official downloadable main game PDF"}]},
+        {"id": "coffee", "sources": [{"origin": "bytesandcoffee-pack-v2.json", "edition": None}]},
+        {"id": "maha"},                                                   # no sources at all
+    ]
+    output = _node_eval(f"{constant}\n{function}\nconsole.log(JSON.stringify({json.dumps(packs)}.map(isIndexedPack)))")
+    assert json.loads(output) == [True, True, True, False, False, False]
+    assert "packs.filter(isIndexedPack)" in app_js and 'pack.id.startsWith("pyx-"));' not in app_js
+    assert "counts.textContent = `${pack.id} · " in app_js

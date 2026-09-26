@@ -49,7 +49,7 @@ if [[ ${1:-} == rollback ]]; then
   exec bash "${SCRIPT_DIR}/deploy/rollback.sh" "${@:2}"
 elif [[ ${1:-} == bootstrap-rootless ]]; then
   [[ $# -eq 1 ]] || { echo "Usage: deploy.sh bootstrap-rootless" >&2; exit 1; }
-  export APP_NAME SERVICE_NAME SERVICE_USER APP_ROOT BIND_HOST PORT PYTHON
+  export APP_NAME SERVICE_NAME SERVICE_USER APP_ROOT BIND_HOST PORT PYTHON PACK_DIR
   exec bash "${SCRIPT_DIR}/deploy/bootstrap-rootless.sh"
 elif [[ $# -gt 0 ]]; then
   echo "Usage: deploy.sh [rollback [RELEASE_ID] | bootstrap-rootless]" >&2

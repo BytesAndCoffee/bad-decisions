@@ -13,6 +13,9 @@ DEPLOY_GROUP=${DEPLOY_GROUP:-${APP_NAME}-deploy}
 BIND_HOST=${BIND_HOST:-127.0.0.1}
 PORT=${PORT:-8000}
 PYTHON=${PYTHON:-/usr/bin/python3.12}
+# Optional: the service's pack registry (its BAD_DECISIONS_PACK_DIR). When set, the
+# deployment group may ask the activator to replace one named pack there.
+PACK_DIR=${PACK_DIR:-}
 
 if [[ -z ${DEPLOY_USER} ]] || ! id "${DEPLOY_USER}" >/dev/null 2>&1; then
   echo "Set DEPLOY_USER to the existing account allowed to stage releases." >&2; exit 1
@@ -27,6 +30,11 @@ done
 [[ ${APP_ROOT} =~ ^/[A-Za-z0-9._/-]+$ && ${APP_ROOT} != / && ${PORT} =~ ^[0-9]+$ ]] || { echo "Invalid APP_ROOT or PORT." >&2; exit 1; }
 [[ ${BIND_HOST} =~ ^[A-Za-z0-9.:-]+$ ]] || { echo "Invalid BIND_HOST." >&2; exit 1; }
 [[ ${PYTHON} =~ ^/[A-Za-z0-9._/-]+$ && -x ${PYTHON} ]] || { echo "PYTHON must be an absolute path to an executable." >&2; exit 1; }
+PACK_DIR_ARG=
+if [[ -n ${PACK_DIR} ]]; then
+  [[ ${PACK_DIR} =~ ^/[A-Za-z0-9._/-]+$ && -d ${PACK_DIR} && ! -L ${PACK_DIR} ]] || { echo "PACK_DIR must be an existing absolute directory (not a symlink)." >&2; exit 1; }
+  PACK_DIR_ARG="--pack-dir ${PACK_DIR}"
+fi
 
 getent group "${DEPLOY_GROUP}" >/dev/null || groupadd --system "${DEPLOY_GROUP}"
 usermod --append --groups "${DEPLOY_GROUP}" "${DEPLOY_USER}"
@@ -38,7 +46,7 @@ render() {
   sed -e "s|@APP_NAME@|${APP_NAME}|g" -e "s|@APP_ROOT@|${APP_ROOT}|g" \
     -e "s|@SERVICE_NAME@|${SERVICE_NAME}|g" -e "s|@SERVICE_USER@|${SERVICE_USER}|g" \
     -e "s|@DEPLOY_GROUP@|${DEPLOY_GROUP}|g" -e "s|@BIND_HOST@|${BIND_HOST}|g" \
-    -e "s|@PORT@|${PORT}|g" -e "s|@PYTHON@|${PYTHON}|g" "$1" > "$2"
+    -e "s|@PORT@|${PORT}|g" -e "s|@PYTHON@|${PYTHON}|g" -e "s|@PACK_DIR_ARG@|${PACK_DIR_ARG}|g" "$1" > "$2"
   chmod 0644 "$2"
 }
 render "${SCRIPT_DIR}/deploy/rootless-activate.service.template" "/etc/systemd/system/${SERVICE_NAME}-activate.service"
@@ -46,3 +54,4 @@ render "${SCRIPT_DIR}/deploy/rootless-activate.path.template" "/etc/systemd/syst
 systemctl daemon-reload
 systemctl enable --now "${SERVICE_NAME}-activate.path"
 echo "Rootless release activation is ready for ${DEPLOY_USER}. Log out and back in once so the new group applies."
+if [[ -n ${PACK_DIR} ]]; then echo "Pack replacement is enabled for ${PACK_DIR}."; else echo "Pack replacement is disabled (set PACK_DIR to enable it)."; fi
