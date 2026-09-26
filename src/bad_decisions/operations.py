@@ -253,8 +253,9 @@ def deploy_local(argv: list[str]) -> int:
         description="Stage a wheel for a previously bootstrapped, rootless local deployment.",
     )
     parser.add_argument("--wheel", type=Path, help="server wheel (default: the matching wheel under ./dist)")
+    parser.add_argument("--requirements", type=Path, default=Path("requirements.lock"), help="pinned dependency lock installed before the wheel (default: ./requirements.lock)")
     parser.add_argument("--app-root", type=Path, default=Path("/opt/bad-decisions"))
-    parser.add_argument("--timeout", type=float, default=180.0)
+    parser.add_argument("--timeout", type=float, default=900.0)
     args = parser.parse_args(argv)
     _require_linux()
     if not args.app_root.is_absolute() or args.app_root == Path("/"):
@@ -267,6 +268,8 @@ def deploy_local(argv: list[str]) -> int:
         parser.error(f"wheel not found: {wheel}; build it first or pass --wheel")
     if wheel.name != expected:
         parser.error(f"wheel must be the running command's {__version__} release ({expected})")
+    if not args.requirements.is_file():
+        parser.error(f"requirements lock not found: {args.requirements}; run from a source checkout or pass --requirements")
 
     incoming = args.app_root / "incoming"
     activation = args.app_root / "activation"
@@ -276,12 +279,20 @@ def deploy_local(argv: list[str]) -> int:
     stage = incoming / release_id
     try:
         stage.mkdir(mode=0o750)
-        staged_wheel = stage / wheel.name
-        with wheel.open("rb") as source, staged_wheel.open("xb") as destination:
-            shutil.copyfileobj(source, destination)
-        staged_wheel.chmod(0o640)
-        digest = hashlib.sha256(staged_wheel.read_bytes()).hexdigest()
-        payload = {"release_id": release_id, "wheel": wheel.name, "sha256": digest, "version": __version__}
+        digests = {}
+        for source_path, name in ((wheel, wheel.name), (args.requirements, "requirements.lock")):
+            staged = stage / name
+            with source_path.open("rb") as source, staged.open("xb") as destination:
+                shutil.copyfileobj(source, destination)
+            staged.chmod(0o640)
+            digests[name] = hashlib.sha256(staged.read_bytes()).hexdigest()
+        payload = {
+            "release_id": release_id,
+            "wheel": wheel.name,
+            "sha256": digests[wheel.name],
+            "requirements_sha256": digests["requirements.lock"],
+            "version": __version__,
+        }
         request = activation / "request.json"
         temporary = activation / f".request-{release_id}.json"
         with temporary.open("x", encoding="utf-8") as output:

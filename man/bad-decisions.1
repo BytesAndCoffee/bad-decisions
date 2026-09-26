@@ -68,8 +68,8 @@ Rebuild aggregate counters. Requires an explicit absolute database path.
 Purge retained records and rebuild counters.
 .SH LOCAL DEPLOYMENT COMMANDS
 .TP
-.BI deploy local " [--wheel path] [--app-root path] [--timeout seconds]"
-Stage a version-matched server wheel for a root-owned release activator previously installed with sudo ./deploy.sh bootstrap-rootless. This application-only update does not grant access to service definitions, nginx, secrets, or existing immutable releases.
+.BI deploy local " [--wheel path] [--requirements path] [--app-root path] [--timeout seconds]"
+Stage a version-matched server wheel and its pinned requirements.lock (default ./requirements.lock) for a root-owned release activator previously installed with sudo ./deploy.sh bootstrap-rootless. This application-only update does not grant access to service definitions, nginx, secrets, or existing immutable releases.
 .SH AWS COMMANDS
 .TP
 .BI setup aws " [--profile name] [--region region] [--bootstrap] [--certificate-arn arn] [--domain-name name] [--hosted-zone-id id] [--allow-http]"

@@ -69,12 +69,17 @@ application-only updates need no sudo:
 bad-decisions deploy local
 ```
 
-`deploy local` accepts only the wheel for its own version, records its SHA-256,
-and atomically places a request in the activator inbox. The root-owned systemd
-helper validates the fixed request schema and artifact, builds the virtual
-environment as the unprivileged service account, freezes the immutable release,
-switches `current`, restarts the service, checks `/healthz`, and restores the
-previous release on failure. The staging account cannot edit nginx, service
+`deploy local` accepts only the wheel for its own version, stages it with
+`requirements.lock` (from the current directory, or `--requirements`), records
+both SHA-256 digests, and atomically places a request in the activator inbox.
+The root-owned systemd helper validates the fixed request schema, reads the
+staged files through descriptors that refuse symlinks, FIFOs, and hard links,
+and copies the verified bytes into a private directory. The lock may contain
+only exact `name==version` pins. The helper then builds the virtual environment
+as the unprivileged service account (lock first, then the wheel with
+`--no-deps`, as `deploy.sh` does), freezes the immutable release, switches
+`current`, restarts the service, waits for `/healthz` to report the new version,
+and restores the previous release on failure or timeout (20 minutes). The staging account cannot edit nginx, service
 units, environment/secrets, the activator, or existing releases. Changes to
 those resources still use the privileged `deploy.sh` path.
 

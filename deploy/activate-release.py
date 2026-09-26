@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""Root-owned, narrowly scoped activator for staged Bad Decisions wheels."""
+"""Root-owned, narrowly scoped activator for staged Bad Decisions wheels.
+
+Everything under ``incoming/`` and ``activation/`` is writable by the deployment
+group, so every access there is descriptor-relative, refuses symlinks, FIFOs,
+and hard links, and is size-capped. Root copies the verified wheel and lock into
+a private directory before the service user installs them, so the bytes that
+were hashed are the bytes that get installed.
+"""
 
 from __future__ import annotations
 
@@ -9,68 +16,154 @@ import json
 import os
 import re
 import shutil
+import signal
 import stat
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
 from pathlib import Path
 
 
 RELEASE_RE = re.compile(r"^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$")
+GOOD_RE = re.compile(r"^[0-9]{8}T[0-9]{6}Z(?:-[0-9a-f]{8})?$")
 WHEEL_RE = re.compile(r"^bad_decisions-([0-9]+(?:\.[0-9]+){2}(?:[A-Za-z0-9.]+)?)-py3-none-any\.whl$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+LOCK_LINE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*==[A-Za-z0-9.+!]+$")
+LOCK_NAME = "requirements.lock"
+REQUEST_FIELDS = {"release_id", "wheel", "sha256", "version", "requirements_sha256"}
+MAX_REQUEST_BYTES = 4096
+MAX_WHEEL_BYTES = 64 * 1024 * 1024
+MAX_LOCK_BYTES = 256 * 1024
+DIRECTORY_FLAGS = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+READ_FLAGS = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_NOCTTY | os.O_CLOEXEC
+# The owner of trusted directories and of the frozen release. Tests substitute
+# their own uid to exercise the activator without root.
+ROOT_UID = 0
 
 
 class ActivationError(RuntimeError):
     pass
 
 
-def _plain_directory(path: Path) -> None:
-    mode = path.lstat().st_mode
-    if not stat.S_ISDIR(mode) or stat.S_ISLNK(mode):
-        raise ActivationError(f"unsafe directory: {path}")
+def _terminate(signum, _frame):
+    raise SystemExit(128 + signum)
 
 
-def load_request(app_root: Path) -> tuple[dict[str, str], Path]:
-    request = app_root / "activation" / "request.json"
-    mode = request.lstat().st_mode
-    if not stat.S_ISREG(mode) or stat.S_ISLNK(mode):
-        raise ActivationError("activation request must be a regular file")
+def _open_directory(name: str | Path, dir_fd: int | None = None, *, group_writable: bool = False) -> int:
+    """Open a root-owned directory without following a symlink at ``name``."""
     try:
-        value = json.loads(request.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        descriptor = os.open(name, DIRECTORY_FLAGS, dir_fd=dir_fd)
+    except OSError as exc:
+        raise ActivationError(f"unsafe or missing directory: {name}") from exc
+    info = os.fstat(descriptor)
+    forbidden = 0o002 if group_writable else 0o022
+    if info.st_uid != ROOT_UID or info.st_mode & forbidden:
+        os.close(descriptor)
+        raise ActivationError(f"directory has unsafe ownership or permissions: {name}")
+    return descriptor
+
+
+def _read_regular(dir_fd: int, name: str, limit: int) -> bytes:
+    """Read one plain, singly linked file of at most ``limit`` bytes."""
+    try:
+        descriptor = os.open(name, READ_FLAGS, dir_fd=dir_fd)
+    except OSError as exc:
+        raise ActivationError(f"{name} must be an existing regular file") from exc
+    try:
+        info = os.fstat(descriptor)
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+            raise ActivationError(f"{name} must be one regular, unlinked file")
+        if info.st_size > limit:
+            raise ActivationError(f"{name} is too large")
+        chunks, total = [], 0
+        while chunk := os.read(descriptor, min(1024 * 1024, limit + 1 - total)):
+            chunks.append(chunk)
+            total += len(chunk)
+            if total > limit:
+                raise ActivationError(f"{name} is too large")
+        return b"".join(chunks)
+    finally:
+        os.close(descriptor)
+
+
+def parse_request(raw: bytes) -> dict[str, str]:
+    try:
+        value = json.loads(raw.decode("utf-8"))
+    except (UnicodeError, json.JSONDecodeError) as exc:
         raise ActivationError("activation request is not valid JSON") from exc
-    required = {"release_id", "wheel", "sha256", "version"}
-    if not isinstance(value, dict) or set(value) != required or not all(isinstance(value[key], str) for key in required):
+    if not isinstance(value, dict) or set(value) != REQUEST_FIELDS or not all(isinstance(value[key], str) for key in REQUEST_FIELDS):
         raise ActivationError("activation request has unexpected fields")
     if not RELEASE_RE.fullmatch(value["release_id"]):
         raise ActivationError("invalid release id")
     wheel_match = WHEEL_RE.fullmatch(value["wheel"])
     if not wheel_match or wheel_match.group(1) != value["version"]:
         raise ActivationError("wheel name and requested version do not match")
-    if not SHA256_RE.fullmatch(value["sha256"]):
-        raise ActivationError("invalid wheel digest")
-    incoming = app_root / "incoming" / value["release_id"]
-    _plain_directory(incoming)
-    wheel = incoming / value["wheel"]
-    wheel_mode = wheel.lstat().st_mode
-    if not stat.S_ISREG(wheel_mode) or stat.S_ISLNK(wheel_mode) or wheel.stat().st_nlink != 1:
-        raise ActivationError("staged wheel must be one regular, unlinked file")
-    digest = hashlib.sha256(wheel.read_bytes()).hexdigest()
-    if digest != value["sha256"]:
+    if not SHA256_RE.fullmatch(value["sha256"]) or not SHA256_RE.fullmatch(value["requirements_sha256"]):
+        raise ActivationError("invalid digest")
+    return value
+
+
+def validate_lock(raw: bytes) -> None:
+    """Accept only exact ``name==version`` pins: no options, URLs, paths, or includes."""
+    try:
+        lines = raw.decode("ascii").splitlines()
+    except UnicodeError as exc:
+        raise ActivationError("requirements lock must be ASCII") from exc
+    pins = [line.strip() for line in lines if line.strip() and not line.lstrip().startswith("#")]
+    if not pins or not all(LOCK_LINE_RE.fullmatch(pin) for pin in pins):
+        raise ActivationError("requirements lock may contain only name==version pins")
+
+
+def load_request(app_root: Path) -> tuple[dict[str, str], bytes, bytes]:
+    """Validate the pending request and return it with the verified wheel and lock bytes."""
+    app_fd = _open_directory(app_root)
+    try:
+        activation_fd = _open_directory("activation", app_fd, group_writable=True)
+        try:
+            value = parse_request(_read_regular(activation_fd, "request.json", MAX_REQUEST_BYTES))
+        finally:
+            os.close(activation_fd)
+        incoming_fd = _open_directory("incoming", app_fd, group_writable=True)
+    finally:
+        os.close(app_fd)
+    try:
+        try:
+            stage_fd = os.open(value["release_id"], DIRECTORY_FLAGS, dir_fd=incoming_fd)
+        except OSError as exc:
+            raise ActivationError("staged release must be a plain directory") from exc
+        try:
+            wheel = _read_regular(stage_fd, value["wheel"], MAX_WHEEL_BYTES)
+            lock = _read_regular(stage_fd, LOCK_NAME, MAX_LOCK_BYTES)
+        finally:
+            os.close(stage_fd)
+    finally:
+        os.close(incoming_fd)
+    if hashlib.sha256(wheel).hexdigest() != value["sha256"]:
         raise ActivationError("staged wheel digest does not match request")
-    return value, wheel
+    if hashlib.sha256(lock).hexdigest() != value["requirements_sha256"]:
+        raise ActivationError("staged requirements digest does not match request")
+    validate_lock(lock)
+    return value, wheel, lock
 
 
 def _run(command: list[str]) -> None:
     completed = subprocess.run(command, check=False)
     if completed.returncode:
-        raise ActivationError(f"command failed ({completed.returncode}): {command[0]}")
+        raise ActivationError(f"command failed ({completed.returncode}): {' '.join(command)}")
 
 
 def _as_user(user: str, command: list[str]) -> None:
     _run(["/usr/sbin/runuser", "--user", user, "--", *command])
+
+
+def _installed_version(user: str, python: Path) -> str | None:
+    completed = subprocess.run(
+        ["/usr/sbin/runuser", "--user", user, "--", str(python), "-c", "from bad_decisions import __version__; print(__version__)"],
+        check=False, text=True, capture_output=True,
+    )
+    return None if completed.returncode else completed.stdout.strip()
 
 
 def _freeze_tree(root: Path, uid: int, gid: int) -> None:
@@ -83,10 +176,13 @@ def _freeze_tree(root: Path, uid: int, gid: int) -> None:
                 continue
             if not stat.S_ISREG(info.st_mode):
                 raise ActivationError("release contains a non-file filesystem object")
-            descriptor = os.open(name, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW, dir_fd=directory_fd)
+            descriptor = os.open(name, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory_fd)
             try:
+                opened = os.fstat(descriptor)
+                if not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1:
+                    raise ActivationError("release contains a hard-linked or replaced file")
                 os.fchown(descriptor, uid, gid)
-                os.fchmod(descriptor, 0o550 if info.st_mode & 0o111 else 0o440)
+                os.fchmod(descriptor, 0o550 if opened.st_mode & 0o111 else 0o440)
             finally:
                 os.close(descriptor)
         for name in directories:
@@ -99,91 +195,164 @@ def _freeze_tree(root: Path, uid: int, gid: int) -> None:
         os.fchmod(directory_fd, 0o750)
 
 
+def _verify_frozen(root: Path, uid: int) -> None:
+    """Reject entries the service user created while the freeze walk was running.
+
+    Once every directory is root-owned and not group-writable, nothing new can
+    appear, so this second pass sees the final tree.
+    """
+    for _directory, directories, files, directory_fd in os.fwalk(root, follow_symlinks=False):
+        for name in [*directories, *files, "."]:
+            info = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+            if info.st_uid != uid or (not stat.S_ISLNK(info.st_mode) and info.st_mode & 0o7022):
+                raise ActivationError("release changed while it was being frozen")
+
+
 def _atomic_symlink(target: Path, link: Path) -> None:
     temporary = link.with_name(f".{link.name}.activate-{os.getpid()}")
+    temporary.unlink(missing_ok=True)
     temporary.symlink_to(target)
     os.replace(temporary, link)
 
 
-def _healthy(url: str, attempts: int = 30) -> bool:
+def _healthy(url: str, version: str, attempts: int = 30) -> bool:
     for _ in range(attempts):
         try:
             with urllib.request.urlopen(url, timeout=2) as response:
-                if response.status == 200:
+                if response.status == 200 and json.loads(response.read(4096)).get("version") == version:
                     return True
-        except OSError:
+        except (OSError, ValueError, AttributeError):
             pass
         time.sleep(1)
     return False
 
 
-def _record_good(app_root: Path, release_id: str) -> None:
+def _record_good(app_root: Path, release_id: str, previous: Path | None) -> None:
+    """Append to the rollback watermark, seeding it from the serving release like deploy.sh."""
     path = app_root / "good-releases"
-    existing = path.read_text(encoding="ascii").splitlines() if path.exists() else []
-    valid = [item for item in existing if re.fullmatch(r"[0-9]{8}T[0-9]{6}Z(?:-[0-9a-f]{8})?", item) and item != release_id]
+    if path.exists():
+        existing = path.read_text(encoding="ascii").splitlines()
+    else:
+        existing = [previous.name] if previous is not None else []
+    valid = [item for item in existing if GOOD_RE.fullmatch(item) and item != release_id]
     temporary = path.with_suffix(".new")
     temporary.write_text("".join(f"{item}\n" for item in [*valid, release_id][-20:]), encoding="ascii")
     os.replace(temporary, path)
 
 
 def _write_result(app_root: Path, group_gid: int, payload: dict[str, str]) -> None:
-    target = app_root / "activation" / "result.json"
-    temporary = target.with_name(f".result-{os.getpid()}.json")
-    temporary.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
-    os.chown(temporary, 0, group_gid)
-    temporary.chmod(0o640)
-    os.replace(temporary, target)
+    """Publish the result in the group-writable activation directory without following links."""
+    app_fd = _open_directory(app_root)
+    try:
+        activation_fd = _open_directory("activation", app_fd, group_writable=True)
+    finally:
+        os.close(app_fd)
+    try:
+        temporary = f".result-{os.urandom(8).hex()}.json"
+        descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600, dir_fd=activation_fd)
+        try:
+            os.write(descriptor, (json.dumps(payload, sort_keys=True) + "\n").encode("utf-8"))
+            os.fchown(descriptor, ROOT_UID, group_gid)
+            os.fchmod(descriptor, 0o640)
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+        os.replace(temporary, "result.json", src_dir_fd=activation_fd, dst_dir_fd=activation_fd)
+    finally:
+        os.close(activation_fd)
 
 
-def activate(args: argparse.Namespace) -> str:
+def _cleanup_request(app_root: Path, release_id: str | None) -> None:
+    """Remove the request (so the path unit stops firing) and the staged files."""
+    try:
+        app_fd = _open_directory(app_root)
+    except ActivationError:
+        return
+    try:
+        for name, entry in (("activation", "request.json"), ("incoming", release_id)):
+            if entry is None:
+                continue
+            try:
+                directory_fd = _open_directory(name, app_fd, group_writable=True)
+            except ActivationError:
+                continue
+            try:
+                info = os.stat(entry, dir_fd=directory_fd, follow_symlinks=False)
+                if stat.S_ISDIR(info.st_mode):
+                    shutil.rmtree(entry, dir_fd=directory_fd)
+                else:
+                    os.unlink(entry, dir_fd=directory_fd)
+            except OSError as exc:
+                print(f"warning: could not remove {name}/{entry}: {exc}", file=sys.stderr)
+            finally:
+                os.close(directory_fd)
+    finally:
+        os.close(app_fd)
+
+
+def activate(args: argparse.Namespace, state: dict[str, str]) -> str:
     import grp
     import pwd
 
-    app_root = args.app_root.resolve()
-    _plain_directory(app_root)
-    for name in ("incoming", "activation", "releases"):
-        _plain_directory(app_root / name)
-    value, wheel = load_request(app_root)
-    release_id = value["release_id"]
-    release = app_root / "releases" / release_id
-    if release.exists() or release.is_symlink():
-        raise ActivationError("release already exists")
+    app_root = args.app_root
+    value, wheel_bytes, lock_bytes = load_request(app_root)
+    release_id = state["release_id"] = value["release_id"]
+    app_fd = _open_directory(app_root)
+    try:
+        releases_fd = _open_directory("releases", app_fd)
+    finally:
+        os.close(app_fd)
     service = pwd.getpwnam(args.service_user)
     deploy_gid = grp.getgrnam(args.deploy_group).gr_gid
     current = app_root / "current"
     previous = current.resolve(strict=True) if current.is_symlink() else None
-    release.mkdir(mode=0o750)
-    os.chown(release, service.pw_uid, service.pw_gid)
-    switched = False
+    release = app_root / "releases" / release_id
     try:
+        os.mkdir(release_id, 0o750, dir_fd=releases_fd)
+    except FileExistsError as exc:
+        raise ActivationError("release already exists") from exc
+    finally:
+        os.close(releases_fd)
+    os.chown(release, service.pw_uid, service.pw_gid, follow_symlinks=False)
+    switched = False
+    private = Path(tempfile.mkdtemp(prefix="bad-decisions-activate-"))
+    try:
+        wheel = private / value["wheel"]
+        lock = private / LOCK_NAME
+        wheel.write_bytes(wheel_bytes)
+        lock.write_bytes(lock_bytes)
+        for path, mode in ((wheel, 0o444), (lock, 0o444), (private, 0o755)):
+            path.chmod(mode)
+        pip = [str(release / ".venv/bin/pip"), "install", "--no-cache-dir", "--disable-pip-version-check"]
         _as_user(args.service_user, [args.python, "-m", "venv", str(release / ".venv")])
-        _as_user(args.service_user, [str(release / ".venv/bin/pip"), "install", str(wheel)])
-        installed = subprocess.run(
-            ["/usr/sbin/runuser", "--user", args.service_user, "--", str(release / ".venv/bin/python"), "-c", "from bad_decisions import __version__; print(__version__)"],
-            check=False, text=True, capture_output=True,
-        )
-        if installed.returncode or installed.stdout.strip() != value["version"]:
+        _as_user(args.service_user, [*pip, "--requirement", str(lock)])
+        _as_user(args.service_user, [*pip, "--no-deps", str(wheel)])
+        if _installed_version(args.service_user, release / ".venv/bin/python") != value["version"]:
             raise ActivationError("installed release version does not match request")
-        _freeze_tree(release, 0, service.pw_gid)
+        _freeze_tree(release, ROOT_UID, service.pw_gid)
+        _verify_frozen(release, ROOT_UID)
         _atomic_symlink(release, current)
         switched = True
         _run(["systemctl", "restart", args.service_name])
-        if not _healthy(f"http://{args.bind_host}:{args.port}/healthz"):
+        if not _healthy(f"http://{args.bind_host}:{args.port}/healthz", value["version"], args.health_attempts):
             raise ActivationError("new release failed its health check")
-        _record_good(app_root, release_id)
+        _record_good(app_root, release_id, previous)
         _write_result(app_root, deploy_gid, {"release_id": release_id, "status": "ok", "version": value["version"]})
         return release_id
-    except Exception:
-        if switched and previous is not None:
-            _atomic_symlink(previous, current)
-            subprocess.run(["systemctl", "restart", args.service_name], check=False)
-        if release.exists():
-            shutil.rmtree(release)
+    except BaseException:
+        if switched:
+            if previous is not None:
+                _atomic_symlink(previous, current)
+            else:
+                current.unlink(missing_ok=True)
+            try:
+                _run(["systemctl", "restart", args.service_name])
+            except ActivationError as restart_error:
+                print(f"warning: rollback restart failed: {restart_error}", file=sys.stderr)
+        shutil.rmtree(release, ignore_errors=True)
         raise
     finally:
-        request = app_root / "activation" / "request.json"
-        request.unlink(missing_ok=True)
-        shutil.rmtree(app_root / "incoming" / release_id, ignore_errors=True)
+        shutil.rmtree(private, ignore_errors=True)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -195,26 +364,30 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--bind-host", default="127.0.0.1")
     parser.add_argument("--port", type=int, required=True)
     parser.add_argument("--python", default="/usr/bin/python3.12")
+    parser.add_argument("--health-attempts", type=int, default=30)
     args = parser.parse_args(argv)
-    if os.geteuid() != 0:
+    if os.geteuid() != ROOT_UID:
         print("release activator must run as root", file=sys.stderr)
         return 2
-    request_id = "unknown"
+    if not args.app_root.is_absolute():
+        print("--app-root must be absolute", file=sys.stderr)
+        return 2
+    previous_handler = signal.signal(signal.SIGTERM, _terminate)
+    state: dict[str, str] = {}
     try:
-        request_id = json.loads((args.app_root / "activation/request.json").read_text(encoding="utf-8")).get("release_id", "unknown")
-    except Exception:
-        pass
-    try:
-        release_id = activate(args)
-    except Exception as exc:
+        release_id = activate(args, state)
+    except BaseException as exc:
+        message = str(exc) if isinstance(exc, ActivationError) else f"{type(exc).__name__}: {exc}"
         try:
             import grp
-            _write_result(args.app_root, grp.getgrnam(args.deploy_group).gr_gid, {"release_id": request_id, "status": "error", "message": str(exc)})
-        except Exception:
-            pass
-        (args.app_root / "activation/request.json").unlink(missing_ok=True)
-        print(f"activation failed: {exc}", file=sys.stderr)
+            _write_result(args.app_root, grp.getgrnam(args.deploy_group).gr_gid, {"release_id": state.get("release_id", "unknown"), "status": "error", "message": message})
+        except Exception as result_error:
+            print(f"warning: could not write activation result: {result_error}", file=sys.stderr)
+        print(f"activation failed: {message}", file=sys.stderr)
         return 1
+    finally:
+        _cleanup_request(args.app_root, state.get("release_id"))
+        signal.signal(signal.SIGTERM, previous_handler)
     print(f"activated {release_id}")
     return 0
 

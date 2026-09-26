@@ -24,7 +24,9 @@ for value in "${APP_NAME}" "${SERVICE_NAME}"; do
   [[ ${value} =~ ^[a-z0-9][a-z0-9-]*$ ]] || { echo "Unsafe application or service name." >&2; exit 1; }
 done
 [[ ${SERVICE_USER} =~ ^[a-z_][a-z0-9_-]*$ && ${DEPLOY_GROUP} =~ ^[a-z_][a-z0-9_-]*$ ]] || { echo "Unsafe user or group name." >&2; exit 1; }
-[[ ${APP_ROOT} == /* && ${APP_ROOT} != / && ${PORT} =~ ^[0-9]+$ ]] || { echo "Invalid APP_ROOT or PORT." >&2; exit 1; }
+[[ ${APP_ROOT} =~ ^/[A-Za-z0-9._/-]+$ && ${APP_ROOT} != / && ${PORT} =~ ^[0-9]+$ ]] || { echo "Invalid APP_ROOT or PORT." >&2; exit 1; }
+[[ ${BIND_HOST} =~ ^[A-Za-z0-9.:-]+$ ]] || { echo "Invalid BIND_HOST." >&2; exit 1; }
+[[ ${PYTHON} =~ ^/[A-Za-z0-9._/-]+$ && -x ${PYTHON} ]] || { echo "PYTHON must be an absolute path to an executable." >&2; exit 1; }
 
 getent group "${DEPLOY_GROUP}" >/dev/null || groupadd --system "${DEPLOY_GROUP}"
 usermod --append --groups "${DEPLOY_GROUP}" "${DEPLOY_USER}"
