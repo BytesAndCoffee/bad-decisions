@@ -102,14 +102,32 @@ def _maybe_update_check(config: dict[str, str], api_url: str) -> None:
             _write_config(config)
         except (RuntimeError, OSError, KeyError, TypeError, AttributeError, ValueError):
             return
-    if latest:
-        try:
-            from packaging.version import Version
-            newer = Version(str(latest)) > Version(str(current))
-        except Exception:
-            newer = False
-        if newer:
-            print(f"A newer Bad Decision is available:\nregret {current} -> {latest}", file=sys.stderr)
+    if latest and _is_newer(str(latest), current):
+        print(f"A newer Bad Decision is available:\nregret {current} -> {latest}", file=sys.stderr)
+
+def _is_newer(latest: str, current: str) -> bool:
+    try:
+        from packaging.version import Version
+        return Version(latest) > Version(current)
+    except Exception:
+        return False
+
+def _doctor(argv: Sequence[str]) -> int:
+    from . import doctor
+    parser_=argparse.ArgumentParser(prog="regret doctor",description="Check this installation (manual page, PATH, preferences, service) and print fixes. Changes nothing.")
+    parser_.add_argument("--api-url",default=DEFAULT_API_URL)
+    args=parser_.parse_args(argv)
+    try: base=_base_url(args.api_url)
+    except ValueError as exc: parser_.error(str(exc))
+    report=doctor.Report()
+    method=doctor.install_method()
+    report.ok(f"regret {__version__} installed with {method} (Python {sys.version.split()[0]}, {sys.prefix})")
+    doctor.check_path(report)
+    doctor.check_manpage(report,method,page=doctor.installed_manpage(),found=doctor.man_finds())
+    doctor.check_config(report,CONFIG_PATH)
+    doctor.check_service(report,base,__version__,_request_json,_is_newer)
+    if report.failures: print(f"{report.failures} check(s) failed",file=sys.stderr)
+    return 1 if report.failures else 0
 
 
 def _client_id(reset: bool = False) -> str | None:
@@ -268,6 +286,7 @@ def run(argv: Sequence[str] | None=None) -> int:
     if values and values[0]=="identity": return _identity(values[1:])
     if values and values[0]=="consequences": return _consequences(values[1:])
     if values and values[0]=="together": return _together(values[1:])
+    if values and values[0]=="doctor": return _doctor(values[1:])
     if values and values[0]=="health": values[0]="--health"
     elif values and values[0]=="deal": values.pop(0)
     args=parser().parse_args(values)

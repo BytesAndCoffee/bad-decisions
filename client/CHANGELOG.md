@@ -2,12 +2,17 @@
 
 ## [Unreleased]
 
+### Added
+
+- `regret doctor` checks the installation and prints a fix for each problem without changing anything: install method, PATH, whether `man regret` finds the page (with the exact `MANPATH` line for pyenv and other shim setups), preference permissions, and the service.
+- Homebrew formula (`brew install bytesandcoffee/tap/regret`), now the suggested install on macOS and Linux; it links `regret(1)` with no shell changes.
+
 ## [1.8.5]
 
 ### Added
 
 - `regret --version`.
-- The wheel installs `regret(1)` into `share/man/man1`, so `man regret` works after a `--user`, venv, or pipx (1.5+) install. The page moved to `client/man/` and ships in the client sdist.
+- The wheel installs `regret(1)` into `share/man/man1`, so `man regret` works after a `--user`, venv, or pipx install. The page moved to `client/man/` and ships in the client sdist.
 
 ### Changed
 

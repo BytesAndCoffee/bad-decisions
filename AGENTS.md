@@ -14,6 +14,9 @@ validation, licenses, backups, and ZIP-bomb defenses are not.
 - `scripts/`: reproducible import/conversion utilities.
 - `man/bad-decisions.1` and `client/man/regret.1`: manual pages, installed by
   each wheel into `share/man/man1`.
+- `homebrew/regret.rb`: source of truth for the client's formula in the
+  `BytesAndCoffee/homebrew-tap` tap (the suggested macOS/Linux install);
+  `scripts/update_homebrew_formula.py` points it at a published release.
 - `tests/`: pytest suite; keep behavioral and security coverage here.
 - `deploy/` and `deploy.sh`: configurable systemd/nginx deployment tooling;
   `deploy/rollback.sh` implements `deploy.sh rollback`.
@@ -193,6 +196,10 @@ For a server release, build and validate the exact artifacts:
   command, option, environment variable, and file the release adds or changes.
   Check the rendering with `man -l <page>`. `tests/test_manpages.py` fails if a
   page's version, commands, or settings drift, but it cannot check the prose.
+- After a release is on PyPI, update the Homebrew formula (docs/RELEASING.md
+  step 7): the tap is public, so pushing it follows the same ask-first rule as
+  `git push`. Installers run no code after installing, so shell integration is
+  checked by `regret doctor`, never by install-time hooks.
 - Workflows must stay least-privilege: pin every action to a full commit SHA,
   default to `contents: read`, and grant `id-token: write` only to the publish
   job. `tests/test_release_workflows.py` enforces this.

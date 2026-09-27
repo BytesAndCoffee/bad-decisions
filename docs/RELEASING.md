@@ -41,6 +41,21 @@ Workflows run in the repository the package metadata links to
 
 5. Approve the `pypi` environment when the **Release** workflow pauses.
 6. Confirm the new version on PyPI and deploy the server if needed.
+7. Update the Homebrew formula for the client in the
+   [BytesAndCoffee/homebrew-tap](https://github.com/BytesAndCoffee/homebrew-tap)
+   tap:
+
+   ```bash
+   .venv/bin/python scripts/update_homebrew_formula.py X.Y.Z
+   cp homebrew/regret.rb "$(brew --repository bytesandcoffee/tap)/Formula/regret.rb"
+   brew install --build-from-source bytesandcoffee/tap/regret   # or brew upgrade
+   brew test bytesandcoffee/tap/regret
+   brew audit --strict --formula bytesandcoffee/tap/regret
+   ```
+
+   Commit `homebrew/regret.rb` here, then commit and push the same file in the
+   tap. `brew update-python-resources` refreshes the pinned resources when the
+   client's dependencies change.
 
 ## What the workflow checks
 

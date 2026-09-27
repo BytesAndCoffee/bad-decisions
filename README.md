@@ -16,18 +16,28 @@ bad-decisions --help
 bad-decisions --oneshot
 ```
 
-The cross-platform client is separate:
+The cross-platform client is separate. Homebrew is the suggested install on
+macOS and Linux; pipx and pip also work:
 
 ```bash
-python -m pip install bad-decisions-client
+brew install bytesandcoffee/tap/regret   # or: pipx install bad-decisions-client
 regret health
 regret deal
+regret doctor                            # checks the install, prints fixes
 ```
 
-Both packages install a manual page (`man bad-decisions`, `man regret`) under
-the environment's `share/man/man1`. `man` finds it when that environment's `bin`
-is on `PATH` (a `--user` install or an activated venv); pipx 1.5 or newer links
-it into `~/.local/share/man`.
+Both packages install a manual page (`man bad-decisions`, `man regret`) into
+the Python environment's `share/man/man1`. `man` searches the `share/man` next
+to each `bin` directory on `PATH`, so the page is found after `pipx install`
+(pipx links it into `~/.local/share/man`), a `pip install --user`, or inside an
+activated venv. Version managers that put shims on `PATH` instead, such as
+pyenv or asdf, hide it; point `MANPATH` at the interpreter's prefix, keeping
+the leading `:` so the system pages stay searchable:
+
+```bash
+export MANPATH=":$(pyenv prefix)/share/man"   # pyenv; for any Python:
+export MANPATH=":$(python3 -c 'import sys; print(sys.prefix)')/share/man"
+```
 
 The configured hosted browser client is at
 [`/bad-decisions/web/`](https://bytes.coffee/bad-decisions/web/).

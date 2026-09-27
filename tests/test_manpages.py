@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import shlex
 import tomllib
 from pathlib import Path
 
@@ -70,3 +71,47 @@ def test_regret_manpage_documents_every_command():
     assert {"together", "health", "deal"} <= commands
     missing = sorted(name for name in commands if f".B regret {name}" not in page)
     assert not missing, f"regret(1) SYNOPSIS does not list: {missing}"
+
+
+def test_readmes_explain_finding_manpages_behind_version_manager_shims():
+    readme = _page("README.md")
+    assert "MANPATH=\":$(pyenv prefix)/share/man\"" in readme and "pipx" in readme
+    assert "MANPATH" in _page("client/README.md")
+
+
+ALTERNATING = (".BI", ".IB", ".BR", ".RB", ".IR", ".RI")
+# Alternating-font macros join their arguments with no space, so ".BI --packs ids"
+# renders "--packsids". A boundary is fine when either side supplies a space or
+# the next argument is punctuation such as "(1)", ",", "]", or "...".
+JOINS_WITHOUT_SPACE = re.compile(r"^[^\s,.;:)\]}|(]")
+
+
+def _glued(line: str) -> list[str]:
+    arguments = shlex.split(line)[1:]
+    return [
+        f"{left!r} + {right!r}"
+        for left, right in zip(arguments, arguments[1:])
+        if not left.endswith((" ", "[", "(", "{", "|")) and JOINS_WITHOUT_SPACE.match(right)
+    ]
+
+
+@pytest.mark.parametrize("page", ["man/bad-decisions.1", "client/man/regret.1"])
+def test_alternating_font_macros_never_glue_words_together(page):
+    problems = [
+        f"line {number}: {', '.join(glued)}"
+        for number, line in enumerate(_page(page).splitlines(), 1)
+        if line.startswith(tuple(f"{macro} " for macro in ALTERNATING)) and (glued := _glued(line))
+    ]
+    assert not problems, f"{page}: add a space inside the quotes: {problems}"
+
+
+@pytest.mark.parametrize("line,glued", [
+    (".BI --black-packs ids", True),
+    (".BI deploy local \" [--wheel path]\"", True),
+    ('.BI "--black-packs " ids', False),
+    (".BR regret (1),", False),
+    (".RI [ options ]", False),
+    ('.RI {deploy|rollback} " local" ...', False),
+])
+def test_glue_detector(line, glued):
+    assert bool(_glued(line)) is glued

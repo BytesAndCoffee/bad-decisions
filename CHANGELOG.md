@@ -10,7 +10,7 @@
 - `bad-decisions --version`.
 - The release workflow installs the exact wheels it will publish into a clean venv and smoke-tests them (`scripts/check_installed.py`), and refuses a tag without a `## [X.Y.Z]` section in both changelogs.
 - The rootless activator requires 1 GiB free under `APP_ROOT/releases` (`--min-free-mb`), and with `PACK_DIR` loads the live registry with the new release before switching to it. Rerun `bootstrap-rootless` to install it.
-- The wheel installs `bad-decisions(1)` into `share/man/man1`, so `man bad-decisions` works after a `--user`, venv, or pipx (1.5+) install.
+- The wheel installs `bad-decisions(1)` into `share/man/man1`, so `man bad-decisions` works after a `--user`, venv, or pipx install.
 
 ### Changed
 

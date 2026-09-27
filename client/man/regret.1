@@ -12,7 +12,7 @@ regret \- deal rounds from a Bad Decisions API
 .RI [ options ]
 .br
 .B regret feedback
-.RI {enjoy|regret|clear} [ options ]
+.RI {enjoy|regret|clear} " [" options ]
 .br
 .B regret provenance
 .RI [ --json ]
@@ -25,6 +25,9 @@ regret \- deal rounds from a Bad Decisions API
 .br
 .B regret together
 .RI room " [--name display-name] [--api-url url] [--timeout seconds] [--heartbeat seconds]"
+.br
+.B regret doctor
+.RI [ --api-url " url]"
 .SH DESCRIPTION
 .B regret
 is the dependency-light terminal client for a Bad Decisions service. It deals rounds, lists packs, checks health, records optional feedback, and prints provenance from the last local draw.
@@ -35,16 +38,16 @@ Consequences is opt-in. It controls both voting and the pseudonymous telemetry r
 .BR --version
 Print the installed version and exit.
 .TP
-.BI --api-url url
+.BI "--api-url " url
 Use a compatible API endpoint. The default is https://bytes.coffee/bad-decisions.
 .TP
-.BI --packs ids
+.BI "--packs " ids
 Comma-separated pack IDs for both colors.
 .TP
-.BI --black-packs ids
+.BI "--black-packs " ids
 Override the black-card selector.
 .TP
-.BI --white-packs ids
+.BI "--white-packs " ids
 Override the white-card selector.
 .TP
 .BR --list-packs
@@ -56,41 +59,50 @@ Check service health.
 .BR --json
 Print machine-readable JSON where supported.
 .TP
-.BI --timeout seconds
+.BI "--timeout " seconds
 Network timeout. Must be greater than zero.
 .SH COMMANDS
 .TP
-.BI deal
+.B deal
 Deal and print one round. This is the default command.
 .TP
-.BI health
+.B health
 Check the API health endpoint.
 .TP
-.BI feedback enjoy|regret|clear
+\fBfeedback\fR \fBenjoy\fR|\fBregret\fR|\fBclear\fR
 Submit, change, or withdraw the last eligible vote. Requires Enjoy Consequences.
 .TP
-.BI provenance [--json]
+\fBprovenance\fR [\fB--json\fR]
 Print license, attribution, version, and source metadata for packs in the last saved draw without contacting the API.
 .TP
-.BI identity status|reset|off|on
+\fBidentity\fR \fBstatus\fR|\fBreset\fR|\fBoff\fR|\fBon\fR
 Inspect, rotate, omit, or restore the local pseudonymous installation identity. Identity use is still subordinate to Consequences consent.
 .TP
-.BI consequences status
+.B consequences status
 Show whether Consequences is enabled.
 .TP
-.BI consequences enjoy
+.B consequences enjoy
 Enable voting and stable-ID pseudonymous vote telemetry.
 .TP
-.BI consequences regret
+.B consequences regret
 Disable voting and vote telemetry entirely.
 .TP
 .BR "consequences enable" ", " "consequences disable"
 Aliases for enjoy and regret.
 .TP
-.BI together room
+.BI "together " room
 Join or reconnect to an ephemeral Peer Pressure multiplayer room. The first participant is the initial Responsible Adult. The client maintains authenticated heartbeats, submits private responses, and resynchronizes stale room state automatically. Use --name when no saved room session exists. --heartbeat sets the heartbeat interval in seconds (default 5).
 .PP
 The prompt follows the room: the Responsible Adult presses s to start, players choose responses by number (comma-separated when a question needs several), the Responsible Adult picks the consequence, and Enter refreshes or advances. q leaves the room. When the service refuses an action, regret prints its reason and message, with a hint when the display name is taken or the game has already started.
+.TP
+.BI doctor " [--api-url url]"
+Check this installation and print a fix for each problem, changing nothing: how regret was installed, whether it is on PATH, whether
+.B man regret
+finds this page (behind pyenv or asdf shims it cannot, and doctor prints the MANPATH line to add), preference file permissions, and whether the service answers. Exits 1 if a check fails.
+.SH INSTALLATION
+Homebrew is the suggested install on macOS and Linux:
+.B brew install bytesandcoffee/tap/regret
+also links this page into Homebrew's manual path. pipx install bad-decisions-client and pip install bad-decisions-client also work; installers cannot run setup code, so use regret doctor to check shell integration.
 .SH CONSENT
 On the first interactive deal, an unset or stale consent preference prompts once. Choose Enjoy Consequences or Regret Consequences. The choice and consent schema version are stored locally and survive upgrades. Pressing Enter chooses regret. Non-interactive invocations never block for consent.
 .SH FILES

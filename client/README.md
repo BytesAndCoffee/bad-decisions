@@ -4,14 +4,38 @@
 Decisions service. It contains no card corpus and runs on Linux, macOS, and
 Windows.
 
+## Install
+
+On macOS and Linux, Homebrew is the suggested install. It also sets up
+`man regret` with no shell changes:
+
 ```bash
+brew install bytesandcoffee/tap/regret
+```
+
+Otherwise use pipx, which keeps regret in its own environment and also links
+its manual page, or plain pip:
+
+```bash
+pipx install bad-decisions-client
 python -m pip install bad-decisions-client
+```
+
+`regret doctor` checks an install and prints the fix for anything wrong,
+without changing anything. For example, with pyenv or another version manager
+that puts shims on `PATH`, `man regret` cannot find the page pip installed, and
+doctor prints the `MANPATH` line to add to your shell profile.
+
+## Use
+
+```bash
 regret health
 regret deal
 regret deal --packs base,maha
 regret provenance
 regret provenance --json
 regret --list-packs
+regret doctor
 ```
 
 Join an ephemeral multiplayer room with Peer Pressure:

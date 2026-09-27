@@ -35,29 +35,29 @@ Print one rendered round and exit.
 .BR --rapid
 Continuously print rendered rounds.
 .TP
-.BI --delay seconds
+.BI "--delay " seconds
 Delay between rapid rounds. Must be positive and finite.
 .TP
-.BI --packs ids
+.BI "--packs " ids
 Comma-separated pack IDs for both card colors.
 .TP
-.BI --black-packs ids
+.BI "--black-packs " ids
 Override the black-card selector.
 .TP
-.BI --white-packs ids
+.BI "--white-packs " ids
 Override the white-card selector.
 .TP
 .BR --list-packs
 List available packs and exit.
 .SH PACK COMMANDS
 .TP
-.BI pack validate archive
+.BI "pack validate " archive
 Validate a .carddeck archive without changing disk.
 .TP
-.BI pack export pack-id archive
+.BI "pack export " "pack-id archive"
 Export a registered pack to an archive.
 .TP
-.BI pack import " archive registry-dir " [--remote | --index] " [--pack " id ]...
+\fBpack import\fR \fIarchive registry-dir\fR [\fB--remote\fR | \fB--index\fR] [\fB--pack\fR \fIid\fR]...
 Import an archive into an absolute registry directory without overwriting an existing pack. With
 .BR --remote ,
 .I archive
@@ -67,20 +67,20 @@ it is an HTTPS CardDeck catalog and each
 .B --pack
 selects one catalog pack. Everything is downloaded and validated before anything is installed, and a failed index import removes only the files it created.
 .TP
-.BI pack init-registry registry-dir
+.BI "pack init-registry " registry-dir
 Initialize an empty absolute registry with the bundled packs. Do this before importing into a registry that BAD_DECISIONS_PACK_DIR will point at, since that registry replaces the bundled one.
 .SH CONSEQUENCES COMMANDS
 .TP
-.BI consequences report [database]
+\fBconsequences report\fR [\fIdatabase\fR]
 Print aggregate analytics as JSON. If database is omitted, use BAD_DECISIONS_CONSEQUENCES_DB or the installed release database.
 .TP
-.BI consequences tui [database]
+\fBconsequences tui\fR [\fIdatabase\fR]
 Open the read-only Textual dashboard. It provides dashboard, combination, prompt, and recent-draw views; press d, c, p, or r to switch views and q to quit. Textual is included in the core package.
 .TP
-.BI consequences rebuild database
+.BI "consequences rebuild " database
 Rebuild aggregate counters. Requires an explicit absolute database path.
 .TP
-.BI consequences purge database --retention-days days
+\fBconsequences purge\fR \fIdatabase\fR \fB--retention-days\fR \fIdays\fR
 Purge retained records and rebuild counters.
 .SH SERVICE COMMANDS
 These manage a systemd install on Linux.
@@ -105,20 +105,20 @@ Check a running deployment without changing anything: /healthz reports the expec
 .SH LOCAL DEPLOYMENT COMMANDS
 These talk to a root-owned activator installed once with sudo ./deploy.sh bootstrap-rootless; the caller must be in the deployment group. They refuse to run from inside APP_ROOT/current or APP_ROOT/releases: install the management command separately, for example with pipx. Only one request can be pending; a second is refused until the activator writes its result.
 .TP
-.BI deploy local " [--wheel path] [--requirements path] [--redeploy] [--allow-older] [--app-root path] [--timeout seconds]"
+.BI "deploy local" " [--wheel path] [--requirements path] [--redeploy] [--allow-older] [--app-root path] [--timeout seconds]"
 Deploy the installed version, so upgrading the management install (pipx upgrade bad-decisions or pip install --upgrade bad-decisions) and then running this command updates the server. It refuses to run when PyPI has a newer version than the installed command (pass --allow-older to deploy it anyway), and the activator refuses to reinstall the version that is already serving unless --redeploy is given. The activator also requires free space under APP_ROOT/releases (1 GiB by default) and, when bootstrapped with PACK_DIR, loads the live pack registry with the new release before switching to it. Interrupting the command does not cancel a request that was already submitted; the activator finishes it. The wheel is ./dist's matching build, --wheel, or else this version's wheel downloaded from PyPI and checked against its published SHA-256; the pinned requirements.lock ships with the package. On failure, the tail of APP_ROOT/activation/log.txt is printed. Stage them for a root-owned release activator previously installed with sudo ./deploy.sh bootstrap-rootless. This application-only update does not grant access to service definitions, nginx, secrets, or existing immutable releases.
 .TP
 .BI "pack replace-local" " old-pack-id url --new-id new-pack-id [--app-root path] [--timeout seconds]"
 Replace one named pack in a rootless install's registry (enabled by bootstrap-rootless with PACK_DIR). The HTTPS CardDeck archive is downloaded within the usual limits, fully validated, and must declare new-pack-id. The activator publishes it without overwriting, retires old-pack-id, restarts, and restores the exact previous files unless /healthz and /v1/packs show the new id without the old one.
 .TP
-.BI rollback local " [release-id] [--app-root path] [--timeout seconds]"
+.BI "rollback local" " [release-id] [--app-root path] [--timeout seconds]"
 Ask the same activator to switch back to the newest known-good release that is not current, or to release-id, with the rules of sudo ./deploy.sh rollback: a failed health check restores the serving release, and success drops newer entries from the good-releases watermark.
 .SH AWS COMMANDS
 .TP
-.BI setup aws " [--profile name] [--region region] [--bootstrap] [--certificate-arn arn] [--domain-name name] [--hosted-zone-id id] [--allow-http]"
+.BI "setup aws" " [--profile name] [--region region] [--bootstrap] [--certificate-arn arn] [--domain-name name] [--hosted-zone-id id] [--allow-http]"
 One-time, repeatable account preparation: create the ECR repository (keeping the newest 10 images) and the protected management capability if missing (an existing one is never rotated), bootstrap CDK if it has not been (or with --bootstrap), and merge settings into ~/.bad-decisions.env. Production HTTPS requires a certificate-matching domain. A Route 53 hosted zone is optional; external DNS providers use the emitted API Gateway CNAME target.
 .TP
-.BI deploy aws " [--image uri | --source directory] [--yes] [--capacity spot|on-demand] [--desired-count n] [--max-count n] [--certificate-arn arn] [--domain-name name] [--hosted-zone-id id] [--allow-http]"
+.BI "deploy aws" " [--image uri | --source directory] [--yes] [--capacity spot|on-demand] [--desired-count n] [--max-count n] [--certificate-arn arn] [--domain-name name] [--hosted-zone-id id] [--allow-http]"
 Build and push an immutable ECR image of the installed version (unless --image is given), show the CDK diff, and deploy the complete packaged AWS application after confirmation (--yes skips the prompt and is required without a terminal). Domain flags and --capacity (default spot) are saved for later runs. A custom HTTPS domain is required unless --allow-http is explicitly selected for a disposable smoke test, which serves the generated API Gateway URL.
 .TP
 .B rotate-token aws
@@ -127,7 +127,7 @@ Replace the management capability in Secrets Manager, save it locally, and force
 .B status aws
 Query the authenticated read-only AWS management status endpoint using the protected local credential.
 .TP
-.BI pack publish-aws archive.carddeck " [--no-reload]"
+\fBpack publish-aws\fR \fIarchive.carddeck\fR [\fB--no-reload\fR]
 Validate and atomically publish an archive, runtime pack, and catalog record to the configured AWS deployment.
 .TP
 .B pack list-aws
