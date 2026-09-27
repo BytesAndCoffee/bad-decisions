@@ -1,5 +1,5 @@
 from __future__ import annotations
-import argparse, json, os, sys, tempfile, uuid
+import argparse, http.client, json, os, sys, tempfile, uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
@@ -9,10 +9,12 @@ from urllib.request import Request, urlopen
 from . import __version__
 from .together import TogetherClient, load_session, run_together, save_session
 DEFAULT_API_URL = "https://bytes.coffee/bad-decisions"
-CONFIG_PATH = Path.home() / ".regret.env"
-ROUND_PATH = Path.home() / ".regret-last-round.json"
+# expanduser, unlike Path.home(), never raises at import when no home directory can be found.
+CONFIG_PATH = Path(os.path.expanduser("~")) / ".regret.env"
+ROUND_PATH = Path(os.path.expanduser("~")) / ".regret-last-round.json"
 CONSEQUENCES_SCHEMA_VERSION = 1
 UPDATE_CHECK_SECONDS = 24 * 60 * 60
+MAX_RESPONSE_BYTES = 8 * 1024 * 1024
 
 def _read_config(path: Path | None = None) -> dict[str,str]:
     path = CONFIG_PATH if path is None else path
@@ -105,12 +107,14 @@ def _maybe_update_check(config: dict[str, str], api_url: str) -> None:
     if latest and _is_newer(str(latest), current):
         print(f"A newer Bad Decision is available:\nregret {current} -> {latest}", file=sys.stderr)
 
+def _release(version: str) -> tuple[int, ...] | None:
+    parts = version.strip().split(".")
+    return tuple(int(part) for part in parts) if all(part.isdigit() for part in parts) else None
+
 def _is_newer(latest: str, current: str) -> bool:
-    try:
-        from packaging.version import Version
-        return Version(latest) > Version(current)
-    except Exception:
-        return False
+    """Plain X.Y.Z releases only; anything else (pre-releases, junk) never prompts an upgrade."""
+    new, old = _release(latest), _release(current)
+    return bool(new and old and new > old)
 
 def _doctor(argv: Sequence[str]) -> int:
     from . import doctor
@@ -163,13 +167,19 @@ def _request_json(url: str, *, timeout: float, method: str="GET", payload: dict[
     request=Request(url,data=data,method=method,headers=base)
     try:
         with urlopen(request,timeout=timeout) as response:
-            return json.loads(response.read().decode("utf-8")), getattr(response, "headers", {})
+            raw=response.read(MAX_RESPONSE_BYTES+1)
+            if len(raw)>MAX_RESPONSE_BYTES: raise RuntimeError("API response is too large")
+            try: return json.loads(raw.decode("utf-8")), getattr(response, "headers", {})
+            except (UnicodeDecodeError,json.JSONDecodeError) as exc: raise RuntimeError("API returned something other than JSON; check --api-url") from exc
     except HTTPError as exc:
-        try:
-            body=json.loads(exc.read().decode("utf-8"))
-            error=body.get("error",{}) if isinstance(body,dict) else {}; raise RuntimeError(f"{error.get('code')}: {error.get('message')}" if error.get("code") else error.get("message",f"HTTP {exc.code}")) from exc
-        except (UnicodeDecodeError,json.JSONDecodeError): raise RuntimeError(f"HTTP {exc.code}: {exc.reason}") from exc
-    except (URLError,TimeoutError) as exc: raise RuntimeError(f"Cannot reach API: {exc.reason if isinstance(exc,URLError) else exc}") from exc
+        try: body=json.loads(exc.read(MAX_RESPONSE_BYTES).decode("utf-8"))
+        except (UnicodeDecodeError,json.JSONDecodeError,OSError,http.client.HTTPException): raise RuntimeError(f"HTTP {exc.code}: {exc.reason}") from exc
+        error=body.get("error") if isinstance(body,dict) else None
+        if not isinstance(error,dict): raise RuntimeError(f"HTTP {exc.code}: {exc.reason}") from exc
+        code,message=error.get("code"),error.get("message") or f"HTTP {exc.code}"
+        raise RuntimeError(f"{code}: {message}" if isinstance(code,str) and code else str(message)) from exc
+    except (URLError,TimeoutError,ConnectionError,http.client.HTTPException) as exc:
+        raise RuntimeError(f"Cannot reach API: {exc.reason if isinstance(exc,URLError) else exc}") from exc
 
 def _feedback_url(api_url: str, path: str) -> str:
     """Resolve the server's feedback path against the API origin; it already includes any public prefix."""
@@ -324,5 +334,4 @@ def run(argv: Sequence[str] | None=None) -> int:
     except (RuntimeError,ValueError,KeyError) as exc: print(f"regret: {exc}",file=sys.stderr); return 1
 
 def main() -> int: return run()
-def legacy_main() -> int: return run()
 if __name__ == "__main__": raise SystemExit(main())

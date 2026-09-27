@@ -40,6 +40,7 @@ ERROR_STATUS = {
 CLIENT_HEADERS = ["Authorization", "Content-Type", "If-None-Match", "X-Request-ID", "X-Client-ID", "X-Session-ID", "X-Feedback-Token"]
 WEB_ASSETS = {"index.html": "text/html; charset=utf-8", "app.js": "application/javascript; charset=utf-8", "style.css": "text/css; charset=utf-8", "favicon.svg": "image/svg+xml"}
 PACK_CACHE = "public, max-age=300"
+POOL_CACHE_SIZE = 256  # distinct selectors remembered; invalid ones are never cached
 
 
 # --- request bodies -------------------------------------------------------------
@@ -155,6 +156,7 @@ def create_app() -> FastAPI:
     logging.basicConfig(level=settings.log_level, format="%(asctime)s %(levelname)s %(message)s")
     logger = logging.getLogger("bad_decisions.api")
     limiter = RateLimiter(settings.rate_limit_per_minute)
+    pool_cache: dict[tuple[str | None, str | None, str | None], Any] = {}
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -398,7 +400,13 @@ Service interfaces:
         if repeated:
             return error(request, "repeated_query_parameter", "Selector parameters must occur once", 400, {"parameters": repeated})
         registry = request.app.state.registry
-        resolved = resolve_pools(registry, packs=packs, prompt_packs=prompt_packs, answer_packs=answer_packs)
+        # The registry never changes at runtime, so each selector resolves once.
+        key = (packs, prompt_packs, answer_packs)
+        resolved = pool_cache.get(key)
+        if resolved is None:
+            resolved = resolve_pools(registry, packs=packs, prompt_packs=prompt_packs, answer_packs=answer_packs)
+            if len(pool_cache) < POOL_CACHE_SIZE:
+                pool_cache[key] = resolved
         round_ = generate_from_resolved(resolved, registry)
         payload = round_.model_dump(mode="json")
         headers = {"Cache-Control": "no-store"}

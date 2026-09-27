@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import threading
 import time
@@ -9,7 +10,7 @@ from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import quote
 
-SESSION_PATH = Path.home() / ".regret-peer-pressure.json"
+SESSION_PATH = Path(os.path.expanduser("~")) / ".regret-peer-pressure.json"
 
 
 def _session_key(api_url: str, room: str) -> str:

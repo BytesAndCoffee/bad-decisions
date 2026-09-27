@@ -14,6 +14,8 @@ from pathlib import Path
 
 from .archive import export_pack
 from .errors import PackConfigurationError
+from pydantic import ValidationError
+
 from .models import PACK_SCHEMA_VERSION, Pack
 
 LICENSE_ID = "CC-BY-NC-SA-3.0"
@@ -252,7 +254,8 @@ def convert(payload: bytes, *, source_url: str, retrieved: str | None = None, in
             )
         if not prompts and not answers:
             continue
-        result.append(Pack.model_validate({
+        try:
+            pack = Pack.model_validate({
             "schema_version": PACK_SCHEMA_VERSION,
             "metadata": {
                 "id": pack_id, "name": f"Pretend You're Xyzzy: {card_set.name}",
@@ -265,7 +268,10 @@ def convert(payload: bytes, *, source_url: str, retrieved: str | None = None, in
                 "modifications": ["Converted PostgreSQL COPY rows to CardDeck fields while preserving card text, order, card-set membership, watermarks, and source identifiers.", "Prompts with no blank receive newline-appended answer placeholders, matching Bad Decisions' existing prompt representation. Prompt draw counts are retained in source_ref; the runtime does not implement draw mechanics."],
             },
             "prompts": prompts, "answers": answers,
-        }))
+            })
+        except ValidationError as exc:
+            raise _error(f"card set {card_set.id}: invalid pack: {exc}") from exc
+        result.append(pack)
     if not result:
         raise _error("no non-empty card sets selected")
     return tuple(result)
@@ -278,4 +284,12 @@ def export_all(packs: Iterable[Pack], destination_dir: str | Path) -> tuple[Path
     destination.mkdir(parents=True, exist_ok=True)
     if not destination.is_dir():
         raise _error(f"destination is not a directory: {destination}")
-    return tuple(export_pack(pack, destination / f"{pack.metadata.id}.carddeck") for pack in packs)
+    written: list[Path] = []
+    try:
+        for pack in packs:
+            written.append(export_pack(pack, destination / f"{pack.metadata.id}.carddeck"))
+    except BaseException:
+        for path in written:  # all or nothing: remove only the archives this call wrote
+            path.unlink(missing_ok=True)
+        raise
+    return tuple(written)

@@ -11,7 +11,7 @@ class Response:
     def __init__(self, payload: str):
         self.payload = payload
 
-    def read(self) -> bytes:
+    def read(self, _size: int = -1) -> bytes:
         return self.payload.encode("utf-8")
 
     def __enter__(self):
@@ -142,3 +142,53 @@ def test_feedback_url_never_sends_the_token_to_another_server():
     for hostile in ("https://evil.example/v2/rounds/r1/feedback", "//evil.example/steal"):
         with pytest.raises(ValueError):
             cli._feedback_url("https://bytes.example/bad-decisions", hostile)
+
+
+def test_the_client_has_no_dependencies_and_compares_versions_itself():
+    from pathlib import Path  # no tomllib: client tests also run on Python 3.10
+
+    pyproject = (Path(__file__).resolve().parents[1] / "pyproject.toml").read_text()
+    assert "\ndependencies = []\n" in pyproject and '\nrequires-python = ">=3.10"\n' in pyproject
+    assert cli._is_newer("2.0.0", "1.8.5") and cli._is_newer("1.10.0", "1.9.9")
+    assert not cli._is_newer("1.8.5", "1.8.5") and not cli._is_newer("1.8.4", "1.8.5")
+    assert not cli._is_newer("2.1.0rc1", "2.0.0") and not cli._is_newer("junk", "2.0.0")
+
+
+def _serve_raw(monkeypatch, body: bytes = b"", *, error: Exception | None = None):
+    import io
+
+    class Response(io.BytesIO):
+        headers: dict = {}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            return False
+
+    def urlopen(_request, timeout=None):
+        if error is not None:
+            raise error
+        return Response(body)
+
+    monkeypatch.setattr(cli, "urlopen", urlopen)
+
+
+def test_request_json_reports_bad_responses_clearly(monkeypatch):
+    import http.client
+    import io
+    import pytest
+    from urllib.error import HTTPError
+
+    cases = [
+        (dict(body=b"<html>not json</html>"), "other than JSON"),
+        (dict(body=b"[" * (cli.MAX_RESPONSE_BYTES + 1)), "too large"),
+        (dict(error=http.client.RemoteDisconnected("closed")), "Cannot reach API"),
+        (dict(error=ConnectionResetError("reset")), "Cannot reach API"),
+        (dict(error=HTTPError("https://x", 502, "Bad Gateway", {}, io.BytesIO(b'["not", "a", "dict"]'))), "HTTP 502: Bad Gateway"),
+        (dict(error=HTTPError("https://x", 500, "Oops", {}, io.BytesIO(b'{"error": "flat string"}'))), "HTTP 500: Oops"),
+    ]
+    for kwargs, message in cases:
+        _serve_raw(monkeypatch, **kwargs)
+        with pytest.raises(RuntimeError, match=message):
+            cli._request_json("https://example.invalid/v2/round", timeout=1)

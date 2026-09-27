@@ -103,6 +103,11 @@ def _read_archive(path: Path) -> tuple[ArchiveManifest, Pack, bytes, str, str]:
         raise _error("license and attribution files must be UTF-8") from exc
     if not license_text or not attribution:
         raise _error("license and attribution files must not be empty")
+    # The files are what people read; they must say exactly what the metadata declares.
+    if license_text != pack.metadata.license_notice.strip():
+        raise _error("LICENSE.txt does not match the pack's license_notice")
+    if attribution != pack.metadata.attribution.strip():
+        raise _error("ATTRIBUTION.md does not match the pack's attribution")
     return manifest, pack, payload, license_text, attribution
 
 
@@ -134,15 +139,21 @@ def export_pack(pack: Pack, destination: str | Path) -> Path:
         "LICENSE.txt": (pack.metadata.license_notice.strip() + "\n").encode("utf-8"),
         "ATTRIBUTION.md": (pack.metadata.attribution.strip() + "\n").encode("utf-8"),
     }
+    created = False
     try:
         with zipfile.ZipFile(target, "x", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+            created = True
             for name in sorted(contents):
                 info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
                 info.compress_type = zipfile.ZIP_DEFLATED
                 info.external_attr = 0o100644 << 16
                 archive.writestr(info, contents[name])
-    except (OSError, zipfile.BadZipFile) as exc:
-        raise _error(f"cannot create archive: {exc}") from exc
+    except BaseException as exc:
+        if created:  # never leave a partial archive behind; "x" mode means it is ours
+            target.unlink(missing_ok=True)
+        if isinstance(exc, (OSError, zipfile.BadZipFile)):
+            raise _error(f"cannot create archive: {exc}") from exc
+        raise
     return target
 
 
@@ -293,11 +304,16 @@ def initialize_registry(registry_dir: str | Path) -> tuple[Path, ...]:
         for source in sorted(source_dir.iterdir(), key=lambda item: item.name):
             if source.name.endswith(".json"):
                 target = destination_dir / source.name
-                target.write_bytes(source.read_bytes())
+                with target.open("xb") as output:
+                    copied.append(target)
+                    output.write(source.read_bytes())
                 os.chmod(target, 0o644)
-                copied.append(target)
-    except OSError as exc:
-        raise _error(f"cannot initialize registry: {exc}") from exc
+    except BaseException as exc:
+        for target in copied:  # leave the registry empty, as it was
+            target.unlink(missing_ok=True)
+        if isinstance(exc, OSError):
+            raise _error(f"cannot initialize registry: {exc}") from exc
+        raise
     if not copied:
         raise _error("no bundled pack files found")
     return tuple(copied)

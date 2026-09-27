@@ -5,6 +5,7 @@ import zipfile
 import pytest
 
 from bad_decisions.errors import PackConfigurationError
+from bad_decisions import pyx_import
 from bad_decisions.pyx_import import convert, export_all
 
 
@@ -96,7 +97,14 @@ def _answer_text(escaped: str, *, sql: bytes = SQL) -> str:
     ],
 )
 def test_copy_escapes_octal_and_hex(escaped, expected):
-    assert _answer_text(escaped) == expected
+    # The decoder itself; card text additionally rejects control characters (below).
+    assert pyx_import._decode_copy_value(escaped) == expected
+
+
+@pytest.mark.parametrize("escaped", [r"a\7b", r"\x4", r"bell\x07", r"esc\033[2J"])
+def test_decoded_control_characters_are_rejected_as_card_text(escaped):
+    with pytest.raises(PackConfigurationError, match="control character"):
+        _answer_text(escaped)
 
 
 @pytest.mark.parametrize(
@@ -138,9 +146,16 @@ def test_out_of_range_octal_escape_is_rejected():
         _answer_text(r"\777")
 
 
-@pytest.mark.parametrize("separator", [" ", " ", "\u0085", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e"])
+@pytest.mark.parametrize("separator", ["\u2028", "\u2029", "\u0085"])
 def test_raw_unicode_line_separators_stay_inside_card_text(separator):
     assert _answer_text(f"before{separator}after") == f"before{separator}after"
+
+
+@pytest.mark.parametrize("separator", ["\x0b", "\x0c", "\x1c", "\x1d", "\x1e"])
+def test_control_line_separators_do_not_split_rows_and_are_rejected(separator):
+    # Parsed as one row (no bogus extra columns), then refused as card text.
+    with pytest.raises(PackConfigurationError, match="control character"):
+        _answer_text(f"before{separator}after")
 
 
 def test_crlf_dump_is_accepted():

@@ -1,11 +1,21 @@
 from __future__ import annotations
 
+import re
 from string import Formatter
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 ID_PATTERN = r"^[a-z0-9][a-z0-9_-]*$"
+# C0 controls and DEL (except tab and newline) could rewrite a terminal that prints card text.
+_CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
+
+
+def _printable(value: str) -> str:
+    match = _CONTROL.search(value)
+    if match:
+        raise ValueError(f"control character U+{ord(match.group()):04X} is not allowed")
+    return value
 
 
 class FrozenModel(BaseModel):
@@ -54,6 +64,13 @@ class PackMetadata(FrozenModel):
     def nonempty_text(cls, value: str) -> str:
         if not value.strip():
             raise ValueError("must not be empty")
+        return _printable(value)
+
+    @field_validator("authors", "modifications")
+    @classmethod
+    def printable_items(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        for item in value:
+            _printable(item)
         return value
 
     @field_validator("id")
@@ -104,7 +121,7 @@ class Prompt(FrozenModel):
     def nonempty(cls, value: str) -> str:
         if not value.strip():
             raise ValueError("must not be empty")
-        return value
+        return _printable(value)
 
     @model_validator(mode="after")
     def valid_template(self) -> Prompt:
@@ -141,7 +158,7 @@ class Answer(FrozenModel):
     def nonempty(cls, value: str) -> str:
         if not value.strip():
             raise ValueError("must not be empty")
-        return value
+        return _printable(value)
 
 
 class Pack(FrozenModel):

@@ -203,7 +203,7 @@ def run(argv: Sequence[str] | None = None, *, sleep=time.sleep) -> int:
         return operations.run(values)
     if values and values[0] == "pack":
         return _run_pack(values[1:])
-    if values and values[0] in {"analytics", "consequences"}:
+    if values and values[0] == "consequences":
         return _run_consequences(values[1:])
     args = parser().parse_args(values)
     if args.delay is not None and not args.rapid:
@@ -226,7 +226,8 @@ def run(argv: Sequence[str] | None = None, *, sleep=time.sleep) -> int:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+    if hasattr(signal, "SIGPIPE"):  # absent on Windows
+        signal.signal(signal.SIGPIPE, signal.SIG_DFL)
     try:
         return run(argv)
     except KeyboardInterrupt:

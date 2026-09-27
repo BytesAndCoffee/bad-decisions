@@ -39,17 +39,17 @@ Tracks fixes from the 2026-09-19 code review. Tick an item when its fix and test
 - [x] R10. All-packs default reviewed and deliberately kept (user decision).
 
 ## Should consider
-- [ ] Reject C0 control characters (except newline) in card text validators.
-- [ ] `operations.setup`: don't silently ignore `--pack-dir`; make config actually reach the service; honor `SERVICE_NAME` in `_service()`.
-- [ ] `.gitignore`: add `deploy/object-archive/secrets/` and `garage.toml`.
-- [ ] Verify or record `LICENSE.txt` / `ATTRIBUTION.md` against metadata in archives.
+- [x] Reject C0 control characters (except newline) in card text validators.
+- [x] `operations.setup`: don't silently ignore `--pack-dir`; make config actually reach the service; honor `SERVICE_NAME` in `_service()`.
+- [x] `.gitignore`: add `deploy/object-archive/secrets/` and `garage.toml`.
+- [x] Verify or record `LICENSE.txt` / `ATTRIBUTION.md` against metadata in archives.
 
 ## Minor
-- [ ] Remove or wire up dead `remote_cli.py`.
-- [ ] Guard `signal.SIGPIPE` and make `Path.home()` lazy for Windows/odd environments.
-- [ ] Precompute pool resolution per selector (`packs.py:91-97`).
-- [ ] Make `initialize_registry` / `export_pack` / `export_all` clean up on failure.
-- [ ] Harden `client/cli.py` `_get_json` (size cap, non-dict error payload, `http.client` errors).
+- [x] Remove or wire up dead `remote_cli.py`.
+- [x] Guard `signal.SIGPIPE` and make `Path.home()` lazy for Windows/odd environments.
+- [x] Precompute pool resolution per selector (`packs.py:91-97`).
+- [x] Make `initialize_registry` / `export_pack` / `export_all` clean up on failure.
+- [x] Harden `client/cli.py` `_get_json` (size cap, non-dict error payload, `http.client` errors).
 - [x] Tests: concurrent imports, catalog malformed archives, PYX escape edge cases.
 
 ## 2.0.0 plan
@@ -82,12 +82,15 @@ API v2
 - [x] App-level rate limit for room creation, join, and feedback.
 
 Cleanup
-- [ ] Remove `remote_cli.py`, `infra/aws/`, the `analytics` alias, and the client's `legacy_main`.
-- [ ] Fix or remove `bad-decisions setup` (writes a config nothing reads); honor the service name.
-- [ ] Client: Python 3.10+, no `packaging` dependency (dependency-free again).
-- [ ] Reject C0 control characters in card text (checked against the production registry first).
-- [ ] A configured S3 pack bucket that yields nothing is an error, not a silent fallback.
-- [ ] Remaining "Should consider" and "Minor" items above.
+- [x] Remove `remote_cli.py`, `infra/aws/`, the `analytics` alias, and the client's `legacy_main`.
+- [x] Removed plain `bad-decisions setup` (it wrote a config nothing read; deploy.sh configures Linux installs); `status`/`reload`/`stop --service NAME`.
+- [x] Client: Python 3.10+, no `packaging` dependency (dependency-free again).
+- [x] Reject C0 control characters (except tab and newline) and DEL in card text and printed metadata; all 47 production packs still validate.
+- [x] A configured S3 pack bucket that yields nothing logs a warning instead of falling back silently (kept as a fallback: new AWS deployments start before `pack seed-aws`).
+- [x] Remaining "Should consider" and "Minor" items above.
+
+Object store (owner request 2026-09-27)
+- [ ] Review deploy/object-archive (Garage, nginx templates, compose files, catalog indexer) for 2.0 changes before release.
 
 Release
 - [ ] Docs, man pages, changelogs, and a 1.x to 2.0 migration guide.
@@ -204,3 +207,4 @@ Release
 2026-09-27 - docs - `man regret` failed on a pyenv Mac: pip put the page under ~/.pyenv/versions/X/share/man, but man only searches next to PATH's bin directories, which pyenv replaces with shims. Both READMEs now explain where pages land, recommend pipx, and give the MANPATH line for pyenv/asdf. Tests: tests/test_manpages.py.
 2026-09-27 - client - Installers cannot run post-install code, so pyenv users could not get `man regret` working without being told how. Added `regret doctor` (read-only; detects the install method and prints the MANPATH fix or a better install) and a Homebrew formula, homebrew/regret.rb, built, tested, and audited (--strict --new) with Linuxbrew from the 1.8.5 sdist. The client README, which is the PyPI description, now suggests Homebrew. Tests: client/tests/test_doctor.py, tests/test_homebrew_formula.py.
 2026-09-27 - docs - Man page tags rendered glued ("--black-packsids", "deploylocal", "togetherroom"): alternating-font macros (.BI/.BR/.RI) join arguments without spaces. Rewrote 30 entries with explicit spacing or inline font escapes. Tests: tests/test_manpages.py rejects any alternating-macro line whose arguments would run together.
+2026-09-27 - 2.0 - Cleanup and backlog: removed remote_cli.py, infra/aws, the analytics alias, legacy_main, and plain `setup`; systemctl commands take --service; control characters rejected in card text and metadata; archives must carry LICENSE.txt/ATTRIBUTION.md matching their metadata; exports and registry initialization remove only their own files on failure; PYX validation errors are PackConfigurationError; SIGPIPE guarded and home paths via expanduser; pools resolve once per selector; regret's HTTP helper caps responses and reports non-JSON bodies and dropped connections; client is dependency-free on Python 3.10+. Tests: tests/test_archive.py, test_models_engine.py, test_pyx_import.py, test_api_v2.py, test_extras.py, client/tests/test_cli.py.

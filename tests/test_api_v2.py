@@ -152,3 +152,22 @@ def test_openapi_documents_models_and_the_error_envelope(api):
     assert round_responses["422"]["content"]["application/json"]["schema"]["$ref"].endswith("/ErrorEnvelope")
     assert not any(path.startswith("/v1") for path in schema["paths"])
     assert "action" not in str(schema["paths"]["/v2/peer-pressure/rooms/{room}/start"])
+
+
+def test_pools_resolve_once_per_selector(api, monkeypatch):
+    import bad_decisions.api as api_module
+
+    calls = []
+    real = api_module.resolve_pools
+
+    def counting(*args, **kwargs):
+        calls.append(kwargs)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(api_module, "resolve_pools", counting)
+    with api() as client:
+        for _ in range(3):
+            assert client.get("/v2/round?packs=maha").status_code == 200
+        for _ in range(2):
+            assert client.get("/v2/round?packs=nope").status_code == 422
+    assert [call["packs"] for call in calls] == ["maha", "nope", "nope"], "errors are not cached"

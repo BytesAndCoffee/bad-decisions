@@ -76,3 +76,16 @@ def test_aws_deploy_commands_check_for_the_cdk_before_doing_anything(monkeypatch
     with pytest.raises(MissingExtraError) as error:
         operations.setup_aws([])
     assert error.value.extra == "aws-deploy"
+
+
+def test_empty_s3_bucket_falls_back_loudly(monkeypatch, caplog):
+    import bad_decisions.aws_packs as aws_packs
+    from bad_decisions.packs import load_registry
+
+    monkeypatch.delenv("BAD_DECISIONS_PACK_DIR", raising=False)
+    monkeypatch.setenv("BAD_DECISIONS_PACK_BUCKET", "empty-bucket")
+    monkeypatch.setattr(aws_packs, "load_s3_packs", lambda _bucket, _prefix: {})
+    with caplog.at_level("WARNING"):
+        registry = load_registry()
+    assert registry.packs, "bundled packs keep a fresh deployment serving"
+    assert "no packs found in s3://empty-bucket/packs/" in caplog.text and "pack seed-aws" in caplog.text

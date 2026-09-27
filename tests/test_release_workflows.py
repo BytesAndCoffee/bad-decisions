@@ -53,7 +53,7 @@ def test_ci_runs_on_main_and_pull_requests_with_the_full_gate():
     assert re.search(r"^  pull_request:", CI, re.M)
     for command in ("python -m pytest", "client/tests", "bash -n deploy.sh", "bash -n deploy/rollback.sh"):
         assert command in CI, command
-    assert "3.9" in CI, "the client supports Python 3.9"
+    assert "\"3.10\"" in CI, "the client supports Python 3.10, its minimum"
 
 
 def test_release_triggers_only_on_version_tags():

@@ -4,6 +4,7 @@ Read AGENTS.md first. The plan and its checkboxes are in patchnotes.md under
 "2.0.0 plan"; tick items there as they land. Each stage is one commit on `v2`.
 
 ## Decisions (owner, 2026-09-27)
+- Release title: "Bad Decisions 2.0: Terrible choices at terrifying speeds" (CHANGELOG heading, GitHub release name, tag message).
 - Unify on prompt/answer(s). Card IDs already in packs stay as they are.
 - `/v1` API is removed entirely (owner is the only consumer); `/v2` replaces it.
   `/v1/*` returns 410 with an upgrade hint; `/healthz` stays unversioned.
@@ -15,7 +16,8 @@ Read AGENTS.md first. The plan and its checkboxes are in patchnotes.md under
 - [x] Stage 1: prompt/answer rename and pack schema 2 (commit a4b1fd1).
 - [x] Stage 2: `[aws]` (boto3), `[aws-deploy]` (+CDK), `[tui]` extras; requirements.lock is server-only, requirements-extras.lock pins the rest.
 - [x] Stage 3: `/v2` API (src/bad_decisions/api.py rewritten), regret/web/doctor/smoke/activator clients moved to v2; tests/test_api_v2.py pins the contract.
-- [ ] Stage 4: dead code and backlog.
+- [x] Stage 4: dead code and backlog (all patchnotes backlog items closed).
+- [ ] Stage 4b: object-store review (owner request): deploy/object-archive before release.
 - [ ] Stage 5: docs, man pages, migration guide, 2.0.0 release, deploy, Homebrew.
 
 ## Release notes for the operator
@@ -31,3 +33,5 @@ Read AGENTS.md first. The plan and its checkboxes are in patchnotes.md under
 - API reference in README: /v2 paths, headers X-Client-ID/X-Session-ID/X-Feedback-Token, 410 for /v1.
 - Operator: `scripts/smoke_peer_pressure.py` now speaks v2, so the owner's droplet postflight will fail against 1.x until 2.0 is deployed.
 - Fixed 1.x bug worth a changelog line: `regret feedback` doubled the public prefix in the feedback URL (404 behind nginx).
+- Homebrew: after publishing 2.0, update homebrew/regret.rb (scripts/update_homebrew_formula.py 2.0.0), drop its `packaging` resource (client is dependency-free), add a `regret doctor` assertion to its test, and push the tap.
+- CI: client matrix is now 3.10/3.13 (setup-python v6.3.0 still installs 3.10).

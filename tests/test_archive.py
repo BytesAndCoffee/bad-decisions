@@ -370,3 +370,64 @@ def test_other_link_errors_are_reported_and_leave_no_files(tmp_path, monkeypatch
     with pytest.raises(PackConfigurationError, match="cannot import pack"):
         import_pack(archive, registry)
     assert _registry_files(registry) == []
+
+
+def _rewrite_member(source: Path, target: Path, name: str, data: bytes) -> Path:
+    with zipfile.ZipFile(source) as original, zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as rewritten:
+        for member in original.namelist():
+            rewritten.writestr(member, data if member == name else original.read(member))
+    return target
+
+
+@pytest.mark.parametrize("member,message", [("LICENSE.txt", "LICENSE.txt does not match"), ("ATTRIBUTION.md", "ATTRIBUTION.md does not match")])
+def test_license_and_attribution_files_must_match_the_metadata(tmp_path, member, message):
+    exported = export_pack(load_registry().packs["maha"], tmp_path / "maha.carddeck")
+    altered = _rewrite_member(exported, tmp_path / "altered.carddeck", member, b"Public domain, honest.\n")
+    with pytest.raises(PackConfigurationError, match=message):
+        validate_archive(altered)
+
+
+def test_a_failed_export_leaves_no_partial_archive(tmp_path, monkeypatch):
+    def broken(self, *_args, **_kwargs):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(zipfile.ZipFile, "writestr", broken)
+    target = tmp_path / "maha.carddeck"
+    with pytest.raises(PackConfigurationError, match="disk full"):
+        export_pack(load_registry().packs["maha"], target)
+    assert not target.exists()
+
+
+def test_export_never_removes_an_archive_it_did_not_create(tmp_path):
+    target = tmp_path / "maha.carddeck"
+    target.write_bytes(b"someone else's")
+    with pytest.raises(PackConfigurationError, match="already exists"):
+        export_pack(load_registry().packs["maha"], target)
+    assert target.read_bytes() == b"someone else's"
+
+
+def test_a_failed_registry_initialization_leaves_it_empty(tmp_path, monkeypatch):
+    real_chmod, calls = os.chmod, []
+
+    def failing_chmod(path, mode, *args, **kwargs):
+        calls.append(path)
+        if len(calls) == 2:
+            raise OSError("permission denied")
+        return real_chmod(path, mode, *args, **kwargs)
+
+    monkeypatch.setattr(archive_module.os, "chmod", failing_chmod)
+    registry = (tmp_path / "registry").resolve()
+    with pytest.raises(PackConfigurationError, match="permission denied"):
+        initialize_registry(registry)
+    assert list(registry.iterdir()) == []
+
+
+def test_export_all_is_all_or_nothing(tmp_path):
+    from bad_decisions.pyx_import import export_all
+
+    packs = load_registry().packs
+    (tmp_path / "maha.carddeck").write_bytes(b"already here")  # the second export will refuse
+    with pytest.raises(PackConfigurationError, match="already exists"):
+        export_all([packs["base"], packs["maha"]], tmp_path)
+    assert sorted(path.name for path in tmp_path.iterdir()) == ["maha.carddeck"]
+    assert (tmp_path / "maha.carddeck").read_bytes() == b"already here"

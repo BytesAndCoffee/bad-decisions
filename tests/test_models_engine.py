@@ -51,3 +51,22 @@ def test_same_text_distinct_identities_can_both_be_drawn(registry):
             assert result.answers[0].pack != result.answers[1].pack
             break
     assert seen
+
+
+@pytest.mark.parametrize("text", ["\x1b[2Jcleared", "bell\x07", "carriage\rreturn", "back\x08space", "nul\x00", "del\x7f"])
+def test_card_and_metadata_text_reject_terminal_control_characters(text):
+    from bad_decisions.models import Answer
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError, match="control character"):
+        Answer(id="a", text=text, pack="p")
+    with pytest.raises(ValidationError, match="control character"):
+        Prompt(id="b", text=text + " _", template=text + " {}", slots=1, pack="p")
+
+
+def test_newlines_and_tabs_stay_allowed():
+    from bad_decisions.models import Answer
+
+    assert Answer(id="a", text="line one\nline two", pack="p").text.count("\n") == 1
+    assert Prompt(id="b", text="Why?\n____", template="Why?\n{}", slots=1, pack="p")
+    assert Answer(id="c", text="tab\there", pack="p").text == "tab\there"

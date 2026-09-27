@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from dataclasses import dataclass
 from importlib.resources import files
@@ -46,9 +47,15 @@ def load_registry(pack_dir: str | Path | None = None) -> Registry:
     bucket = os.getenv("BAD_DECISIONS_PACK_BUCKET") if configured is None else None
     if bucket:
         from .aws_packs import load_s3_packs
-        remote = load_s3_packs(bucket, os.getenv("BAD_DECISIONS_PACK_PREFIX", "packs/"))
+        prefix = os.getenv("BAD_DECISIONS_PACK_PREFIX", "packs/")
+        remote = load_s3_packs(bucket, prefix)
         if remote:
             return Registry(remote)
+        # A new AWS deployment starts before `pack seed-aws` fills the bucket, so
+        # this falls back to the bundled packs, but never silently.
+        logging.getLogger("bad_decisions.packs").warning(
+            "no packs found in s3://%s/%s; serving the bundled packs until the bucket is seeded (bad-decisions pack seed-aws)", bucket, prefix
+        )
     if configured is not None:
         root = Path(configured)
         if not root.is_absolute():

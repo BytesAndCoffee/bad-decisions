@@ -23,8 +23,7 @@ from .packs import load_registry
 from .settings import Settings
 from . import __version__
 
-DEFAULT_CONFIG = Path.home() / ".config" / "bad-decisions" / "config.env"
-AWS_ENV = Path.home() / ".bad-decisions.env"
+AWS_ENV = Path(os.path.expanduser("~")) / ".bad-decisions.env"
 
 
 def _require_linux() -> None:
@@ -32,35 +31,18 @@ def _require_linux() -> None:
         raise RuntimeError("Bad Decisions deployment commands are supported on Linux only")
 
 
-def _service(action: str, *, require_root: bool = False) -> int:
+def _service(action: str, argv: list[str], *, require_root: bool = False) -> int:
+    parser = argparse.ArgumentParser(prog=f"bad-decisions {action}", description=f"systemctl {action} for the Bad Decisions service.")
+    parser.add_argument("--service", default="bad-decisions", help="systemd service name (default: %(default)s)")
+    args = parser.parse_args(argv)
+    if not re.fullmatch(r"[A-Za-z0-9_.@-]+", args.service):
+        parser.error("--service must be a systemd unit name")
     _require_linux()
-    command = ["systemctl", action, "bad-decisions.service"]
     if require_root and os.geteuid() != 0:
         print(f"bad-decisions {action} must be run with sudo.", file=sys.stderr)
         return 2
-    completed = subprocess.run(command, check=False)
-    return completed.returncode
-
-
-def setup(argv: list[str]) -> int:
-    parser = argparse.ArgumentParser(prog="bad-decisions setup", description="Prepare user-local Bad Decisions configuration.")
-    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
-    parser.add_argument("--pack-dir", type=Path, help="absolute registry directory to record")
-    args = parser.parse_args(argv)
-    if args.pack_dir is not None:
-        if not args.pack_dir.is_absolute() or not args.pack_dir.is_dir():
-            parser.error("--pack-dir must name an existing absolute directory")
-        load_registry(args.pack_dir)
-    args.config.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    lines = ["BAD_DECISIONS_LOG_LEVEL=INFO"]
-    if args.pack_dir is not None:
-        lines.append(f"BAD_DECISIONS_PACK_DIR={args.pack_dir}")
-    if not args.config.exists():
-        args.config.write_text("\n".join(lines) + "\n", encoding="utf-8")
-        args.config.chmod(0o600)
-    print(f"Configuration ready: {args.config}")
-    print("Run sudo bad-decisions deploy after reviewing system configuration.")
-    return 0
+    unit = args.service if args.service.endswith(".service") else f"{args.service}.service"
+    return subprocess.run(["systemctl", action, unit], check=False).returncode
 
 
 def _run(command: list[str], *, env: dict[str, str] | None = None, cwd: Path | None = None, capture: bool = False) -> subprocess.CompletedProcess[str]:
@@ -836,7 +818,7 @@ def run(argv: list[str]) -> int:
         return 2
     command, rest = argv[0], argv[1:]
     if command == "setup":
-        return setup_aws(rest[1:]) if rest and rest[0] == "aws" else setup(rest)
+        return setup_aws(rest[1:]) if rest and rest[0] == "aws" else _usage_error("setup requires aws (Linux installs are configured by deploy.sh)")
     if command == "serve":
         return serve(rest)
     if command == "deploy":
@@ -850,11 +832,11 @@ def run(argv: list[str]) -> int:
     if command == "rotate-token":
         return rotate_token_aws(rest[1:]) if rest and rest[0] == "aws" else _usage_error("rotate-token requires aws")
     if command == "status":
-        return status_aws(rest[1:]) if rest and rest[0] == "aws" else _service("status")
+        return status_aws(rest[1:]) if rest and rest[0] == "aws" else _service("status", rest)
     if command == "reload":
-        return _service("reload", require_root=True)
+        return _service("reload", rest, require_root=True)
     if command == "stop":
-        return _service("stop", require_root=True)
+        return _service("stop", rest, require_root=True)
     if command == "doctor":
         from .doctor import main as doctor
 

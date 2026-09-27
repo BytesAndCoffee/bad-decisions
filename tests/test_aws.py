@@ -326,10 +326,13 @@ def test_status_aws_uses_saved_token(tmp_path, monkeypatch, capsys):
     assert capsys.readouterr().out.strip() == '{"status":"ok"}'
 
 
-def test_legacy_cdk_entry_delegates_without_container_curl_healthcheck():
-    source = (Path(__file__).resolve().parents[1] / "infra" / "aws" / "bad_decisions_stack.py").read_text(encoding="utf-8")
-    assert "from bad_decisions.aws_stack import BadDecisionsAwsStack" in source
-    assert "curl" not in source
+def test_the_stack_has_no_container_curl_healthcheck_and_no_legacy_entry_point():
+    # The slim image has no curl; a curl health check once kept ECS tasks from ever becoming healthy.
+    root = Path(__file__).resolve().parents[1]
+    stack = (root / "src" / "bad_decisions" / "aws_stack.py").read_text(encoding="utf-8")
+    code = "\n".join(line.split("#")[0] for line in stack.splitlines())
+    assert "curl" not in code and 'command=["CMD", "python"' in code
+    assert not (root / "infra" / "aws" / "app.py").exists(), "2.0 removed the infra/aws compatibility entry point"
 
 
 class RecordingS3:
