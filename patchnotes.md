@@ -90,7 +90,11 @@ Cleanup
 - [x] Remaining "Should consider" and "Minor" items above.
 
 Object store (owner request 2026-09-27)
-- [ ] Review deploy/object-archive (Garage, nginx templates, compose files, catalog indexer) for 2.0 changes before release.
+- [x] Review deploy/object-archive: all 46 live archives validated with 2.0 (45 pass; xkcdb rebuilt to 1.2.1 for upload).
+- [ ] Indexer mirrors the importer's license-match and control-character checks (drift tests).
+- [ ] Indexer Dockerfile pins boto3 1.40.75.
+- [ ] Public archive nginx: GET/HEAD only, small body limit, per-IP rate limit.
+- [ ] Operator: upload rebuilt xkcdb; redeploy the indexer (catalog schema 2).
 
 Release
 - [ ] Docs, man pages, changelogs, and a 1.x to 2.0 migration guide.
