@@ -1,4 +1,5 @@
-"""Fail unless a release tag (vX.Y.Z) matches every package version in the repo.
+"""Fail unless a release tag (vX.Y.Z) matches every package version in the repo
+and both changelogs have a section for that version.
 
 Usage: python scripts/check_release_tag.py v1.1.1
 """
@@ -12,6 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TAG_PATTERN = re.compile(r"v(\d+\.\d+\.\d+)")
+CHANGELOGS = ("CHANGELOG.md", "client/CHANGELOG.md")
 
 
 def _init_version(root: Path, path: str) -> str:
@@ -38,11 +40,18 @@ def check(tag: str, root: Path = ROOT) -> list[str]:
     if not match:
         return [f"tag {tag!r} must look like vX.Y.Z"]
     expected = match.group(1)
-    return [
+    problems = [
         f"{path} is {version}, but tag {tag} expects {expected}"
         for path, version in package_versions(root).items()
         if version != expected
     ]
+    heading = re.compile(rf"^## \[{re.escape(expected)}\]", re.M)
+    for path in CHANGELOGS:
+        changelog = root / path
+        text = changelog.read_text(encoding="utf-8") if changelog.is_file() else ""
+        if not heading.search(text):
+            problems.append(f"{path} has no ## [{expected}] section (move the release notes out of [Unreleased])")
+    return problems
 
 
 def main(argv: list[str]) -> int:

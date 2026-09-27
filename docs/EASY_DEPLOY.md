@@ -113,6 +113,18 @@ account, locks it read-only, switches to it, and waits for `/healthz` to report
 the new version. If anything fails, the previous release is restored
 automatically.
 
+Before it builds anything, the activator checks that there is at least 1 GiB
+free under `APP_ROOT/releases` and that the requested version is not the one
+already serving. With `PACK_DIR` bootstrapped, it also loads the live pack
+registry with the new release before switching to it, so a pack the new
+release would reject stops the deploy with the pack named in the log instead
+of failing the health check. Afterwards, check the whole deployment without
+changing it:
+
+```bash
+bad-decisions doctor --url https://example.com/bad-decisions
+```
+
 Roll back:
 
 ```bash
@@ -147,15 +159,25 @@ changed this way, and the API itself still never modifies packs.
 
 ### If something goes wrong
 
-- **"PyPI has a newer version" warning:** the index can lag for a few minutes
-  after a release. Rerun the `pip install --upgrade`, then deploy again.
+- **"PyPI has bad-decisions X, but this command is Y":** the upgrade saw a
+  stale index (it can lag for a few minutes after a release). Install the
+  named version explicitly, `pipx install --force bad-decisions==X`, and deploy
+  again. `--allow-older` deploys the older version on purpose.
+- **"is already serving; rerun with --redeploy":** that version is already live.
+  Nothing changed. Use `--redeploy` only to rebuild it on purpose.
+- **"only N MiB free":** free space under `/opt/bad-decisions/releases`
+  (old releases not listed in `good-releases` are the usual candidates; that
+  cleanup needs root) and deploy again.
+- **"cannot load the pack registry":** the new release rejects a pack that is
+  live today. The log names it; nothing was switched.
 - **Deployment or rollback failed:** the command prints the end of
   `/opt/bad-decisions/activation/log.txt`, which includes pip's output. No
   journal access is needed.
 - **"cannot stage a release" or permission errors:** your login session
   predates the group change. Log out and back in.
-- **"another local activation request is already pending":** wait for it to
-  finish. Only one request runs at a time.
+- **"request ... is still pending":** wait for it to finish. Only one request
+  runs at a time. Pressing Ctrl-C after a request is submitted does not cancel
+  it; the activator finishes it and writes `activation/result.json`.
 - **"runs from the deployed release":** the command is a link into the
   deployment. Install it separately (see the migration steps above).
 - **"pack management is not enabled":** rerun `bootstrap-rootless` with `PACK_DIR`.

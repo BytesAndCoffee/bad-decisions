@@ -1,4 +1,4 @@
-\.TH BAD-DECISIONS 1 "2026-09-26" "Bad Decisions 1.8.0" "User Commands"
+.TH BAD-DECISIONS 1 "2026-09-27" "Bad Decisions 1.8.5" "User Commands"
 .SH NAME
 bad-decisions \- deal, validate, import, and inspect Bad Decisions card packs
 .SH SYNOPSIS
@@ -6,19 +6,28 @@ bad-decisions \- deal, validate, import, and inspect Bad Decisions card packs
 .RI [ options ]
 .br
 .B bad-decisions pack
-.RI {validate|export|import|init-registry} ...
+.RI {validate|export|import|init-registry|replace-local} ...
 .br
 .B bad-decisions consequences
 .RI {report|tui|rebuild|purge} ...
 .br
 .B bad-decisions
-.RI {setup|serve|deploy|status|reload|stop} ...
+.RI {setup|serve|deploy|status|reload|stop|doctor} ...
+.br
+.B bad-decisions
+.RI {deploy|rollback} " local" ...
+.br
+.B bad-decisions
+.RI {setup|deploy|rotate-token|status} " aws" ...
 .SH DESCRIPTION
 .B bad-decisions
 is the command-line engine and service toolkit for portable card-deck packs. With no subcommand it deals an interactive round. It can also produce one-shot output, stream rounds, manage .carddeck archives, and inspect the local Consequences analytics database.
 .PP
 An omitted pack selector means every pack in the loaded registry. Set BAD_DECISIONS_PACK_DIR to use a custom registry.
 .SH OPTIONS
+.TP
+.BR --version
+Print the installed version and exit.
 .TP
 .BR --oneshot
 Print one rendered round and exit.
@@ -48,11 +57,18 @@ Validate a .carddeck archive without changing disk.
 .BI pack export pack-id archive
 Export a registered pack to an archive.
 .TP
-.BI pack import archive registry-dir
-Import an archive into an absolute registry directory. Use --remote for an HTTPS archive or --index for a remote catalog; --pack may be repeated with --index.
+.BI pack import " archive registry-dir " [--remote | --index] " [--pack " id ]...
+Import an archive into an absolute registry directory without overwriting an existing pack. With
+.BR --remote ,
+.I archive
+is an HTTPS .carddeck URL; with
+.BR --index ,
+it is an HTTPS CardDeck catalog and each
+.B --pack
+selects one catalog pack. Everything is downloaded and validated before anything is installed, and a failed index import removes only the files it created.
 .TP
 .BI pack init-registry registry-dir
-Initialize an absolute registry with bundled packs.
+Initialize an empty absolute registry with the bundled packs. Do this before importing into a registry that BAD_DECISIONS_PACK_DIR will point at, since that registry replaces the bundled one.
 .SH CONSEQUENCES COMMANDS
 .TP
 .BI consequences report [database]
@@ -66,10 +82,31 @@ Rebuild aggregate counters. Requires an explicit absolute database path.
 .TP
 .BI consequences purge database --retention-days days
 Purge retained records and rebuild counters.
-.SH LOCAL DEPLOYMENT COMMANDS
+.SH SERVICE COMMANDS
+These manage a systemd install on Linux.
 .TP
-.BI deploy local " [--wheel path] [--requirements path] [--app-root path] [--timeout seconds]"
-Deploy the installed version, so pip install --upgrade bad-decisions followed by this command updates the server. The wheel is ./dist's matching build, --wheel, or else this version's wheel downloaded from PyPI and checked against its published SHA-256; the pinned requirements.lock ships with the package. It warns when PyPI has a newer version than the installed command. On failure, the tail of APP_ROOT/activation/log.txt is printed. Stage them for a root-owned release activator previously installed with sudo ./deploy.sh bootstrap-rootless. This application-only update does not grant access to service definitions, nginx, secrets, or existing immutable releases.
+.BI setup " [--config path] [--pack-dir path]"
+Create the user configuration file (default ~/.config/bad-decisions/config.env, mode 0600) if it does not exist. --pack-dir must name an existing absolute registry, which is loaded to validate it.
+.TP
+.BI serve " [--host address] [--port port] [--workers n]"
+Run the API in the foreground with uvicorn. The defaults are 127.0.0.1, 8000, and one worker.
+.TP
+.B deploy
+Run the portable deploy.sh from a source checkout. Requires root; see docs/DEPLOYMENT.md.
+.TP
+.B status
+Show systemctl status for bad-decisions.service.
+.TP
+.BR reload ", " stop
+Reload or stop bad-decisions.service. Require root.
+.TP
+.BI doctor " [--url url] [--expect-version version | --any-version] [--app-root path] [--min-free-mb n] [--timeout seconds]"
+Check a running deployment without changing anything: /healthz reports the expected version (by default this command's), /v1/packs agrees with its pack count, /v1/round deals, /web/ serves, and /docs/ redirects stay within the public prefix. When APP_ROOT exists it also reports a pending activation request, unused staged files, and free disk space. Give the public base URL, including any prefix, with --url (default http://127.0.0.1:8000). Exits 1 if any check fails.
+.SH LOCAL DEPLOYMENT COMMANDS
+These talk to a root-owned activator installed once with sudo ./deploy.sh bootstrap-rootless; the caller must be in the deployment group. They refuse to run from inside APP_ROOT/current or APP_ROOT/releases: install the management command separately, for example with pipx. Only one request can be pending; a second is refused until the activator writes its result.
+.TP
+.BI deploy local " [--wheel path] [--requirements path] [--redeploy] [--allow-older] [--app-root path] [--timeout seconds]"
+Deploy the installed version, so upgrading the management install (pipx upgrade bad-decisions or pip install --upgrade bad-decisions) and then running this command updates the server. It refuses to run when PyPI has a newer version than the installed command (pass --allow-older to deploy it anyway), and the activator refuses to reinstall the version that is already serving unless --redeploy is given. The activator also requires free space under APP_ROOT/releases (1 GiB by default) and, when bootstrapped with PACK_DIR, loads the live pack registry with the new release before switching to it. Interrupting the command does not cancel a request that was already submitted; the activator finishes it. The wheel is ./dist's matching build, --wheel, or else this version's wheel downloaded from PyPI and checked against its published SHA-256; the pinned requirements.lock ships with the package. On failure, the tail of APP_ROOT/activation/log.txt is printed. Stage them for a root-owned release activator previously installed with sudo ./deploy.sh bootstrap-rootless. This application-only update does not grant access to service definitions, nginx, secrets, or existing immutable releases.
 .TP
 .BI "pack replace-local" " old-pack-id url --new-id new-pack-id [--app-root path] [--timeout seconds]"
 Replace one named pack in a rootless install's registry (enabled by bootstrap-rootless with PACK_DIR). The HTTPS CardDeck archive is downloaded within the usual limits, fully validated, and must declare new-pack-id. The activator publishes it without overwriting, retires old-pack-id, restarts, and restores the exact previous files unless /healthz and /v1/packs show the new id without the old one.
@@ -104,7 +141,13 @@ Print the private DynamoDB Consequences summary using the configured AWS identit
 .SH ENVIRONMENT
 .TP
 .B BAD_DECISIONS_PACK_DIR
-Replace the bundled pack registry.
+Absolute registry directory that replaces the bundled packs.
+.TP
+.B BAD_DECISIONS_ROOT_PATH
+Public path prefix when served behind a reverse proxy, for example /bad-decisions.
+.TP
+.B BAD_DECISIONS_LOG_LEVEL
+DEBUG, INFO (default), WARNING, ERROR, or CRITICAL.
 .TP
 .B BAD_DECISIONS_CONSEQUENCES_DB
 Absolute path to the Consequences SQLite database.
@@ -117,6 +160,15 @@ Enable or disable voting while retaining server analytics.
 .TP
 .B BAD_DECISIONS_CONSEQUENCES_PUBLIC_STATS
 Enable public combination summaries.
+.TP
+.B BAD_DECISIONS_CONSEQUENCES_RETENTION_DAYS
+Days to retain Consequences records (default 90).
+.TP
+.B BAD_DECISIONS_CONSEQUENCES_FEEDBACK_TTL_SECONDS
+How long a draw can still be voted on (default seven days); may not exceed the retention period.
+.TP
+.B BAD_DECISIONS_CONSEQUENCES_BUSY_TIMEOUT_MS
+SQLite busy timeout in milliseconds (default 250).
 .TP
 .B BAD_DECISIONS_PEER_PRESSURE_DIR
 Absolute private directory for ephemeral per-room SQLite databases. All workers serving one deployment must share this local directory.
@@ -134,8 +186,20 @@ Minimum connected participants required before the Responsible Adult may start.
 Heartbeat grace period before a participant is marked away without deleting their room slot, hand, score, or submission.
 .SH FILES
 .TP
+.I ~/.config/bad-decisions/config.env
+User configuration written by setup.
+.TP
+.I ~/.bad-decisions.env
+AWS settings and the protected management credential written by setup aws.
+.TP
 .I /var/lib/bad-decisions/consequences.sqlite3
 Typical service database location.
+.TP
+.I APP_ROOT/releases/, APP_ROOT/current, APP_ROOT/good-releases
+Immutable releases, the serving release, and the known-good rollback watermark (APP_ROOT defaults to /opt/bad-decisions).
+.TP
+.I APP_ROOT/incoming/, APP_ROOT/activation/
+The rootless activator's staging inbox, and its request, result.json, and log.txt.
 .SH EXIT STATUS
 .TP
 .B 0
@@ -150,4 +214,7 @@ Invalid request or domain error.
 The Bad Decisions software is MIT licensed. Card packs are separate works governed by their own licenses, attribution, and provenance metadata.
 .SH SEE ALSO
 .BR regret (1),
-.BR bad-decisions (1)
+.BR pipx (1),
+.BR systemctl (1)
+.PP
+docs/EASY_DEPLOY.md, docs/DEPLOYMENT.md, and docs/CARDDECK.md in the source distribution.

@@ -275,14 +275,16 @@ def test_freeze_rejects_hard_links_and_late_writable_entries(tmp_path):
 class _FakeHost:
     """Stands in for runuser, pip, systemctl, and the health endpoint."""
 
-    def __init__(self, monkeypatch, *, healthy=True, interrupt=None):
+    def __init__(self, monkeypatch, *, healthy=True, interrupt=None, serving="1.7.9", registry_ok=True):
         self.commands: list[list[str]] = []
+        self.registry_ok = registry_ok
         self.restarts = 0
         self.healthy = healthy
         self.interrupt = interrupt
         self.installed: list[bytes] = []
         monkeypatch.setattr(activator, "_as_user", self.as_user)
         monkeypatch.setattr(activator, "_installed_version", lambda _user, _python: "1.8.0")
+        monkeypatch.setattr(activator, "_serving_version", lambda _user, previous: serving if previous is not None else None)
         monkeypatch.setattr(activator, "_run", self.run)
         monkeypatch.setattr(activator, "_healthy", lambda _url, _version, _attempts: self.healthy)
 
@@ -291,6 +293,10 @@ class _FakeHost:
         self.commands.append(command)
         if self.interrupt and self.interrupt in command:
             raise SystemExit(143)
+        if "load_registry" in " ".join(command):
+            if not self.registry_ok:
+                raise activator.ActivationError(f"command failed (1): {' '.join(command)}")
+            return
         if command[1:3] == ["-m", "venv"]:
             bin_dir = Path(command[3]) / "bin"
             bin_dir.mkdir(parents=True)
@@ -579,14 +585,174 @@ def test_failed_local_deploy_prints_only_its_own_log(tmp_path, monkeypatch, caps
     assert ("Collecting fastapi==0.116.1" in err) is shown
 
 
-@pytest.mark.parametrize("latest,warned", [("99.0.0", True), (__version__, False), ("1.0.0", False), ("2.0.0rc1", False), (None, False)])
-def test_deploy_local_warns_when_pypi_is_newer(tmp_path, monkeypatch, capsys, latest, warned):
+@pytest.mark.parametrize("latest", [__version__, "1.0.0", "2.0.0rc1", None])
+def test_deploy_local_proceeds_when_pypi_is_not_newer(tmp_path, monkeypatch, capsys, latest):
     app = _local_app(tmp_path, monkeypatch)
     _fake_pypi(monkeypatch, b"published-wheel")
     monkeypatch.setattr(operations, "_latest_published_version", lambda: latest)
     (app / "activation/result.json").write_text(json.dumps({"release_id": RELEASE_ID, "status": "ok", "version": __version__}))
     assert operations.deploy_local(["--app-root", str(app)]) == 0
-    assert ("pip install --upgrade bad-decisions" in capsys.readouterr().err) is warned
+    assert "PyPI has" not in capsys.readouterr().err
+
+
+def test_deploy_local_refuses_a_stale_command_before_downloading(tmp_path, monkeypatch, capsys):
+    app = _local_app(tmp_path, monkeypatch)
+    requested = _fake_pypi(monkeypatch, b"published-wheel")
+    monkeypatch.setattr(operations, "_latest_published_version", lambda: "99.0.0")
+    assert operations.deploy_local(["--app-root", str(app)]) == 2
+    err = capsys.readouterr().err
+    assert "PyPI has bad-decisions 99.0.0" in err and "pipx install --force bad-decisions==99.0.0" in err and "--allow-older" in err
+    assert requested == [] and list((app / "incoming").iterdir()) == []
+    assert not (app / "activation/request.json").exists()
+
+
+def test_deploy_local_allow_older_deploys_with_a_warning(tmp_path, monkeypatch, capsys):
+    app = _local_app(tmp_path, monkeypatch)
+    _fake_pypi(monkeypatch, b"published-wheel")
+    monkeypatch.setattr(operations, "_latest_published_version", lambda: "99.0.0")
+    (app / "activation/result.json").write_text(json.dumps({"release_id": RELEASE_ID, "status": "ok", "version": __version__}))
+    assert operations.deploy_local(["--app-root", str(app), "--allow-older"]) == 0
+    assert "warning: PyPI has bad-decisions 99.0.0" in capsys.readouterr().err
+
+
+# --- preflight: pending requests, leftovers, interruption, redeploys ----------
+
+def test_deploy_local_refuses_a_pending_request_before_downloading(tmp_path, monkeypatch, capsys):
+    app = _local_app(tmp_path, monkeypatch)
+    requested = _fake_pypi(monkeypatch, b"published-wheel")
+    (app / "activation/request.json").write_text(json.dumps({"release_id": PREVIOUS_ID + "-00000000"}))
+    with pytest.raises(SystemExit):
+        operations.deploy_local(["--app-root", str(app)])
+    assert f"request {PREVIOUS_ID}-00000000 is still pending" in capsys.readouterr().err
+    assert requested == [] and list((app / "incoming").iterdir()) == []
+
+
+def test_a_request_that_loses_the_race_removes_its_own_stage(tmp_path, monkeypatch, capsys):
+    """Another request appears between the preflight and the submit: nothing is left behind."""
+    app = _local_app(tmp_path, monkeypatch)
+    _fake_pypi(monkeypatch, b"published-wheel")
+    real_submit = operations._submit_local_request
+
+    def racing_submit(parser, activation, request_id, payload):
+        (activation / "request.json").write_text(json.dumps({"release_id": "20260101T000000Z-00000000"}))
+        real_submit(parser, activation, request_id, payload)
+
+    monkeypatch.setattr(operations, "_submit_local_request", racing_submit)
+    with pytest.raises(SystemExit):
+        operations.deploy_local(["--app-root", str(app)])
+    assert "already pending" in capsys.readouterr().err
+    assert list((app / "incoming").iterdir()) == []
+
+
+def test_interrupted_staging_removes_the_stage(tmp_path, monkeypatch):
+    app = _local_app(tmp_path, monkeypatch)
+    _fake_pypi(monkeypatch, b"published-wheel")
+
+    def interrupted(*_args):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(operations, "_submit_local_request", interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        operations.deploy_local(["--app-root", str(app)])
+    assert list((app / "incoming").iterdir()) == []
+
+
+def test_interrupt_after_submitting_explains_that_the_request_continues(tmp_path, monkeypatch, capsys):
+    app = _local_app(tmp_path, monkeypatch)
+    _fake_pypi(monkeypatch, b"published-wheel")
+
+    def interrupted(_seconds):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(operations.time, "sleep", interrupted)
+    with pytest.raises(SystemExit) as exited:
+        operations.deploy_local(["--app-root", str(app)])
+    assert exited.value.code == 130
+    assert f"request {RELEASE_ID} was already submitted and the activator will finish it" in capsys.readouterr().err
+    assert (app / "incoming" / RELEASE_ID).is_dir(), "a submitted stage belongs to the activator"
+    assert (app / "activation/request.json").exists()
+
+
+def test_leftover_staging_directories_are_reported(tmp_path, monkeypatch, capsys):
+    app = _local_app(tmp_path, monkeypatch)
+    _fake_pypi(monkeypatch, b"published-wheel")
+    (app / "incoming/20260101T000000Z-00000000").mkdir()
+    (app / "activation/result.json").write_text(json.dumps({"release_id": RELEASE_ID, "status": "ok", "version": __version__}))
+    assert operations.deploy_local(["--app-root", str(app)]) == 0
+    err = capsys.readouterr().err
+    assert "20260101T000000Z-00000000" in err and "rm -r" in err
+
+
+@pytest.mark.parametrize("redeploy", [False, True])
+def test_redeploy_is_sent_only_when_asked(tmp_path, monkeypatch, redeploy):
+    app = _local_app(tmp_path, monkeypatch)
+    _fake_pypi(monkeypatch, b"published-wheel")
+    (app / "activation/result.json").write_text(json.dumps({"release_id": RELEASE_ID, "status": "ok", "version": __version__}))
+    assert operations.deploy_local(["--app-root", str(app), *(["--redeploy"] if redeploy else [])]) == 0
+    request = json.loads((app / "activation/request.json").read_text())
+    assert ("redeploy" in request) is redeploy
+    assert activator.parse_request(json.dumps(request).encode()) == request
+
+
+@pytest.mark.parametrize("value", [False, "yes", 1, None])
+def test_activator_accepts_redeploy_only_as_true(value):
+    request = {"release_id": RELEASE_ID, "wheel": "bad_decisions-1.8.0-py3-none-any.whl", "version": "1.8.0",
+               "sha256": "0" * 64, "requirements_sha256": "0" * 64, "redeploy": value}
+    with pytest.raises(activator.ActivationError, match="unexpected fields"):
+        activator.parse_request(json.dumps(request).encode())
+
+
+def test_activator_refuses_to_reinstall_the_serving_version(tmp_path, monkeypatch):
+    app, incoming, _wheel, _request = _request_tree(tmp_path)
+    previous = _with_previous_release(app)
+    host = _FakeHost(monkeypatch, serving="1.8.0")
+    assert activator.main(_activation_args(app)) == 1
+    assert _result(app)["message"] == f"bad-decisions 1.8.0 is already serving ({PREVIOUS_ID}); rerun with --redeploy to install it again"
+    assert host.commands == [] and host.restarts == 0
+    assert (app / "current").resolve() == previous and not (app / "releases" / RELEASE_ID).exists()
+    assert not incoming.exists()
+
+
+def test_activator_redeploys_the_serving_version_when_asked(tmp_path, monkeypatch):
+    app, _incoming, _wheel, request = _request_tree(tmp_path)
+    _with_previous_release(app)
+    _write_request(app, {**request, "redeploy": True})
+    _FakeHost(monkeypatch, serving="1.8.0")
+    assert activator.main(_activation_args(app)) == 0
+    assert (app / "current").resolve() == app / "releases" / RELEASE_ID
+
+
+def test_activator_refuses_to_start_on_a_nearly_full_disk(tmp_path, monkeypatch):
+    app, _incoming, _wheel, _request = _request_tree(tmp_path)
+    previous = _with_previous_release(app)
+    host = _FakeHost(monkeypatch)
+    monkeypatch.setattr(activator.shutil, "disk_usage", lambda _path: activator.shutil._ntuple_diskusage(100, 99, 200 * 1024 * 1024))
+    assert activator.main([*_activation_args(app), "--min-free-mb", "1024"]) == 1
+    assert _result(app)["message"].startswith("only 200 MiB free under")
+    assert host.commands == [] and (app / "current").resolve() == previous
+    assert not (app / "releases" / RELEASE_ID).exists()
+
+
+def test_activator_loads_the_registry_with_the_new_release_before_switching(tmp_path, monkeypatch):
+    app, _incoming, _wheel, _request = _request_tree(tmp_path)
+    previous = _with_previous_release(app)
+    registry = tmp_path / "packs"
+    registry.mkdir()
+    host = _FakeHost(monkeypatch, registry_ok=False)
+    assert activator.main([*_activation_args(app), "--pack-dir", str(registry)]) == 1
+    assert "cannot load the pack registry" in _result(app)["message"]
+    assert (app / "current").resolve() == previous and host.restarts == 0
+    assert not (app / "releases" / RELEASE_ID).exists()
+    check = next(command for command in host.commands if "load_registry" in " ".join(command))
+    assert check[0] == str(app / "releases" / RELEASE_ID / ".venv/bin/python") and check[-1] == str(registry)
+
+
+def test_activator_skips_the_registry_check_without_a_pack_dir(tmp_path, monkeypatch):
+    app, _incoming, _wheel, _request = _request_tree(tmp_path)
+    _with_previous_release(app)
+    host = _FakeHost(monkeypatch, registry_ok=False)
+    assert activator.main(_activation_args(app)) == 0
+    assert not any("load_registry" in " ".join(command) for command in host.commands)
 
 
 def test_latest_version_lookup_fails_quietly(monkeypatch):

@@ -2,6 +2,28 @@
 
 ## [Unreleased]
 
+## [1.8.5]
+
+### Added
+
+- `bad-decisions doctor` checks a running deployment read-only: `/healthz` version, `/v1/packs` against the pack count, `/v1/round`, `/web/`, prefix-safe `/docs/` redirects, and, on the host, a pending activation request, unused staged files, and free disk space.
+- `bad-decisions --version`.
+- The release workflow installs the exact wheels it will publish into a clean venv and smoke-tests them (`scripts/check_installed.py`), and refuses a tag without a `## [X.Y.Z]` section in both changelogs.
+- The rootless activator requires 1 GiB free under `APP_ROOT/releases` (`--min-free-mb`), and with `PACK_DIR` loads the live registry with the new release before switching to it. Rerun `bootstrap-rootless` to install it.
+- The wheel installs `bad-decisions(1)` into `share/man/man1`, so `man bad-decisions` works after a `--user`, venv, or pipx (1.5+) install.
+
+### Changed
+
+- `deploy local` refuses to deploy when PyPI has a newer version than the installed command (`--allow-older` overrides), and the activator refuses to reinstall the version already serving (`--redeploy` overrides).
+- `deploy local`, `rollback local`, and `pack replace-local` refuse a pending request before downloading or staging anything, warn about unused staged files, and on Ctrl-C after submitting explain that the activator will still finish the request.
+- CI and release workflows use Node 24 action releases (checkout v7.0.1, setup-python v6.3.0, upload-artifact v7.0.1, download-artifact v8.0.1, which fails on artifact digest mismatches).
+- `bad-decisions(1)` documents the service commands, `pack import` flags, local-deploy preconditions, every user-facing setting, and the configuration and release files. Releases now update the manual pages before tagging, and a test checks their version, commands, and settings.
+
+### Fixed
+
+- A `deploy local` that lost the race to another request, or was interrupted while staging, left its staging directory in `APP_ROOT/incoming`.
+- The manual pages began with `\.TH` instead of `.TH`; formatters other than groff could lose the title header.
+
 ## [1.8.4]
 
 ### Added

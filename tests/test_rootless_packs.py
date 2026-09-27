@@ -448,7 +448,7 @@ def test_client_refuses_while_another_request_is_pending(client_app, tmp_path, m
     (client_app / "activation" / "request.json").write_text("{}")
     with pytest.raises(SystemExit):
         operations.pack_replace_local([OLD, URL, "--new-id", NEW, "--app-root", str(client_app)])
-    assert "already pending" in capsys.readouterr().err
+    assert "still pending" in capsys.readouterr().err
     assert list((client_app / "incoming").iterdir()) == []
     assert (client_app / "activation" / "request.json").read_text() == "{}"
 

@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [1.8.5]
+
+### Added
+
+- `regret --version`.
+- The wheel installs `regret(1)` into `share/man/man1`, so `man regret` works after a `--user`, venv, or pipx (1.5+) install. The page moved to `client/man/` and ships in the client sdist.
+
+### Changed
+
+- `regret(1)` documents `together --timeout`, the Peer Pressure prompt flow and refusal messages, the `consequences enable`/`disable` aliases, and exit status 2.
+
 ## [1.8.4]
 
 ### Fixed

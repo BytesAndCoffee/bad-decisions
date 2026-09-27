@@ -308,15 +308,17 @@ def _release_key(version: str) -> tuple[int, ...] | None:
     return tuple(int(part) for part in parts) if all(part.isdigit() for part in parts) else None
 
 
-def _warn_if_outdated() -> None:
+def _outdated_message() -> str | None:
+    """Explain how to upgrade when PyPI has a newer release than this command would deploy."""
     latest = _latest_published_version()
     latest_key, current_key = _release_key(latest or ""), _release_key(__version__)
     if latest_key and current_key and latest_key > current_key:
-        print(
-            f"warning: PyPI has bad-decisions {latest}, but this command is {__version__}, so {__version__} will be deployed. "
-            "Run pip install --upgrade bad-decisions first (right after a release the index can lag for a few minutes).",
-            file=sys.stderr,
+        return (
+            f"PyPI has bad-decisions {latest}, but this command is {__version__} and would deploy {__version__}. "
+            f"Upgrade first: pipx install --force bad-decisions=={latest} (or pip install --upgrade bad-decisions; "
+            "right after a release the index can lag for a few minutes). To deploy the older version on purpose, pass --allow-older."
         )
+    return None
 
 
 def _print_activation_log(activation: Path, request_id: str) -> None:
@@ -384,7 +386,33 @@ def _local_inbox(parser: argparse.ArgumentParser, app_root: Path, timeout: float
     activation = app_root / "activation"
     if not incoming.is_dir() or not activation.is_dir():
         parser.error("rootless deployment is not bootstrapped; run sudo ./deploy.sh bootstrap-rootless once")
+    pending = _pending_request_id(activation)
+    if pending is not None:
+        parser.error(f"request {pending} is still pending; wait for it to finish (journalctl -u {ACTIVATION_UNIT}) before submitting another")
+    try:
+        leftovers = sorted(entry.name for entry in incoming.iterdir())
+    except OSError:
+        leftovers = []
+    if leftovers:
+        print(
+            f"warning: {incoming} holds staged files no request refers to: {', '.join(leftovers)}. "
+            f"They are not used; remove them with rm -r {' '.join(str(incoming / name) for name in leftovers)}",
+            file=sys.stderr,
+        )
     return incoming, activation
+
+
+def _pending_request_id(activation: Path) -> str | None:
+    """The id of the request waiting in the inbox, "unknown" if unreadable, or None when idle."""
+    request = activation / "request.json"
+    try:
+        value = json.loads(request.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return "unknown" if request.exists() or request.is_symlink() else None
+    identifier = value.get("release_id", value.get("request_id")) if isinstance(value, dict) else None
+    return identifier if isinstance(identifier, str) else "unknown"
 
 
 def _submit_local_request(parser: argparse.ArgumentParser, activation: Path, request_id: str, payload: dict) -> None:
@@ -408,16 +436,30 @@ def _submit_local_request(parser: argparse.ArgumentParser, activation: Path, req
 def _await_local_result(activation: Path, request_id: str, timeout: float) -> dict | None:
     deadline = time.monotonic() + timeout
     result_path = activation / "result.json"
-    while time.monotonic() < deadline:
-        try:
-            result = json.loads(result_path.read_text(encoding="utf-8"))
-        except (FileNotFoundError, PermissionError, UnicodeError, json.JSONDecodeError):
-            result = None
-        if isinstance(result, dict) and result.get("release_id") == request_id:
-            return result
-        time.sleep(0.25)
+    try:
+        while time.monotonic() < deadline:
+            try:
+                result = json.loads(result_path.read_text(encoding="utf-8"))
+            except (FileNotFoundError, PermissionError, UnicodeError, json.JSONDecodeError):
+                result = None
+            if isinstance(result, dict) and result.get("release_id") == request_id:
+                return result
+            time.sleep(0.25)
+    except KeyboardInterrupt:
+        print(
+            f"\nInterrupted, but request {request_id} was already submitted and the activator will finish it. "
+            f"Its outcome will be in {result_path} (journalctl -u {ACTIVATION_UNIT}).",
+            file=sys.stderr,
+        )
+        raise SystemExit(130) from None
     print(f"Request timed out; inspect journalctl -u {ACTIVATION_UNIT}", file=sys.stderr)
     return None
+
+
+def _discard_stage(stage: Path, activation: Path, request_id: str) -> None:
+    """Remove a staging directory unless its request reached the activator, which then owns it."""
+    if _pending_request_id(activation) != request_id:
+        shutil.rmtree(stage, ignore_errors=True)
 
 
 def deploy_local(argv: list[str]) -> int:
@@ -430,6 +472,8 @@ def deploy_local(argv: list[str]) -> int:
     parser.add_argument("--requirements", type=Path, help="pinned dependency lock (default: the lock shipped with this version)")
     parser.add_argument("--app-root", type=Path, default=Path("/opt/bad-decisions"))
     parser.add_argument("--timeout", type=float, default=900.0)
+    parser.add_argument("--redeploy", action="store_true", help="install this version again even if it is already serving")
+    parser.add_argument("--allow-older", action="store_true", help="deploy this version even though PyPI has a newer one")
     args = parser.parse_args(argv)
     incoming, activation = _local_inbox(parser, args.app_root, args.timeout)
     expected = f"bad_decisions-{__version__}-py3-none-any.whl"
@@ -441,7 +485,12 @@ def deploy_local(argv: list[str]) -> int:
     lock = args.requirements or _release_lock()
     if lock is None or not lock.is_file():
         parser.error(f"requirements lock not found: {lock or 'not shipped with this install'}; pass --requirements")
-    _warn_if_outdated()
+    outdated = _outdated_message()
+    if outdated and not args.allow_older:
+        print(f"{parser.prog}: {outdated}", file=sys.stderr)
+        return 2
+    if outdated:
+        print(f"warning: {outdated}", file=sys.stderr)
 
     with tempfile.TemporaryDirectory(prefix="bad-decisions-wheel-") as downloads:
         wheel = args.wheel or Path.cwd() / "dist" / expected
@@ -463,20 +512,27 @@ def deploy_local(argv: list[str]) -> int:
                     shutil.copyfileobj(source, destination)
                 staged.chmod(0o640)
                 digests[name] = hashlib.sha256(staged.read_bytes()).hexdigest()
-            _submit_local_request(parser, activation, release_id, {
+            request = {
                 "release_id": release_id,
                 "wheel": wheel.name,
                 "sha256": digests[wheel.name],
                 "requirements_sha256": digests["requirements.lock"],
                 "version": __version__,
-            })
+            }
+            if args.redeploy:
+                request["redeploy"] = True  # only sent when asked, so older activators keep accepting requests
+            _submit_local_request(parser, activation, release_id, request)
         except PermissionError:
-            shutil.rmtree(stage, ignore_errors=True)
+            _discard_stage(stage, activation, release_id)
             parser.error("cannot stage a release; log out and back in after bootstrap so the deployment group applies")
+        except BaseException:
+            _discard_stage(stage, activation, release_id)
+            raise
 
     result = _await_local_result(activation, release_id, args.timeout)
     if result is not None and result.get("status") == "ok":
         print(f"Deployment complete: bad-decisions {result.get('version', __version__)} ({release_id})")
+        print("Check it with: bad-decisions doctor --url <public base URL>", file=sys.stderr)
         return 0
     if result is not None:
         print(f"Deployment failed: {result.get('message', 'activation failed')}", file=sys.stderr)
@@ -533,10 +589,10 @@ def pack_replace_local(argv: list[str]) -> int:
             "pack_sha256": hashlib.sha256(staged.read_bytes()).hexdigest(),
         })
     except PermissionError:
-        shutil.rmtree(stage, ignore_errors=True)
+        _discard_stage(stage, activation, request_id)
         parser.error("cannot stage the pack; log out and back in after bootstrap so the deployment group applies")
-    except SystemExit:
-        shutil.rmtree(stage, ignore_errors=True)
+    except BaseException:
+        _discard_stage(stage, activation, request_id)
         raise
 
     result = _await_local_result(activation, request_id, args.timeout)
@@ -787,4 +843,8 @@ def run(argv: list[str]) -> int:
         return _service("reload", require_root=True)
     if command == "stop":
         return _service("stop", require_root=True)
+    if command == "doctor":
+        from .doctor import main as doctor
+
+        return doctor(rest)
     raise ValueError(f"unknown operational command: {command}")

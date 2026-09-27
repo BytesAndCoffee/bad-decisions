@@ -8,6 +8,6 @@
 - [Deployment](DEPLOYMENT.md)
 - [Release process](RELEASING.md)
 - [Terminal client](../client/README.md)
-- [Manual pages](../man/)
+- Manual pages: [bad-decisions(1)](../man/bad-decisions.1), [regret(1)](../client/man/regret.1)
 
 The repository [README](../README.md) covers installation, API usage, licensing, and the Consequences subsystem.

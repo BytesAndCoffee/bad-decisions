@@ -76,9 +76,11 @@ bad-decisions rollback local 20260102T000000Z  # a specific release
 `deploy local` deploys exactly the installed version. It uses
 `./dist/bad_decisions-<version>-py3-none-any.whl` when run from a source
 checkout that built one, or `--wheel`; otherwise it downloads that version's
-wheel from PyPI and checks it against PyPI's published SHA-256. It warns when
-PyPI already has a newer version than the installed command (the index can lag
-for a few minutes after a release), because it always deploys the installed one. The wheel ships
+wheel from PyPI and checks it against PyPI's published SHA-256. It refuses to
+run when PyPI already has a newer version than the installed command (the index
+can lag for a few minutes after a release), because it always deploys the
+installed one; `--allow-older` overrides that. It also refuses while another
+request is pending, before downloading anything. The wheel ships
 the version's `requirements.lock` (override with `--requirements`). It stages
 both files, records their SHA-256 digests, and atomically places a request in the activator inbox.
 The root-owned systemd helper validates the fixed request schema, reads the
@@ -86,9 +88,13 @@ staged files through descriptors that refuse symlinks, FIFOs, and hard links,
 and copies the verified bytes into a private directory. The lock may contain
 only exact `name==version` pins. The helper then builds the virtual environment
 as the unprivileged service account (lock first, then the wheel with
-`--no-deps`, as `deploy.sh` does), freezes the immutable release, switches
-`current`, restarts the service, waits for `/healthz` to report the new version,
-and restores the previous release on failure or timeout (20 minutes). The staging account cannot edit nginx, service
+`--no-deps`, as `deploy.sh` does), freezes the immutable release, loads the
+`PACK_DIR` registry with it when one is configured, switches `current`, restarts the service, waits for `/healthz` to report the new version,
+and restores the previous release on failure or timeout (20 minutes). Before
+building, it refuses a request for the version that is already serving (unless
+the request carries `redeploy`, sent by `--redeploy`) and requires 1 GiB free
+under `APP_ROOT/releases`. `bad-decisions doctor --url PUBLIC_URL` then checks
+the running deployment read-only. The staging account cannot edit nginx, service
 units, environment/secrets, the activator, or existing releases. Changes to
 those resources still use the privileged `deploy.sh` path.
 

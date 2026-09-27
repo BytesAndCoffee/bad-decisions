@@ -116,3 +116,14 @@ def test_provenance_only_draw_replaces_old_feedback_capability(tmp_path, capsys,
     capsys.readouterr()
     assert cli.run(["feedback", "enjoy"]) == 1
     assert "no saved round with feedback available" in capsys.readouterr().err
+
+
+def test_version_prints_the_package_version_without_prompting(capsys):
+    from bad_decisions_client import __version__
+
+    with patch.object(cli, "_prompt_consequences", side_effect=AssertionError("must not prompt")):
+        try:
+            cli.run(["--version"])
+        except SystemExit as exited:
+            assert exited.code == 0
+    assert capsys.readouterr().out.strip() == f"regret {__version__}"

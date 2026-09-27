@@ -25,25 +25,35 @@ Workflows run in the repository the package metadata links to
 1. Bump the version in all four sources and the `?v=` cache busters in
    `src/bad_decisions/web/index.html`. `tests/test_release_versions.py` fails if
    any of them disagree.
-2. Add the change to `patchnotes.md`, run the checks in `AGENTS.md`, commit, and
+2. Update the manual pages, `man/bad-decisions.1` and `client/man/regret.1`:
+   the `.TH` date and version, plus every command, option, environment
+   variable, and file this release adds or changes. Preview each page with
+   `man -l <page>`. `tests/test_manpages.py` catches a stale version or an
+   undocumented command or setting.
+3. Add the change to `patchnotes.md`, run the checks in `AGENTS.md`, commit, and
    push `main`. Wait for the **CI** workflow to pass.
-3. Tag the commit and push the tag (this is what publishes):
+4. Tag the commit and push the tag (this is what publishes):
 
    ```bash
    git tag vX.Y.Z
    git push origin vX.Y.Z
    ```
 
-4. Approve the `pypi` environment when the **Release** workflow pauses.
-5. Confirm the new version on PyPI and deploy the server if needed.
+5. Approve the `pypi` environment when the **Release** workflow pauses.
+6. Confirm the new version on PyPI and deploy the server if needed.
 
 ## What the workflow checks
 
-- The tag is `vX.Y.Z`, is reachable from `main`, and matches every package
-  version (`scripts/check_release_tag.py`).
+- The tag is `vX.Y.Z`, is reachable from `main`, matches every package
+  version, and both changelogs have a `## [X.Y.Z]` section
+  (`scripts/check_release_tag.py`).
 - Server tests, client tests, and `bash -n` on the deploy scripts pass.
 - Both packages build once and pass `twine check`; the same built files are
   published, never rebuilt.
+- Those exact wheels are installed into a clean virtualenv with
+  `requirements.lock`, and `scripts/check_installed.py` checks the console
+  scripts and `--version`, the bundled packs, the packaged lock, the manual
+  pages, and a live `bad-decisions serve` (`/healthz`, `/v1/round`, `/web/`).
 
 ## Notes
 

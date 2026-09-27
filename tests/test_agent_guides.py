@@ -24,6 +24,7 @@ CORE_RULES = [
     ".venv/bin/python",
     "AGENTS.local.md",
     "sudo",
+    "update the manual pages",
 ]
 # Words that signal a rule was pasted into an adapter instead of AGENTS.md.
 RULE_WORDS = ["twine", "git push", "pytest", "sudo -v", "hostile-input", "os.link", "must not"]

@@ -24,6 +24,11 @@ regret health
 regret deal
 ```
 
+Both packages install a manual page (`man bad-decisions`, `man regret`) under
+the environment's `share/man/man1`. `man` finds it when that environment's `bin`
+is on `PATH` (a `--user` install or an activated venv); pipx 1.5 or newer links
+it into `~/.local/share/man`.
+
 The configured hosted browser client is at
 [`/bad-decisions/web/`](https://bytes.coffee/bad-decisions/web/).
 
@@ -122,7 +127,7 @@ that is between you and the stew.
 - [Release process](docs/RELEASING.md)
 - [Changelog](CHANGELOG.md)
 - [bad-decisions(1)](man/bad-decisions.1)
-- [regret(1)](man/regret.1)
+- [regret(1)](client/man/regret.1)
 - [Terminal client](client/README.md)
 
 ## API

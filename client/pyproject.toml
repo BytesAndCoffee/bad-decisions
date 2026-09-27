@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "bad-decisions-client"
-version = "1.8.4"
+version = "1.8.5"
 description = "Cross-platform terminal client for Bad Decisions services"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -24,9 +24,13 @@ Documentation = "https://github.com/BytesAndCoffee/bad-decisions#readme"
 [tool.hatch.build.targets.wheel]
 packages = ["src/bad_decisions_client"]
 
+# Installers place this under <prefix>/share/man/man1, which man finds from PATH.
+[tool.hatch.build.targets.wheel.shared-data]
+"man/regret.1" = "share/man/man1/regret.1"
+
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src", "tests", "*.md", "pyproject.toml"]
+include = ["src", "tests", "man", "*.md", "pyproject.toml"]

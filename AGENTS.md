@@ -12,6 +12,8 @@ validation, licenses, backups, and ZIP-bomb defenses are not.
 - `src/bad_decisions/data/packs/`: bundled, validated JSON packs.
 - `client/`: separate dependency-free terminal-client distribution.
 - `scripts/`: reproducible import/conversion utilities.
+- `man/bad-decisions.1` and `client/man/regret.1`: manual pages, installed by
+  each wheel into `share/man/man1`.
 - `tests/`: pytest suite; keep behavioral and security coverage here.
 - `deploy/` and `deploy.sh`: configurable systemd/nginx deployment tooling;
   `deploy/rollback.sh` implements `deploy.sh rollback`.
@@ -165,6 +167,13 @@ For a server release, build and validate the exact artifacts:
   newest listed release that is not current. A rollback to T keeps only entries
   `<= T`, so repeating it steps back and never rolls forward. Hosts without the
   file fall back to the newest older release with a warning.
+- Local deploys are gated on the host: `deploy local` refuses a command older
+  than PyPI's latest (`--allow-older`) and a pending request, and the activator
+  refuses the version already serving (`--redeploy`), low disk space, and a
+  release that cannot load the live `PACK_DIR` registry. Changes to
+  `deploy/activate-release.py` reach a host only when a human reruns
+  `sudo ./deploy.sh bootstrap-rootless`; `bad-decisions doctor --url URL` is the
+  read-only post-deploy check.
 - The object-archive catalog service is deployed separately with
   `deploy/object-archive/docker-compose.catalog-v3.yml`, not by `deploy.sh`.
 - PyPI versions are immutable. Check the current published version and bump it
@@ -172,11 +181,18 @@ For a server release, build and validate the exact artifacts:
 - Releases publish from CI, not from a laptop: bump every version source (four
   files plus the `?v=` cache busters in `web/index.html`; a test keeps them
   equal), merge to `main` with CI green, then push a `vX.Y.Z` tag to
-  `origin`. `release.yml` verifies the tag matches the versions and is on `main`,
-  runs the tests, builds and `twine check`s both packages once, and publishes
+  `origin`. `release.yml` verifies the tag matches the versions, is on `main`,
+  and has a `## [X.Y.Z]` section in both changelogs, runs the tests, builds and
+  `twine check`s both packages once, smoke-tests those exact wheels in a clean
+  venv (`scripts/check_installed.py`), and publishes
   those files through PyPI Trusted Publishing behind the `pypi` environment
   approval. There are no PyPI tokens; never add one. See `docs/RELEASING.md`.
   Locally built artifacts are for checking only, not for uploading.
+- Before tagging a release, update the manual pages (`man/bad-decisions.1`,
+  `client/man/regret.1`): set the `.TH` date and version, and document every
+  command, option, environment variable, and file the release adds or changes.
+  Check the rendering with `man -l <page>`. `tests/test_manpages.py` fails if a
+  page's version, commands, or settings drift, but it cannot check the prose.
 - Workflows must stay least-privilege: pin every action to a full commit SHA,
   default to `contents: read`, and grant `id-token: write` only to the publish
   job. `tests/test_release_workflows.py` enforces this.

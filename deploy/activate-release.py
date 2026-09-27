@@ -39,6 +39,7 @@ SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 LOCK_LINE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*==[A-Za-z0-9.+!]+$")
 LOCK_NAME = "requirements.lock"
 REQUEST_FIELDS = {"release_id", "wheel", "sha256", "version", "requirements_sha256"}
+OPTIONAL_REQUEST_FIELDS = {"redeploy"}  # boolean; sent only when true
 ROLLBACK_FIELDS = {"action", "request_id", "target"}
 REPLACE_FIELDS = {"action", "request_id", "old_pack_id", "new_pack_id", "pack_sha256"}
 # Mirrors bad_decisions.models.ID_PATTERN and archive.MAX_MEMBER_BYTES (guarded by a
@@ -154,7 +155,12 @@ def parse_request(raw: bytes, state: dict[str, str] | None = None) -> dict[str, 
         return value
     if isinstance(value, dict) and isinstance(value.get("release_id"), str) and RELEASE_RE.fullmatch(value["release_id"]):
         state["release_id"] = state["stage"] = value["release_id"]
-    if not isinstance(value, dict) or set(value) != REQUEST_FIELDS or not all(isinstance(value[key], str) for key in REQUEST_FIELDS):
+    if (
+        not isinstance(value, dict)
+        or not REQUEST_FIELDS <= set(value) <= REQUEST_FIELDS | OPTIONAL_REQUEST_FIELDS
+        or not all(isinstance(value[key], str) for key in REQUEST_FIELDS)
+        or value.get("redeploy", True) is not True
+    ):
         raise ActivationError("activation request has unexpected fields")
     if not RELEASE_RE.fullmatch(value["release_id"]):
         raise ActivationError("invalid release id")
@@ -246,6 +252,33 @@ def _installed_version(user: str, python: Path) -> str | None:
         check=False, text=True, capture_output=True,
     )
     return None if completed.returncode else completed.stdout.strip()
+
+
+def _serving_version(user: str, previous: Path | None) -> str | None:
+    """The version the current release reports, or None when there is none or it cannot say."""
+    return None if previous is None else _installed_version(user, previous / ".venv/bin/python")
+
+
+def _require_free_space(path: Path, minimum_mb: int) -> None:
+    """Refuse to start a release on a nearly full filesystem instead of failing inside pip."""
+    free_mb = shutil.disk_usage(path).free // (1024 * 1024)
+    if free_mb < minimum_mb:
+        raise ActivationError(
+            f"only {free_mb} MiB free under {path}; a release needs at least {minimum_mb} MiB. "
+            "Free space (for example, remove old releases that are not in good-releases) and retry."
+        )
+
+
+def _check_registry_with_release(args: argparse.Namespace, python: Path) -> None:
+    """Load the live pack registry with the new release's code before it serves anything."""
+    check = (
+        "import sys; from pathlib import Path; from bad_decisions.packs import load_registry; "
+        "print(f'{len(load_registry(Path(sys.argv[1])).packs)} packs load with the new release')"
+    )
+    try:
+        _as_user(args.service_user, [str(python), "-I", "-c", check, str(args.pack_dir)])
+    except ActivationError as exc:
+        raise ActivationError(f"the new release cannot load the pack registry at {args.pack_dir}; see the log for the pack at fault ({exc})") from exc
 
 
 def _freeze_tree(root: Path, uid: int, gid: int) -> None:
@@ -739,6 +772,12 @@ def activate(args: argparse.Namespace, state: dict[str, str], value: dict[str, s
     previous = current.resolve(strict=True) if current.is_symlink() else None
     release = app_root / "releases" / release_id
     try:
+        if not value.get("redeploy") and _serving_version(args.service_user, previous) == value["version"]:
+            raise ActivationError(
+                f"bad-decisions {value['version']} is already serving ({previous.name}); "
+                "rerun with --redeploy to install it again"
+            )
+        _require_free_space(app_root / "releases", args.min_free_mb)
         os.mkdir(release_id, 0o750, dir_fd=releases_fd)
     except FileExistsError as exc:
         raise ActivationError("release already exists") from exc
@@ -762,6 +801,8 @@ def activate(args: argparse.Namespace, state: dict[str, str], value: dict[str, s
             raise ActivationError("installed release version does not match request")
         _freeze_tree(release, ROOT_UID, service.pw_gid)
         _verify_frozen(release, ROOT_UID)
+        if args.pack_dir is not None:
+            _check_registry_with_release(args, release / ".venv/bin/python")
         _atomic_symlink(release, current)
         switched = True
         _run(["systemctl", "restart", args.service_name])
@@ -796,7 +837,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--port", type=int, required=True)
     parser.add_argument("--python", default="/usr/bin/python3.12")
     parser.add_argument("--health-attempts", type=int, default=30)
-    parser.add_argument("--pack-dir", type=Path, help="pack registry that replace_pack requests may change (disabled when unset)")
+    parser.add_argument("--pack-dir", type=Path, help="pack registry that replace_pack requests may change and new releases must load (disabled when unset)")
+    parser.add_argument("--min-free-mb", type=int, default=1024, help="free space a new release requires under APP_ROOT/releases")
     args = parser.parse_args(argv)
     if os.geteuid() != ROOT_UID:
         print("release activator must run as root", file=sys.stderr)

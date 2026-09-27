@@ -127,6 +127,7 @@ def _client_id(reset: bool = False) -> str | None:
 
 def parser() -> argparse.ArgumentParser:
     result=argparse.ArgumentParser(description="Deal a hand from a Bad Decisions service.")
+    result.add_argument("--version",action="version",version=f"regret {__version__}")
     result.add_argument("--api-url",default=DEFAULT_API_URL); result.add_argument("--packs"); result.add_argument("--black-packs"); result.add_argument("--white-packs")
     result.add_argument("--list-packs",action="store_true"); result.add_argument("--health",action="store_true"); result.add_argument("--json",action="store_true"); result.add_argument("--timeout",type=float,default=10.0)
     return result

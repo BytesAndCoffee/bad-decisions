@@ -1,4 +1,4 @@
-\.TH REGRET 1 "2026-09-26" "Bad Decisions Client 1.8.0" "User Commands"
+.TH REGRET 1 "2026-09-27" "Bad Decisions Client 1.8.5" "User Commands"
 .SH NAME
 regret \- deal rounds from a Bad Decisions API
 .SH SYNOPSIS
@@ -24,13 +24,16 @@ regret \- deal rounds from a Bad Decisions API
 .RI {status|enjoy|regret|enable|disable}
 .br
 .B regret together
-.RI room " [--name display-name] [--api-url url] [--heartbeat seconds]"
+.RI room " [--name display-name] [--api-url url] [--timeout seconds] [--heartbeat seconds]"
 .SH DESCRIPTION
 .B regret
 is the dependency-light terminal client for a Bad Decisions service. It deals rounds, lists packs, checks health, records optional feedback, and prints provenance from the last local draw.
 .PP
 Consequences is opt-in. It controls both voting and the pseudonymous telemetry required for voting. Non-interactive use leaves it disabled unless an explicit preference is already stored.
 .SH OPTIONS
+.TP
+.BR --version
+Print the installed version and exit.
 .TP
 .BI --api-url url
 Use a compatible API endpoint. The default is https://bytes.coffee/bad-decisions.
@@ -81,8 +84,13 @@ Enable voting and stable-ID pseudonymous vote telemetry.
 .BI consequences regret
 Disable voting and vote telemetry entirely.
 .TP
+.BR "consequences enable" ", " "consequences disable"
+Aliases for enjoy and regret.
+.TP
 .BI together room
-Join or reconnect to an ephemeral Peer Pressure multiplayer room. The first participant is the initial Responsible Adult. The client maintains authenticated heartbeats, submits private responses, and resynchronizes stale room state automatically. Use --name when no saved room session exists.
+Join or reconnect to an ephemeral Peer Pressure multiplayer room. The first participant is the initial Responsible Adult. The client maintains authenticated heartbeats, submits private responses, and resynchronizes stale room state automatically. Use --name when no saved room session exists. --heartbeat sets the heartbeat interval in seconds (default 5).
+.PP
+The prompt follows the room: the Responsible Adult presses s to start, players choose responses by number (comma-separated when a question needs several), the Responsible Adult picks the consequence, and Enter refreshes or advances. q leaves the room. When the service refuses an action, regret prints its reason and message, with a hint when the display name is taken or the game has already started.
 .SH CONSENT
 On the first interactive deal, an unset or stale consent preference prompts once. Choose Enjoy Consequences or Regret Consequences. The choice and consent schema version are stored locally and survive upgrades. Pressing Enter chooses regret. Non-interactive invocations never block for consent.
 .SH FILES
@@ -104,6 +112,9 @@ Success.
 .TP
 .B 1
 Network, configuration, or unavailable-feedback failure.
+.TP
+.B 2
+Invalid command-line usage.
 .SH LICENSE
 The client is MIT licensed. Card-pack content remains governed by each pack's own declared license and provenance.
 .SH SEE ALSO

@@ -17,7 +17,7 @@ from .engine import generate_from_resolved, render_round
 from .errors import BadDecisionsError, PackConfigurationError, UnknownPackError
 from .packs import load_registry, resolve_pools
 from .remote import import_index, import_url
-from . import operations
+from . import __version__, operations
 
 
 class CliArgumentError(ValueError):
@@ -36,6 +36,7 @@ def positive_finite(value: str) -> float:
 
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description="Deal hands and manage a Bad Decisions service.")
+    result.add_argument("--version", action="version", version=f"bad-decisions {__version__}")
     mode = result.add_mutually_exclusive_group()
     mode.add_argument("--oneshot", action="store_true", help="print one rendered round and exit")
     mode.add_argument("--rapid", action="store_true", help="continuously print completed rounds")
@@ -198,7 +199,7 @@ def _run_consequences(argv: Sequence[str]) -> int:
 
 def run(argv: Sequence[str] | None = None, *, sleep=time.sleep) -> int:
     values = list(sys.argv[1:] if argv is None else argv)
-    if values and values[0] in {"setup", "serve", "deploy", "rollback", "rotate-token", "status", "reload", "stop"}:
+    if values and values[0] in {"setup", "serve", "deploy", "rollback", "rotate-token", "status", "reload", "stop", "doctor"}:
         return operations.run(values)
     if values and values[0] == "pack":
         return _run_pack(values[1:])

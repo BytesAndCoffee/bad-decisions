@@ -94,22 +94,35 @@ def test_release_doc_covers_setup_and_the_tag_procedure():
         assert needle in doc, needle
 
 
+def _release_tree(root: Path, version: str) -> None:
+    (root / "src/bad_decisions").mkdir(parents=True)
+    (root / "client/src/bad_decisions_client").mkdir(parents=True)
+    for path in ("pyproject.toml", "client/pyproject.toml"):
+        (root / path).write_text(f'[project]\nversion = "{version}"\n', encoding="utf-8")
+    for path in ("src/bad_decisions/__init__.py", "client/src/bad_decisions_client/__init__.py"):
+        (root / path).write_text(f'__version__ = "{version}"\n', encoding="utf-8")
+    for path in checker.CHANGELOGS:
+        (root / path).write_text(f"# Changelog\n\n## [Unreleased]\n\n## [{version}]\n\n- Things.\n", encoding="utf-8")
+
+
 @pytest.mark.parametrize("tag", ["v1.1.1", "v0.0.0"])
 def test_check_accepts_a_matching_tag(tmp_path, tag):
-    version = tag[1:]
-    (tmp_path / "src/bad_decisions").mkdir(parents=True)
-    (tmp_path / "client/src/bad_decisions_client").mkdir(parents=True)
-    for path in ("pyproject.toml", "client/pyproject.toml"):
-        (tmp_path / path).write_text(f'[project]\nversion = "{version}"\n', encoding="utf-8")
-    for path in ("src/bad_decisions/__init__.py", "client/src/bad_decisions_client/__init__.py"):
-        (tmp_path / path).write_text(f'__version__ = "{version}"\n', encoding="utf-8")
+    _release_tree(tmp_path, tag[1:])
     assert checker.check(tag, tmp_path) == []
 
 
+def test_check_requires_a_changelog_section_for_the_release(tmp_path):
+    _release_tree(tmp_path, "1.1.1")
+    (tmp_path / "client/CHANGELOG.md").write_text("# Changelog\n\n## [Unreleased]\n\n- 1.1.1 things.\n\n## [1.1.0]\n", encoding="utf-8")
+    (tmp_path / "CHANGELOG.md").unlink()
+    problems = checker.check("v1.1.1", tmp_path)
+    assert len(problems) == 2
+    assert all("## [1.1.1]" in problem for problem in problems)
+    assert {problem.split()[0] for problem in problems} == set(checker.CHANGELOGS)
+
+
 def test_check_reports_every_disagreeing_source(tmp_path):
-    (tmp_path / "src/bad_decisions").mkdir(parents=True)
-    (tmp_path / "client/src/bad_decisions_client").mkdir(parents=True)
-    (tmp_path / "pyproject.toml").write_text('[project]\nversion = "1.1.1"\n', encoding="utf-8")
+    _release_tree(tmp_path, "1.1.1")
     (tmp_path / "client/pyproject.toml").write_text('[project]\nversion = "1.1.0"\n', encoding="utf-8")
     (tmp_path / "src/bad_decisions/__init__.py").write_text('__version__ = "1.1.1"\n', encoding="utf-8")
     (tmp_path / "client/src/bad_decisions_client/__init__.py").write_text("# no version\n", encoding="utf-8")
