@@ -14,7 +14,7 @@ from typing import Sequence
 from .archive import export_pack, import_pack, initialize_registry, validate_archive
 from .consequences import ConsequencesStore
 from .engine import generate_from_resolved, render_round
-from .errors import BadDecisionsError, PackConfigurationError, UnknownPackError
+from .errors import BadDecisionsError, MissingExtraError, PackConfigurationError, UnknownPackError
 from .packs import load_registry, resolve_pools
 from .remote import import_index, import_url
 from . import __version__, operations
@@ -233,6 +233,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     except PackConfigurationError as exc:
         _write(f"configuration error: {exc.message}", stream=sys.stderr)
+        return 1
+    except MissingExtraError as exc:
+        _write(f"bad-decisions: {exc.message}", stream=sys.stderr)
         return 1
     except BadDecisionsError as exc:
         _write(f"{exc.code}: {exc.message}", stream=sys.stderr)

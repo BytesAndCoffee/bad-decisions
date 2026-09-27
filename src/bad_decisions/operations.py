@@ -67,6 +67,16 @@ def _run(command: list[str], *, env: dict[str, str] | None = None, cwd: Path | N
     return subprocess.run(command, env=env, cwd=cwd, check=False, text=True, capture_output=capture)
 
 
+def _require_extra(extra: str, *modules: str) -> None:
+    """Fail before any AWS side effect when an optional dependency set is missing."""
+    import importlib.util
+
+    from .errors import MissingExtraError
+
+    if any(importlib.util.find_spec(module) is None for module in modules):
+        raise MissingExtraError(extra)
+
+
 def _require_commands(parser: argparse.ArgumentParser, *names: str) -> None:
     missing = [name for name in names if shutil.which(name) is None]
     if missing:
@@ -130,6 +140,7 @@ def setup_aws(argv: list[str]) -> int:
     args = parser.parse_args(argv)
     if args.certificate_arn and not args.domain_name:
         parser.error("--certificate-arn requires --domain-name")
+    _require_extra("aws-deploy", "boto3", "aws_cdk", "constructs")
     _require_commands(parser, "aws", "npx")
     env = _aws_env(args.profile, args.region)
     identity = _run(["aws", "sts", "get-caller-identity", "--query", "Account", "--output", "text"], env=env, capture=True)
@@ -665,6 +676,7 @@ def deploy_aws(argv: list[str], *, confirm=input) -> int:
         parser.error("HTTPS requires --domain-name so the certificate matches the public endpoint")
     if not args.yes and not sys.stdin.isatty():
         parser.error("no terminal to confirm the diff; pass --yes to deploy unattended")
+    _require_extra("aws-deploy", "boto3", "aws_cdk", "constructs")
     _require_commands(parser, "aws", "npx", *(() if args.image else ("docker",)))
     aws_env = _aws_env(values["AWS_PROFILE"], values["AWS_DEFAULT_REGION"])
     # Build every deploy so the image always matches the installed package that defines the stack.

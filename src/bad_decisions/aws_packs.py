@@ -4,8 +4,13 @@ import json
 from collections.abc import Mapping
 from types import MappingProxyType
 
-import boto3
-from botocore.config import Config
+from .errors import MissingExtraError
+
+try:
+    import boto3
+    from botocore.config import Config
+except ImportError as exc:  # optional dependency
+    raise MissingExtraError("aws") from exc
 from pydantic import ValidationError
 
 from .errors import PackConfigurationError

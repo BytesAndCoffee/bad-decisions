@@ -13,7 +13,7 @@ Read AGENTS.md first. The plan and its checkboxes are in patchnotes.md under
 
 ## Status
 - [x] Stage 1: prompt/answer rename and pack schema 2 (commit a4b1fd1).
-- [ ] Stage 2: `[aws]` and `[tui]` extras.
+- [x] Stage 2: `[aws]` (boto3), `[aws-deploy]` (+CDK), `[tui]` extras; requirements.lock is server-only, requirements-extras.lock pins the rest.
 - [ ] Stage 3: `/v2` API and security fixes (see patchnotes "API v2").
 - [ ] Stage 4: dead code and backlog.
 - [ ] Stage 5: docs, man pages, migration guide, 2.0.0 release, deploy, Homebrew.
@@ -24,3 +24,7 @@ Read AGENTS.md first. The plan and its checkboxes are in patchnotes.md under
   deploying 2.0 or using `pack replace-local` with 2.0.
 - The object-archive catalog indexer changed (catalog schema 2): redeploy it
   with deploy/object-archive/docker-compose.catalog-v3.yml after the server.
+
+## Docs to update in stage 5
+- README/DEPLOYMENT/EASY_DEPLOY/AWS docs: install extras (`pipx install 'bad-decisions[aws-deploy]'` for AWS management, `[tui]` for the dashboard).
+- CARDDECK.md: pack schema 2 (prompts/answers/text), schema 1 still read; catalog schema 2.

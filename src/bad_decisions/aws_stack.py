@@ -3,18 +3,23 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from aws_cdk import (
-    Aws, CfnOutput, Duration, RemovalPolicy, Stack,
-    aws_certificatemanager as acm, aws_cloudfront as cloudfront,
-    aws_cloudfront_origins as origins, aws_cloudwatch as cloudwatch,
-    aws_apigatewayv2 as apigwv2, aws_apigatewayv2_integrations as apigwv2_integrations,
-    aws_dynamodb as dynamodb, aws_ec2 as ec2, aws_ecr as ecr, aws_ecs as ecs,
-    aws_lambda as lambda_, aws_lambda_event_sources as lambda_events,
-    aws_logs as logs, aws_route53 as route53, aws_route53_targets as route53_targets,
-    aws_s3 as s3, aws_secretsmanager as secretsmanager, aws_servicediscovery as servicediscovery,
-    aws_sqs as sqs,
-)
-from constructs import Construct
+from .errors import MissingExtraError
+
+try:
+    from aws_cdk import (
+        Aws, CfnOutput, Duration, RemovalPolicy, Stack,
+        aws_certificatemanager as acm, aws_cloudfront as cloudfront,
+        aws_cloudfront_origins as origins, aws_cloudwatch as cloudwatch,
+        aws_apigatewayv2 as apigwv2, aws_apigatewayv2_integrations as apigwv2_integrations,
+        aws_dynamodb as dynamodb, aws_ec2 as ec2, aws_ecr as ecr, aws_ecs as ecs,
+        aws_lambda as lambda_, aws_lambda_event_sources as lambda_events,
+        aws_logs as logs, aws_route53 as route53, aws_route53_targets as route53_targets,
+        aws_s3 as s3, aws_secretsmanager as secretsmanager, aws_servicediscovery as servicediscovery,
+        aws_sqs as sqs,
+    )
+    from constructs import Construct
+except ImportError as exc:  # optional dependency
+    raise MissingExtraError("aws-deploy") from exc
 
 
 def _integer(name: str, default: int) -> int:

@@ -5,7 +5,12 @@ import json
 import os
 import subprocess
 
-import boto3
+from .errors import MissingExtraError
+
+try:
+    import boto3
+except ImportError as exc:  # optional dependency
+    raise MissingExtraError("aws") from exc
 
 from .errors import PackConfigurationError
 

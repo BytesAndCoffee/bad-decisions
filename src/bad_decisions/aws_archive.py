@@ -5,8 +5,13 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote
-from botocore.config import Config
-from botocore.exceptions import ClientError
+from .errors import MissingExtraError
+
+try:
+    from botocore.config import Config
+    from botocore.exceptions import ClientError
+except ImportError as exc:  # optional dependency
+    raise MissingExtraError("aws") from exc
 from .archive import FORMAT, FORMAT_VERSION, _pack_payload, validate_archive
 from .aws_credentials import local_session
 from .errors import PackConfigurationError

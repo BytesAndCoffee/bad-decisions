@@ -9,10 +9,15 @@ import uuid
 from decimal import Decimal
 from typing import Any
 
-import boto3
-from boto3.dynamodb.types import TypeSerializer
-from botocore.config import Config
-from botocore.exceptions import ClientError
+from .errors import MissingExtraError
+
+try:
+    import boto3
+    from boto3.dynamodb.types import TypeSerializer
+    from botocore.config import Config
+    from botocore.exceptions import ClientError
+except ImportError as exc:  # optional dependency
+    raise MissingExtraError("aws") from exc
 
 from .consequences import IssuedRound, round_identity
 from .models import Round

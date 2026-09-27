@@ -67,7 +67,7 @@ Rename (prompt/answer)
 - [x] Web UI: no "BLACK CARD" label or dark-prompt/light-answer pairing.
 
 Packaging
-- [ ] `bad-decisions[aws]` and `[tui]` extras; the core install drops aws-cdk-lib (373 MB), boto3, textual.
+- [x] `bad-decisions[aws]`, `[aws-deploy]`, and `[tui]` extras; the core install is 32 MB instead of 469 MB.
 
 API v2
 - [ ] `/v2` routes with prompt/answer names; `/v1/*` returns 410 with an upgrade hint; `/healthz` stays unversioned.

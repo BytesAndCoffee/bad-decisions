@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-import aws_cdk as cdk
+from .errors import MissingExtraError
+
+try:
+    import aws_cdk as cdk
+except ImportError as exc:  # optional dependency
+    raise MissingExtraError("aws-deploy") from exc
 
 from .aws_stack import BadDecisionsAwsStack
 

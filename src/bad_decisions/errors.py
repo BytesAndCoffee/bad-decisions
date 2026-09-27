@@ -34,3 +34,23 @@ class InsufficientCapacityError(SelectorError):
 
 class RenderError(BadDecisionsError):
     code = "answer_arity"
+
+
+class MissingExtraError(BadDecisionsError):
+    """An optional feature's dependencies are not installed."""
+
+    code = "missing_extra"
+    FEATURES = {
+        "aws": "AWS support",
+        "aws-deploy": "AWS deployment (setup aws, deploy aws)",
+        "tui": "the Consequences dashboard",
+    }
+
+    def __init__(self, extra: str):
+        feature = self.FEATURES.get(extra, extra)
+        super().__init__(
+            f"{feature} needs optional dependencies: pip install 'bad-decisions[{extra}]' "
+            f"(with pipx: pipx install --force 'bad-decisions[{extra}]')",
+            {"extra": extra},
+        )
+        self.extra = extra

@@ -4,14 +4,15 @@ from datetime import datetime, timezone
 from typing import Any
 
 from .consequences import ConsequencesStore
+from .errors import MissingExtraError
 from .packs import load_registry
 
 try:
     from textual.app import App, ComposeResult
     from textual.containers import Container, VerticalScroll
     from textual.widgets import DataTable, Footer, Header, Static, TabbedContent, TabPane
-except ImportError as exc:  # pragma: no cover - optional UI dependency
-    raise RuntimeError("The Consequences TUI requires the core Textual dependency; reinstall bad-decisions") from exc
+except ImportError as exc:  # optional dependency
+    raise MissingExtraError("tui") from exc
 
 class ConsequencesApp(App[None]):
     TITLE = "Consequences // local analytics"

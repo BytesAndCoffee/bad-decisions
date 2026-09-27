@@ -94,6 +94,10 @@ def check(prefix: Path, root: Path = ROOT) -> list[str]:
             prefix, "python", "-c",
             "import importlib.resources as r; print(r.files('bad_decisions').joinpath('requirements.lock').is_file())",
         ).strip(), "True"),
+        "no optional extras in the core install": lambda: _expect(_run(
+            prefix, "python", "-c",
+            "import importlib.util as u; print(all(u.find_spec(m) is None for m in ('boto3', 'aws_cdk', 'textual')))",
+        ).strip(), "True"),
         "manual pages": lambda: _expect(sorted(page for page in MANPAGES if (prefix / "share/man/man1" / page).is_file()), sorted(MANPAGES)),
         "bad-decisions serve": lambda: _check_server(prefix, version),
     }

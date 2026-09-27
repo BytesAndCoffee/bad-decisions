@@ -10,7 +10,8 @@ COPY pyproject.toml README.md LICENSE ./
 COPY src ./src
 COPY docs ./docs
 COPY man ./man
-RUN pip install --no-cache-dir . \
+# The container needs boto3 for S3 packs and DynamoDB, not the CDK.
+RUN pip install --no-cache-dir ".[aws]" \
     && useradd --create-home --uid 10001 --shell /usr/sbin/nologin baddecisions
 USER baddecisions
 EXPOSE 8000
