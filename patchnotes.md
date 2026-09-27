@@ -59,12 +59,12 @@ its only consumer) and `/v2` replaces it; schema-v1 packs stay readable;
 server-sent events are deferred to 2.1, but the v2 room API must allow them.
 
 Rename (prompt/answer)
-- [ ] Pack schema v2 (`prompts`/`answers`); read v1 and v2, write v2.
-- [ ] Models, engine, pools, errors, CLIs (`--prompt-packs`/`--answer-packs`), PYX import output.
-- [ ] Consequences hashes byte-identical to 1.x (golden test over bundled packs).
-- [ ] Peer Pressure storage `prompt`/`answer` (room schema 3).
-- [ ] Catalog `prompt_count`/`answer_count` (indexer and AWS archive); activator reads v1 and v2.
-- [ ] Web UI: no "BLACK CARD" label or dark-prompt/light-answer pairing.
+- [x] Pack schema v2 (`prompts`/`answers`); read v1 and v2, write v2.
+- [x] Models, engine, pools, errors, CLIs (`--prompt-packs`/`--answer-packs`), PYX import output.
+- [x] Consequences hashes byte-identical to 1.x (golden test over bundled packs).
+- [x] Peer Pressure storage `prompt`/`answer` (room schema 3).
+- [x] Catalog `prompt_count`/`answer_count` (indexer and AWS archive); activator reads v1 and v2.
+- [x] Web UI: no "BLACK CARD" label or dark-prompt/light-answer pairing.
 
 Packaging
 - [ ] `bad-decisions[aws]` and `[tui]` extras; the core install drops aws-cdk-lib (373 MB), boto3, textual.
