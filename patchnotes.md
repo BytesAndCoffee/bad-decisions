@@ -92,7 +92,7 @@ Cleanup
 Object store (owner request 2026-09-27)
 - [x] Review deploy/object-archive: all 46 live archives validated with 2.0 (45 pass; xkcdb rebuilt to 1.2.1 for upload).
 - [ ] Indexer mirrors the importer's license-match and control-character checks (drift tests).
-- [ ] Indexer Dockerfile pins boto3 1.40.75.
+- [x] Indexer Dockerfile pins boto3 1.40.75.
 - [ ] Public archive nginx: GET/HEAD only, small body limit, per-IP rate limit.
 - [ ] Operator: upload rebuilt xkcdb; redeploy the indexer (catalog schema 2).
 

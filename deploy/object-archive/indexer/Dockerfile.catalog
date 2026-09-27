@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 
-RUN pip install --no-cache-dir boto3==1.35.99
+RUN pip install --no-cache-dir boto3==1.40.75
 
 COPY catalog.py /app/catalog.py
 

@@ -51,7 +51,7 @@ The live catalog is still schema 1 (1.x indexer).
    text/template and printed metadata must not contain C0 controls except
    tab/newline, or DEL (same regex as models._CONTROL). read_members must then
    also read those two members (bounded like the others).
-3. `indexer/Dockerfile.catalog`: pin boto3==1.40.75 (matches requirements-extras.lock;
+3. DONE: `indexer/Dockerfile.catalog` pins boto3==1.40.75 (matches requirements-extras.lock;
    it says 1.35.99).
 4. `nginx-object-archive.conf.template` (public, read-only s3_web): replace
    `client_max_body_size 0;` with a small limit, add `limit_except GET HEAD {
