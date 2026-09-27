@@ -41,9 +41,9 @@ def parser() -> argparse.ArgumentParser:
     mode.add_argument("--oneshot", action="store_true", help="print one rendered round and exit")
     mode.add_argument("--rapid", action="store_true", help="continuously print completed rounds")
     result.add_argument("--delay", type=positive_finite, help="positive seconds between rapid rounds (default: 1.0)")
-    result.add_argument("--packs", help="comma-separated pack IDs for both colors (default: all packs)")
-    result.add_argument("--black-packs", help="override the black-card selector")
-    result.add_argument("--white-packs", help="override the white-card selector")
+    result.add_argument("--packs", help="comma-separated pack IDs for prompts and answers (default: all packs)")
+    result.add_argument("--prompt-packs", help="pack IDs to draw prompts from (overrides --packs)")
+    result.add_argument("--answer-packs", help="pack IDs to draw answers from (overrides --packs)")
     result.add_argument("--list-packs", action="store_true", help="list available packs and exit")
     return result
 
@@ -98,7 +98,7 @@ def _interactive(resolved, registry) -> int:
         generated = generate_from_resolved(resolved, registry)
         _write()
         _write("═" * 72)
-        _write(generated.black.repr)
+        _write(generated.prompt.text)
         try:
             command = input("\nPress Enter to reveal, or q to quit: ").strip().lower()
         except (EOFError, KeyboardInterrupt):
@@ -107,8 +107,8 @@ def _interactive(resolved, registry) -> int:
         if command == "q":
             return 0
         _write()
-        for answer in generated.white:
-            _write(f"⬜ {answer.text}")
+        for answer in generated.answers:
+            _write(f"▸ {answer.text}")
         _write(f"\n→ {generated.result}")
         try:
             command = input("\nPress Enter for another round, or q to quit: ").strip().lower()
@@ -211,9 +211,9 @@ def run(argv: Sequence[str] | None = None, *, sleep=time.sleep) -> int:
     registry = load_registry()
     if args.list_packs:
         for pack_id, pack in registry.packs.items():
-            _write(f"{pack_id}\t{pack.metadata.name}\tblack={len(pack.black)}\twhite={len(pack.white)}")
+            _write(f"{pack_id}\t{pack.metadata.name}\tprompts={len(pack.prompts)}\tanswers={len(pack.answers)}")
         return 0
-    resolved = resolve_pools(registry, packs=args.packs, black_packs=args.black_packs, white_packs=args.white_packs)
+    resolved = resolve_pools(registry, packs=args.packs, prompt_packs=args.prompt_packs, answer_packs=args.answer_packs)
     if args.oneshot:
         _write(generate_from_resolved(resolved, registry).result)
         return 0

@@ -3,7 +3,7 @@ from __future__ import annotations
 import stat
 
 from bad_decisions_client import cli
-from bad_decisions_client.together import TogetherClient, choose_responses, load_session, render, save_session
+from bad_decisions_client.together import TogetherClient, choose_answers, load_session, render, save_session
 
 
 def test_room_session_is_private_and_scoped_by_service(tmp_path):
@@ -61,15 +61,15 @@ def test_trade_dress_safe_render_and_response_selection(capsys):
         "room": {"code": "ohno", "round": 1, "state": "PLAYING"},
         "players": [{"name": "Alice", "score": 0, "connected": True}],
         "responsible_adult": {"id": "player_1", "name": "Alice"},
-        "question": {"text": "A question _", "slots": 1},
+        "prompt": {"text": "A prompt _", "slots": 1},
         "you": {"hand": [{"card_instance_id": "card_1", "text": "A response"}]},
         "result": None,
     }
     render(state)
-    assert choose_responses(state, lambda _prompt: "1") == ["card_1"]
+    assert choose_answers(state, lambda _prompt: "1") == ["card_1"]
     output = capsys.readouterr().out
     assert "Responsible Adult: Alice" in output
-    assert "Question: A question _" in output
+    assert "Prompt: A prompt _" in output
     assert "card czar" not in output.lower()
 
 

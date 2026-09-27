@@ -202,7 +202,7 @@ Reusable service for fill-in-the-blank card games.
 Deal a completed hand:
   GET {prefix}/v1/round
   GET {prefix}/v1/round?packs=example
-  GET {prefix}/v1/round?black_packs=prompts&white_packs=responses
+  GET {prefix}/v1/round?prompt_packs=example&answer_packs=example
 
 Inspect the loaded registry:
   GET {prefix}/v1/packs
@@ -242,7 +242,7 @@ Service interfaces:
 
     def metadata(pack):
         result = pack.metadata.model_dump(mode="json")
-        result["counts"] = {"black": len(pack.black), "white": len(pack.white)}
+        result["counts"] = {"prompts": len(pack.prompts), "answers": len(pack.answers)}
         return result
 
     @app.get("/v1/packs")
@@ -260,10 +260,10 @@ Service interfaces:
     def round_endpoint(
         request: Request,
         packs: Annotated[str | None, Query()] = None,
-        black_packs: Annotated[str | None, Query()] = None,
-        white_packs: Annotated[str | None, Query()] = None,
+        prompt_packs: Annotated[str | None, Query()] = None,
+        answer_packs: Annotated[str | None, Query()] = None,
     ):
-        allowed = {"packs", "black_packs", "white_packs"}
+        allowed = {"packs", "prompt_packs", "answer_packs"}
         unknown = sorted(set(request.query_params) - allowed)
         repeated = sorted(key for key in allowed if len(request.query_params.getlist(key)) > 1)
         if unknown:
@@ -271,7 +271,7 @@ Service interfaces:
         if repeated:
             return JSONResponse(envelope("repeated_query_parameter", "Selector parameters must occur once", {"parameters": repeated}), status_code=400)
         registry = request.app.state.registry
-        resolved = resolve_pools(registry, packs=packs, black_packs=black_packs, white_packs=white_packs)
+        resolved = resolve_pools(registry, packs=packs, prompt_packs=prompt_packs, answer_packs=answer_packs)
         round_ = generate_from_resolved(resolved, registry)
         payload = round_.model_dump(mode="json")
         consequences: ConsequencesStore | None = request.app.state.consequences

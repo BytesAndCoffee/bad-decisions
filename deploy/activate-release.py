@@ -534,7 +534,9 @@ def _declared_pack_id(payload: bytes) -> str | None:
     try:
         pack = json.loads(payload.decode("utf-8"))
         pack_id = pack["metadata"]["id"]
-        cards = [*pack["black"], *pack["white"]]
+        # Schema 1 (still found in registries made before 2.0) named the lists black/white.
+        keys = ("black", "white") if pack["schema_version"] == 1 else ("prompts", "answers")
+        cards = [*pack[keys[0]], *pack[keys[1]]]
     except (UnicodeError, ValueError, KeyError, TypeError):
         return None
     if not valid_pack_id(pack_id) or not all(isinstance(card, dict) and card.get("pack") == pack_id for card in cards):

@@ -146,7 +146,7 @@ def _client_id(reset: bool = False) -> str | None:
 def parser() -> argparse.ArgumentParser:
     result=argparse.ArgumentParser(description="Deal a hand from a Bad Decisions service.")
     result.add_argument("--version",action="version",version=f"regret {__version__}")
-    result.add_argument("--api-url",default=DEFAULT_API_URL); result.add_argument("--packs"); result.add_argument("--black-packs"); result.add_argument("--white-packs")
+    result.add_argument("--api-url",default=DEFAULT_API_URL); result.add_argument("--packs"); result.add_argument("--prompt-packs"); result.add_argument("--answer-packs")
     result.add_argument("--list-packs",action="store_true"); result.add_argument("--health",action="store_true"); result.add_argument("--json",action="store_true"); result.add_argument("--timeout",type=float,default=10.0)
     return result
 
@@ -175,7 +175,7 @@ def _request_json(url: str, *, timeout: float, method: str="GET", payload: dict[
 
 def _print_packs(packs: list[dict[str,Any]]) -> None:
     for pack in packs:
-        counts=pack.get("counts",{}); print(f"{pack['id']}\t{pack['name']}\tblack={counts.get('black',0)}\twhite={counts.get('white',0)}")
+        counts=pack.get("counts",{}); print(f"{pack['id']}\t{pack['name']}\tprompts={counts.get('prompts',0)}\tanswers={counts.get('answers',0)}")
 
 def _feedback(argv: Sequence[str]) -> int:
     command=argparse.ArgumentParser(prog="regret feedback")
@@ -302,7 +302,7 @@ def run(argv: Sequence[str] | None=None) -> int:
             if args.json: print(json.dumps(payload,ensure_ascii=False,indent=2))
             else: _print_packs(payload)
             return 0
-        params={k:v for k,v in {"packs":args.packs,"black_packs":args.black_packs,"white_packs":args.white_packs}.items() if v is not None}
+        params={k:v for k,v in {"packs":args.packs,"prompt_packs":args.prompt_packs,"answer_packs":args.answer_packs}.items() if v is not None}
         headers={}; client_id=_client_id()
         if client_id: headers={"X-Regret-Client-ID":client_id,"X-Regret-Session-ID":str(uuid.uuid4())}
         payload,response_headers=_request_json(f"{base}/v1/round"+(f"?{urlencode(params)}" if params else ""),timeout=args.timeout,headers=headers)

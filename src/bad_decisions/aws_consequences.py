@@ -49,14 +49,14 @@ class DynamoConsequencesStore:
             "card": card.id, "source": card.source_ref or "",
             "license": packs[card.pack].license_id, "attribution": packs[card.pack].attribution,
         } for role, slot, digest, text, card in (
-            [("prompt", 0, prompt, round_.black.repr, round_.black)] +
-            [("answer", index, digest, card.text, card) for index, (digest, card) in enumerate(zip(answers, round_.white))]
+            [("prompt", 0, prompt, round_.prompt.text, round_.prompt)] +
+            [("answer", index, digest, card.text, card) for index, (digest, card) in enumerate(zip(answers, round_.answers))]
         )]
         round_item: dict[str, object] = {
             "pk": f"ROUND#{round_id}", "sk": "META", "kind": "round",
             "round_id": round_id, "occurred_at": now, "combination_hash": combo,
             "prompt_hash": prompt, "answer_hashes": answers,
-            "template": round_.black.template, "elements": elements,
+            "template": round_.prompt.template, "elements": elements,
             "feedback_expires_at": expires,
             "token_hash": hashlib.sha256(token.encode()).hexdigest() if token else "",
             "expires_at": now + self.retention_seconds,

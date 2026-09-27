@@ -24,6 +24,8 @@ from zipfile import BadZipFile, ZipFile
 # this file, so they are duplicated; tests/test_catalog_indexer.py guards drift.
 MAX_MEMBER_BYTES = 2 * 1024 * 1024
 MAX_ARCHIVE_BYTES = 5 * 1024 * 1024
+# 2: per-pack counts are prompt_count and answer_count (1 said black/white_card_count).
+CATALOG_SCHEMA_VERSION = 2
 MAX_COMPRESSION_RATIO = 100
 REQUIRED_MEMBERS = frozenset({"ATTRIBUTION.md", "LICENSE.txt", "manifest.json", "pack.json"})
 DEFAULT_CACHE_TTL = 60.0
@@ -165,10 +167,14 @@ class Catalog:
         manifest, pack = read_members(body)
         if not isinstance(manifest, dict) or not isinstance(pack, dict) or not isinstance(pack.get("metadata"), dict):
             raise ValueError("manifest.json, pack.json, and pack metadata must be JSON objects")
-        black, white = pack.get("black", []), pack.get("white", [])
-        if not isinstance(black, list) or not isinstance(white, list):
+        # Pack schema 1 named prompts and answers "black" and "white"; both are catalogued.
+        schema = pack.get("schema_version")
+        if schema not in (1, 2) or isinstance(schema, bool):
+            raise ValueError("pack.json must declare schema_version 1 or 2")
+        prompts, answers = (pack.get("black", []), pack.get("white", [])) if schema == 1 else (pack.get("prompts", []), pack.get("answers", []))
+        if not isinstance(prompts, list) or not isinstance(answers, list):
             raise ValueError("pack card lists must be JSON arrays")
-        return {"bucket": bucket, "object_key": key, "url": f"https://{bucket}.{self.object_domain}/{quote(key)}", "sha256": hashlib.sha256(body).hexdigest(), "size_bytes": len(body), "last_modified": listed["LastModified"].isoformat(), "etag": str(listed["ETag"]).strip('"'), "archive": manifest, "metadata": pack["metadata"], "black_card_count": len(black), "white_card_count": len(white)}
+        return {"bucket": bucket, "object_key": key, "url": f"https://{bucket}.{self.object_domain}/{quote(key)}", "sha256": hashlib.sha256(body).hexdigest(), "size_bytes": len(body), "last_modified": listed["LastModified"].isoformat(), "etag": str(listed["ETag"]).strip('"'), "archive": manifest, "metadata": pack["metadata"], "prompt_count": len(prompts), "answer_count": len(answers)}
 
     def payload(self) -> dict[str, object]:
         packs, rejected = [], []
@@ -183,7 +189,7 @@ class Catalog:
                         except recoverable as exc:
                             rejected.append({"bucket": bucket, "object_key": key, "error": str(exc) or type(exc).__name__})
         packs.sort(key=lambda pack: (str(pack["bucket"]), str(pack["object_key"])))
-        return {"schema_version": 1, "generated_at": datetime.now(timezone.utc).isoformat(), "buckets": list(self.buckets), "pack_count": len(packs), "packs": packs, "rejected_archives": rejected}
+        return {"schema_version": CATALOG_SCHEMA_VERSION, "generated_at": datetime.now(timezone.utc).isoformat(), "buckets": list(self.buckets), "pack_count": len(packs), "packs": packs, "rejected_archives": rejected}
 
 
 class Handler(BaseHTTPRequestHandler):

@@ -10,7 +10,7 @@ from types import MappingProxyType
 import pytest
 
 from bad_decisions.api import create_app
-from bad_decisions.models import BlackCard, WhiteCard
+from bad_decisions.models import Prompt, Answer
 from bad_decisions.packs import Registry
 from bad_decisions.peer_pressure import PeerPressureError, PeerPressureService
 from bad_decisions.peer_pressure import service as service_module
@@ -21,11 +21,11 @@ from fastapi.testclient import TestClient
 def multiplayer_registry() -> Registry:
     pack = make_pack(
         "party",
-        black=tuple(
-            BlackCard(id=f"q{index}", repr=f"Question {index}: _", template=f"Question {index}: {{}}", slots=1, pack="party")
+        prompts=tuple(
+            Prompt(id=f"q{index}", text=f"Question {index}: _", template=f"Question {index}: {{}}", slots=1, pack="party")
             for index in range(4)
         ),
-        white=tuple(WhiteCard(id=f"r{index}", text=f"Response {index}", pack="party") for index in range(40)),
+        answers=tuple(Answer(id=f"r{index}", text=f"Response {index}", pack="party") for index in range(40)),
     )
     return Registry(MappingProxyType({"party": pack}))
 
@@ -80,7 +80,7 @@ def test_private_hands_anonymous_judging_and_idempotent_score(tmp_path):
     assert service.sync("ohno", bob_id, bob_token)["state"]["judging"] is None
     judging = service.sync("ohno", alice_id, alice_token)["state"]["judging"]
     assert len(judging["decisions"]) == 2
-    assert all(set(decision) == {"submission_id", "responses"} for decision in judging["decisions"])
+    assert all(set(decision) == {"submission_id", "answers"} for decision in judging["decisions"])
     winning = judging["decisions"][0]["submission_id"]
     judged = service.judge("ohno", alice_id, alice_token, request(4), ready["revision"], winning)
     retried = service.judge("ohno", alice_id, alice_token, request(4), ready["revision"], winning)
@@ -367,7 +367,7 @@ def test_rooms_stream_cards_instead_of_copying_decks(tmp_path):
         tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         drawn = connection.execute("SELECT kind, COUNT(*) FROM drawn_cards GROUP BY kind").fetchall()
     assert "question_deck" not in tables and "response_deck" not in tables
-    assert dict(drawn) == {"question": 1, "response": 9}  # one question, three hands of three
+    assert dict(drawn) == {"prompt": 1, "answer": 9}  # one prompt, three hands of three
 
 
 def test_streamed_draws_never_repeat_and_report_exhaustion(tmp_path):
@@ -375,16 +375,16 @@ def test_streamed_draws_never_repeat_and_report_exhaustion(tmp_path):
     service.create_room("deck")
     connection = service._connect("deck")
     try:
-        keys = [key for _ in range(8) for key, _card in service._draw(connection, "response", 5)]
+        keys = [key for _ in range(8) for key, _card in service._draw(connection, "answer", 5)]
         assert len(keys) == len(set(keys)) == 40
         with pytest.raises(PeerPressureError) as exhausted:
-            service._draw(connection, "response", 1)
-        assert exhausted.value.reason == "response_deck_exhausted"
-        questions = [key for _ in range(4) for key, _card in service._draw(connection, "question", 1)]
-        assert len(set(questions)) == 4
-        with pytest.raises(PeerPressureError) as no_questions:
-            service._draw(connection, "question", 1)
-        assert no_questions.value.reason == "question_deck_exhausted"
+            service._draw(connection, "answer", 1)
+        assert exhausted.value.reason == "answer_deck_exhausted"
+        prompts = [key for _ in range(4) for key, _card in service._draw(connection, "prompt", 1)]
+        assert len(set(prompts)) == 4
+        with pytest.raises(PeerPressureError) as no_prompts:
+            service._draw(connection, "prompt", 1)
+        assert no_prompts.value.reason == "prompt_deck_exhausted"
     finally:
         connection.close()
 
@@ -392,8 +392,8 @@ def test_streamed_draws_never_repeat_and_report_exhaustion(tmp_path):
 def test_room_creation_cost_does_not_grow_with_the_registry(tmp_path):
     big = make_pack(
         "big",
-        black=tuple(BlackCard(id=f"q{i}", repr=f"Q{i} _", template=f"Q{i} {{}}", slots=1, pack="big") for i in range(2000)),
-        white=tuple(WhiteCard(id=f"r{i}", text=f"R{i}", pack="big") for i in range(8000)),
+        prompts=tuple(Prompt(id=f"q{i}", text=f"Q{i} _", template=f"Q{i} {{}}", slots=1, pack="big") for i in range(2000)),
+        answers=tuple(Answer(id=f"r{i}", text=f"R{i}", pack="big") for i in range(8000)),
     )
     service = PeerPressureService(tmp_path, Registry(MappingProxyType({"big": big})))
     service.create_room("huge")
@@ -402,35 +402,17 @@ def test_room_creation_cost_does_not_grow_with_the_registry(tmp_path):
     assert (tmp_path / "huge.sqlite3").stat().st_size < 128 * 1024
 
 
-def test_rooms_created_with_full_decks_are_upgraded_without_repeating_cards(tmp_path):
+@pytest.mark.parametrize("version", [0, 2])
+def test_rooms_from_older_servers_are_refused_not_migrated(tmp_path, version):
+    """Rooms are disposable: a 1.x room gets a clear 410 and expires on schedule."""
     service = PeerPressureService(tmp_path, multiplayer_registry(), hand_size=3)
     alice = service.join("legacy", "Alice", create=True)
-    path = tmp_path / "legacy.sqlite3"
-    with sqlite3.connect(path) as connection:  # rebuild the pre-streaming layout
-        connection.executescript("""
-            DROP TABLE drawn_cards;
-            CREATE TABLE question_deck(position INTEGER PRIMARY KEY, card_key TEXT NOT NULL, card_id TEXT NOT NULL, pack_id TEXT NOT NULL,
-              representation TEXT NOT NULL, template TEXT NOT NULL, slots INTEGER NOT NULL, drawn INTEGER NOT NULL DEFAULT 0);
-            CREATE TABLE response_deck(position INTEGER PRIMARY KEY, card_key TEXT NOT NULL, response_id TEXT NOT NULL, pack_id TEXT NOT NULL,
-              response_text TEXT NOT NULL, drawn INTEGER NOT NULL DEFAULT 0);
-            PRAGMA user_version=0;
-        """)
-        connection.executemany(
-            "INSERT INTO response_deck VALUES(?,?,?,?,?,?)",
-            [(i, f"party:r{i}", f"r{i}", "party", f"Response {i}", int(i < 30)) for i in range(40)],
-        )
-        connection.execute("INSERT INTO question_deck VALUES(0,'party:q0','q0','party','Q','{}',1,1)")
-    assert service.sync("legacy", *credentials(alice))["state"]["players"][0]["name"] == "Alice"
-    with sqlite3.connect(path) as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == service_module.SCHEMA_VERSION
-        assert connection.execute("SELECT COUNT(*) FROM drawn_cards WHERE kind='response'").fetchone()[0] == 30
-        assert not connection.execute("SELECT 1 FROM sqlite_master WHERE name='response_deck'").fetchone()
-    connection = service._connect("legacy")
-    try:
-        fresh = {key for key, _card in service._draw(connection, "response", 10)}
-    finally:
-        connection.close()
-    assert fresh == {f"party:r{i}" for i in range(30, 40)}
+    with sqlite3.connect(tmp_path / "legacy.sqlite3") as connection:
+        connection.execute(f"PRAGMA user_version={version}")
+    with pytest.raises(PeerPressureError) as refused:
+        service.sync("legacy", *credentials(alice))
+    assert (refused.value.reason, refused.value.status) == ("room_expired", 410)
+    assert "start a new room" in refused.value.message
 
 
 def test_room_creation_is_atomic_and_cleans_up(tmp_path, monkeypatch):

@@ -36,7 +36,7 @@ async function vote(choice) {
 const dealButton = document.querySelector("#deal");
 const statusElement = document.querySelector("#status");
 const roundElement = document.querySelector("#round");
-const blackElement = document.querySelector("#black");
+const promptElement = document.querySelector("#prompt");
 const answersElement = document.querySelector("#answers");
 const resultElement = document.querySelector("#result");
 const emptyRoundElement = document.querySelector("#empty-round");
@@ -94,7 +94,7 @@ function renderIndexedPackOptions() {
     const name = document.createElement("strong");
     name.textContent = pack.name;
     const counts = document.createElement("small");
-    counts.textContent = `${pack.id} · ${pack.counts.black} prompts · ${pack.counts.white} answers`;
+    counts.textContent = `${pack.id} · ${pack.counts.prompts} prompts · ${pack.counts.answers} answers`;
     text.append(name, counts);
     label.append(input, text);
     return label;
@@ -137,7 +137,7 @@ async function loadPacks() {
       input.value = pack.id;
       input.checked = true;
       const text = document.createElement("span");
-      text.textContent = `${pack.name} (${pack.counts.black}/${pack.counts.white})`;
+      text.textContent = `${pack.name} (${pack.counts.prompts}/${pack.counts.answers})`;
       label.append(input, text);
       input.addEventListener("change", updatePackSummary);
       return label;
@@ -166,8 +166,8 @@ async function deal() {
     const response = await fetch(`${apiUrl("round")}?packs=${encodeURIComponent(packs.join(","))}`, { headers: clientHeaders() });
     const body = await response.json();
     if (!response.ok) throw new Error(body.error?.message || "Round failed");
-    blackElement.textContent = body.black.repr;
-    answersElement.replaceChildren(...body.white.map((card) => {
+    promptElement.textContent = body.prompt.text;
+    answersElement.replaceChildren(...body.answers.map((card) => {
       const answer = document.createElement("p");
       answer.textContent = card.text;
       return answer;

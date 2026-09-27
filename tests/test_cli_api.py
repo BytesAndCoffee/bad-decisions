@@ -15,7 +15,7 @@ def run_cli(*args):
 
 
 def test_oneshot_is_clean_and_filters_work():
-    result = run_cli("--black-packs", "maha", "--white-packs", "base,maha", "--oneshot")
+    result = run_cli("--prompt-packs", "maha", "--answer-packs", "base,maha", "--oneshot")
     assert result.returncode == 0
     assert result.stdout.endswith("\n") and result.stdout.strip()
     assert result.stderr == ""
@@ -60,13 +60,13 @@ def test_api_success_metadata_and_cache():
         assert favicon.headers["content-type"].startswith("image/svg+xml")
         packs = client.get("/v1/packs").json()
         assert [p["id"] for p in packs] == ["base", "coffee", "maha"]
-        assert client.get("/v1/packs/coffee").json()["counts"] == {"black": 50, "white": 100}
-        assert client.get("/v1/packs/maha").json()["counts"] == {"black": 27, "white": 52}
-        response = client.get("/v1/round", params={"black_packs": "maha", "white_packs": "base,maha"})
+        assert client.get("/v1/packs/coffee").json()["counts"] == {"prompts": 50, "answers": 100}
+        assert client.get("/v1/packs/maha").json()["counts"] == {"prompts": 27, "answers": 52}
+        response = client.get("/v1/round", params={"prompt_packs": "maha", "answer_packs": "base,maha"})
         assert response.status_code == 200
         body = response.json()
-        assert body["black"]["pack"] == "maha"
-        assert body["selection"] == {"black_packs": ["maha"], "white_packs": ["base", "maha"]}
+        assert body["prompt"]["pack"] == "maha"
+        assert body["selection"] == {"prompt_packs": ["maha"], "answer_packs": ["base", "maha"]}
         assert response.headers["cache-control"] == "no-store"
         assert response.headers["x-request-id"]
 
@@ -102,7 +102,7 @@ def test_trailing_slash_redirects_keep_the_proxy_prefix(monkeypatch, root_path, 
 def test_api_normalized_errors():
     with TestClient(create_app()) as client:
         cases = [
-            ("/v1/round?black_packs=typo", 400, "unknown_pack"),
+            ("/v1/round?prompt_packs=typo", 400, "unknown_pack"),
             ("/v1/round?packs=base&packs=maha", 400, "repeated_query_parameter"),
             ("/v1/round?wat=x", 400, "unknown_query_parameter"),
             ("/v1/packs/nope", 404, "pack_not_found"),
@@ -130,7 +130,7 @@ def test_default_packs_work_without_base_in_custom_registry(tmp_path, monkeypatc
     with TestClient(create_app()) as client:
         response = client.get("/v1/round")
         assert response.status_code == 200
-        assert response.json()["selection"] == {"black_packs": ["maha"], "white_packs": ["maha"]}
+        assert response.json()["selection"] == {"prompt_packs": ["maha"], "answer_packs": ["maha"]}
         missing = client.get("/v1/round", params={"packs": "base"})
         assert missing.status_code == 400
         assert missing.json()["error"]["code"] == "unknown_pack"
@@ -154,8 +154,8 @@ def test_api_default_selects_every_bundled_pack():
     with TestClient(create_app()) as client:
         selection = client.get("/v1/round").json()["selection"]
         assert selection == {
-            "black_packs": ["base", "coffee", "maha"],
-            "white_packs": ["base", "coffee", "maha"],
+            "prompt_packs": ["base", "coffee", "maha"],
+            "answer_packs": ["base", "coffee", "maha"],
         }
 
 

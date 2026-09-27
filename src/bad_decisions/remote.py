@@ -86,8 +86,9 @@ def _catalog_entries(payload: bytes) -> Iterable[tuple[str, str]]:
         document = json.loads(payload)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise _error(f"invalid catalog JSON: {exc}") from exc
-    if not isinstance(document, dict) or document.get("schema_version") != 1 or not isinstance(document.get("packs"), list):
-        raise _error("catalog must be a schema_version 1 object with a packs list")
+    # Catalog schema 2 renamed the per-pack card counts, which this importer does not read.
+    if not isinstance(document, dict) or document.get("schema_version") not in (1, 2) or not isinstance(document.get("packs"), list):
+        raise _error("catalog must be a schema_version 1 or 2 object with a packs list")
     seen: set[str] = set()
     for item in document["packs"]:
         if not isinstance(item, dict):

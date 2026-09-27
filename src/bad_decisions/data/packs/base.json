@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "metadata": {
     "id": "base",
     "name": "Cards Against Humanity downloadable main game",
@@ -27,10 +27,10 @@
       "Layout-aware text extraction; line wrapping collapsed to spaces; printed underscore runs normalized to anonymous placeholders; prompts without printed blanks append answers on new lines."
     ]
   },
-  "black": [
+  "prompts": [
     {
       "id": "b001",
-      "repr": "Hey Reddit! I’m __________________. Ask me anything.",
+      "text": "Hey Reddit! I’m __________________. Ask me anything.",
       "template": "Hey Reddit! I’m {}. Ask me anything.",
       "slots": 1,
       "source_ref": "pdf:p15:r1:c1",
@@ -38,7 +38,7 @@
     },
     {
       "id": "b002",
-      "repr": "Introducing X-treme Baseball! It’s like baseball, but with __________!",
+      "text": "Introducing X-treme Baseball! It’s like baseball, but with __________!",
       "template": "Introducing X-treme Baseball! It’s like baseball, but with {}!",
       "slots": 1,
       "source_ref": "pdf:p15:r1:c2",
@@ -46,7 +46,7 @@
     },
     {
       "id": "b003",
-      "repr": "What is Batman’s guilty pleasure.",
+      "text": "What is Batman’s guilty pleasure.",
       "template": "What is Batman’s guilty pleasure.\n{}",
       "slots": 1,
       "source_ref": "pdf:p15:r1:c3",
@@ -54,7 +54,7 @@
     },
     {
       "id": "b004",
-      "repr": "TSA guidelines now prohibit __________________ on airplanes.",
+      "text": "TSA guidelines now prohibit __________________ on airplanes.",
       "template": "TSA guidelines now prohibit {} on airplanes.",
       "slots": 1,
       "source_ref": "pdf:p15:r1:c4",
@@ -62,7 +62,7 @@
     },
     {
       "id": "b005",
-      "repr": "When Pharaoh remained unmoved, Moses called down a Plague of __________________.",
+      "text": "When Pharaoh remained unmoved, Moses called down a Plague of __________________.",
       "template": "When Pharaoh remained unmoved, Moses called down a Plague of {}.",
       "slots": 1,
       "source_ref": "pdf:p15:r1:c5",
@@ -70,7 +70,7 @@
     },
     {
       "id": "b006",
-      "repr": "Just once, I’d like to hear you say “Thanks, Mom. Thanks for _________________.”",
+      "text": "Just once, I’d like to hear you say “Thanks, Mom. Thanks for _________________.”",
       "template": "Just once, I’d like to hear you say “Thanks, Mom. Thanks for {}.”",
       "slots": 1,
       "source_ref": "pdf:p15:r1:c6",
@@ -78,7 +78,7 @@
     },
     {
       "id": "b007",
-      "repr": "Daddy, why is mommy crying?",
+      "text": "Daddy, why is mommy crying?",
       "template": "Daddy, why is mommy crying?\n{}",
       "slots": 1,
       "source_ref": "pdf:p15:r1:c7",
@@ -86,7 +86,7 @@
     },
     {
       "id": "b008",
-      "repr": "When I was tripping on acid, __________________ turned into _________________.",
+      "text": "When I was tripping on acid, __________________ turned into _________________.",
       "template": "When I was tripping on acid, {} turned into {}.",
       "slots": 2,
       "source_ref": "pdf:p15:r1:c8",
@@ -94,7 +94,7 @@
     },
     {
       "id": "b009",
-      "repr": "Next from J.K. Rowling: Harry Potter and the Chamber of __________________.",
+      "text": "Next from J.K. Rowling: Harry Potter and the Chamber of __________________.",
       "template": "Next from J.K. Rowling: Harry Potter and the Chamber of {}.",
       "slots": 1,
       "source_ref": "pdf:p15:r2:c1",
@@ -102,7 +102,7 @@
     },
     {
       "id": "b010",
-      "repr": "That’s right, I killed _________________. How, you ask? _________________.",
+      "text": "That’s right, I killed _________________. How, you ask? _________________.",
       "template": "That’s right, I killed {}. How, you ask? {}.",
       "slots": 2,
       "source_ref": "pdf:p15:r2:c2",
@@ -110,7 +110,7 @@
     },
     {
       "id": "b011",
-      "repr": "I’m sorry, Professor, but I couldn’t complete my homework because of __________.",
+      "text": "I’m sorry, Professor, but I couldn’t complete my homework because of __________.",
       "template": "I’m sorry, Professor, but I couldn’t complete my homework because of {}.",
       "slots": 1,
       "source_ref": "pdf:p15:r2:c3",
@@ -118,7 +118,7 @@
     },
     {
       "id": "b012",
-      "repr": "And the Academy Award for __________________ goes to __________.",
+      "text": "And the Academy Award for __________________ goes to __________.",
       "template": "And the Academy Award for {} goes to {}.",
       "slots": 2,
       "source_ref": "pdf:p15:r2:c4",
@@ -126,7 +126,7 @@
     },
     {
       "id": "b013",
-      "repr": "50% of all marriages end in __________________.",
+      "text": "50% of all marriages end in __________________.",
       "template": "50% of all marriages end in {}.",
       "slots": 1,
       "source_ref": "pdf:p15:r2:c5",
@@ -134,7 +134,7 @@
     },
     {
       "id": "b014",
-      "repr": "My fellow Americans: Before this decade is out, we will have __________________ on the moon!",
+      "text": "My fellow Americans: Before this decade is out, we will have __________________ on the moon!",
       "template": "My fellow Americans: Before this decade is out, we will have {} on the moon!",
       "slots": 1,
       "source_ref": "pdf:p15:r2:c6",
@@ -142,7 +142,7 @@
     },
     {
       "id": "b015",
-      "repr": "This season at Steppenwolf, Samuel Beckett’s classic existential play: Waiting for __________________.",
+      "text": "This season at Steppenwolf, Samuel Beckett’s classic existential play: Waiting for __________________.",
       "template": "This season at Steppenwolf, Samuel Beckett’s classic existential play: Waiting for {}.",
       "slots": 1,
       "source_ref": "pdf:p15:r2:c7",
@@ -150,7 +150,7 @@
     },
     {
       "id": "b016",
-      "repr": "Instead of coal, Santa now gives the bad children __________________.",
+      "text": "Instead of coal, Santa now gives the bad children __________________.",
       "template": "Instead of coal, Santa now gives the bad children {}.",
       "slots": 1,
       "source_ref": "pdf:p15:r2:c8",
@@ -158,7 +158,7 @@
     },
     {
       "id": "b017",
-      "repr": "Dude, do not go in that bathroom. There’s __________ in there.",
+      "text": "Dude, do not go in that bathroom. There’s __________ in there.",
       "template": "Dude, do not go in that bathroom. There’s {} in there.",
       "slots": 1,
       "source_ref": "pdf:p15:r3:c1",
@@ -166,7 +166,7 @@
     },
     {
       "id": "b018",
-      "repr": "How did I lose my virginity?",
+      "text": "How did I lose my virginity?",
       "template": "How did I lose my virginity?\n{}",
       "slots": 1,
       "source_ref": "pdf:p15:r3:c2",
@@ -174,7 +174,7 @@
     },
     {
       "id": "b019",
-      "repr": "It’s a pity that kids these days are all getting involved with _____________.",
+      "text": "It’s a pity that kids these days are all getting involved with _____________.",
       "template": "It’s a pity that kids these days are all getting involved with {}.",
       "slots": 1,
       "source_ref": "pdf:p15:r3:c3",
@@ -182,7 +182,7 @@
     },
     {
       "id": "b020",
-      "repr": "Step 1: __________. Step 2: __________. Step 3: Profit.",
+      "text": "Step 1: __________. Step 2: __________. Step 3: Profit.",
       "template": "Step 1: {}. Step 2: {}. Step 3: Profit.",
       "slots": 2,
       "source_ref": "pdf:p15:r3:c4",
@@ -190,7 +190,7 @@
     },
     {
       "id": "b021",
-      "repr": "Life for American Indians was forever changed when the White Man introduced them to __________________.",
+      "text": "Life for American Indians was forever changed when the White Man introduced them to __________________.",
       "template": "Life for American Indians was forever changed when the White Man introduced them to {}.",
       "slots": 1,
       "source_ref": "pdf:p15:r3:c5",
@@ -198,7 +198,7 @@
     },
     {
       "id": "b022",
-      "repr": "What’s Teach For America using to inspire inner city students to succeed?",
+      "text": "What’s Teach For America using to inspire inner city students to succeed?",
       "template": "What’s Teach For America using to inspire inner city students to succeed?\n{}",
       "slots": 1,
       "source_ref": "pdf:p15:r3:c6",
@@ -206,7 +206,7 @@
     },
     {
       "id": "b023",
-      "repr": "Mabe she’s born with it. Maybe it’s __________________.",
+      "text": "Mabe she’s born with it. Maybe it’s __________________.",
       "template": "Mabe she’s born with it. Maybe it’s {}.",
       "slots": 1,
       "source_ref": "pdf:p15:r3:c7",
@@ -214,7 +214,7 @@
     },
     {
       "id": "b024",
-      "repr": "What is George W. Bush thinking about right now?",
+      "text": "What is George W. Bush thinking about right now?",
       "template": "What is George W. Bush thinking about right now?\n{}",
       "slots": 1,
       "source_ref": "pdf:p15:r3:c8",
@@ -222,7 +222,7 @@
     },
     {
       "id": "b025",
-      "repr": "_________________. Betcha can’t have just one!",
+      "text": "_________________. Betcha can’t have just one!",
       "template": "{}. Betcha can’t have just one!",
       "slots": 1,
       "source_ref": "pdf:p15:r4:c1",
@@ -230,7 +230,7 @@
     },
     {
       "id": "b026",
-      "repr": "Kids, I don’t need drugs to get high. I’m high on __________.",
+      "text": "Kids, I don’t need drugs to get high. I’m high on __________.",
       "template": "Kids, I don’t need drugs to get high. I’m high on {}.",
       "slots": 1,
       "source_ref": "pdf:p15:r4:c2",
@@ -238,7 +238,7 @@
     },
     {
       "id": "b027",
-      "repr": "For my next trick, I will pull __________ out of ___________.",
+      "text": "For my next trick, I will pull __________ out of ___________.",
       "template": "For my next trick, I will pull {} out of {}.",
       "slots": 2,
       "source_ref": "pdf:p15:r4:c3",
@@ -246,7 +246,7 @@
     },
     {
       "id": "b028",
-      "repr": "While the United States raced the Soviet Union to the moon, the Mexican government funneled millions of pesos into research on _____________________.",
+      "text": "While the United States raced the Soviet Union to the moon, the Mexican government funneled millions of pesos into research on _____________________.",
       "template": "While the United States raced the Soviet Union to the moon, the Mexican government funneled millions of pesos into research on {}.",
       "slots": 1,
       "source_ref": "pdf:p15:r4:c4",
@@ -254,7 +254,7 @@
     },
     {
       "id": "b029",
-      "repr": "White people like __________________.",
+      "text": "White people like __________________.",
       "template": "White people like {}.",
       "slots": 1,
       "source_ref": "pdf:p15:r4:c5",
@@ -262,7 +262,7 @@
     },
     {
       "id": "b030",
-      "repr": "__________________ is a slippery slope that leads to _________________.",
+      "text": "__________________ is a slippery slope that leads to _________________.",
       "template": "{} is a slippery slope that leads to {}.",
       "slots": 2,
       "source_ref": "pdf:p15:r4:c6",
@@ -270,7 +270,7 @@
     },
     {
       "id": "b031",
-      "repr": "Why do I hurt all over?",
+      "text": "Why do I hurt all over?",
       "template": "Why do I hurt all over?\n{}",
       "slots": 1,
       "source_ref": "pdf:p15:r4:c7",
@@ -278,7 +278,7 @@
     },
     {
       "id": "b032",
-      "repr": "A romantic, candlelit dinner would be incomplete without __________________.",
+      "text": "A romantic, candlelit dinner would be incomplete without __________________.",
       "template": "A romantic, candlelit dinner would be incomplete without {}.",
       "slots": 1,
       "source_ref": "pdf:p15:r4:c8",
@@ -286,7 +286,7 @@
     },
     {
       "id": "b033",
-      "repr": "In the Disney Channel Original Movie, Hannah Montana struggles with _____________ for the first time.",
+      "text": "In the Disney Channel Original Movie, Hannah Montana struggles with _____________ for the first time.",
       "template": "In the Disney Channel Original Movie, Hannah Montana struggles with {} for the first time.",
       "slots": 1,
       "source_ref": "pdf:p15:r5:c1",
@@ -294,7 +294,7 @@
     },
     {
       "id": "b034",
-      "repr": "What’s my secret power?",
+      "text": "What’s my secret power?",
       "template": "What’s my secret power?\n{}",
       "slots": 1,
       "source_ref": "pdf:p15:r5:c2",
@@ -302,7 +302,7 @@
     },
     {
       "id": "b035",
-      "repr": "I’m going on a cleanse this week. Nothing but kale juice and __________________.",
+      "text": "I’m going on a cleanse this week. Nothing but kale juice and __________________.",
       "template": "I’m going on a cleanse this week. Nothing but kale juice and {}.",
       "slots": 1,
       "source_ref": "pdf:p15:r5:c3",
@@ -310,7 +310,7 @@
     },
     {
       "id": "b036",
-      "repr": "________ + ________ = ________________.",
+      "text": "________ + ________ = ________________.",
       "template": "{} + {} = {}.",
       "slots": 3,
       "source_ref": "pdf:p15:r5:c4",
@@ -318,7 +318,7 @@
     },
     {
       "id": "b037",
-      "repr": "Just saw this upsetting video! Please retweet!! #stop_____________",
+      "text": "Just saw this upsetting video! Please retweet!! #stop_____________",
       "template": "Just saw this upsetting video! Please retweet!! #stop{}",
       "slots": 1,
       "source_ref": "pdf:p15:r5:c5",
@@ -326,7 +326,7 @@
     },
     {
       "id": "b038",
-      "repr": "Fun tip! When your man asks you to go down on him, try surprising him with __________________ instead.",
+      "text": "Fun tip! When your man asks you to go down on him, try surprising him with __________________ instead.",
       "template": "Fun tip! When your man asks you to go down on him, try surprising him with {} instead.",
       "slots": 1,
       "source_ref": "pdf:p15:r5:c6",
@@ -334,7 +334,7 @@
     },
     {
       "id": "b039",
-      "repr": "The class field trip was completely ruined by __________________.",
+      "text": "The class field trip was completely ruined by __________________.",
       "template": "The class field trip was completely ruined by {}.",
       "slots": 1,
       "source_ref": "pdf:p15:r5:c7",
@@ -342,7 +342,7 @@
     },
     {
       "id": "b040",
-      "repr": "What’s a girl’s best friend?",
+      "text": "What’s a girl’s best friend?",
       "template": "What’s a girl’s best friend?\n{}",
       "slots": 1,
       "source_ref": "pdf:p15:r5:c8",
@@ -350,7 +350,7 @@
     },
     {
       "id": "b041",
-      "repr": "Dear Abby, I’m having some trouble with __________________ and would like your advice.",
+      "text": "Dear Abby, I’m having some trouble with __________________ and would like your advice.",
       "template": "Dear Abby, I’m having some trouble with {} and would like your advice.",
       "slots": 1,
       "source_ref": "pdf:p16:r1:c1",
@@ -358,7 +358,7 @@
     },
     {
       "id": "b042",
-      "repr": "In M. Night Shyamalan’s new movie, Bruce Willis discovers that __________had really been _______________ all along.",
+      "text": "In M. Night Shyamalan’s new movie, Bruce Willis discovers that __________had really been _______________ all along.",
       "template": "In M. Night Shyamalan’s new movie, Bruce Willis discovers that {}had really been {} all along.",
       "slots": 2,
       "source_ref": "pdf:p16:r1:c2",
@@ -366,7 +366,7 @@
     },
     {
       "id": "b043",
-      "repr": "When I am President, I will create the Department of __________________.",
+      "text": "When I am President, I will create the Department of __________________.",
       "template": "When I am President, I will create the Department of {}.",
       "slots": 1,
       "source_ref": "pdf:p16:r1:c3",
@@ -374,7 +374,7 @@
     },
     {
       "id": "b044",
-      "repr": "What are my parents hiding from me?",
+      "text": "What are my parents hiding from me?",
       "template": "What are my parents hiding from me?\n{}",
       "slots": 1,
       "source_ref": "pdf:p16:r1:c4",
@@ -382,7 +382,7 @@
     },
     {
       "id": "b045",
-      "repr": "I’m no doctor but I’m pretty sure what you’re suffering from is called “__________.”",
+      "text": "I’m no doctor but I’m pretty sure what you’re suffering from is called “__________.”",
       "template": "I’m no doctor but I’m pretty sure what you’re suffering from is called “{}.”",
       "slots": 1,
       "source_ref": "pdf:p16:r1:c5",
@@ -390,7 +390,7 @@
     },
     {
       "id": "b046",
-      "repr": "What’s there a ton of in heaven?",
+      "text": "What’s there a ton of in heaven?",
       "template": "What’s there a ton of in heaven?\n{}",
       "slots": 1,
       "source_ref": "pdf:p16:r1:c6",
@@ -398,7 +398,7 @@
     },
     {
       "id": "b047",
-      "repr": "After four platinum albums and three Grammys, it’s time to get back to my roots, to what inspired me to make music in the first place: __________.",
+      "text": "After four platinum albums and three Grammys, it’s time to get back to my roots, to what inspired me to make music in the first place: __________.",
       "template": "After four platinum albums and three Grammys, it’s time to get back to my roots, to what inspired me to make music in the first place: {}.",
       "slots": 1,
       "source_ref": "pdf:p16:r1:c7",
@@ -406,7 +406,7 @@
     },
     {
       "id": "b048",
-      "repr": "What will always get you laid?",
+      "text": "What will always get you laid?",
       "template": "What will always get you laid?\n{}",
       "slots": 1,
       "source_ref": "pdf:p16:r1:c8",
@@ -414,7 +414,7 @@
     },
     {
       "id": "b049",
-      "repr": "What never fails to liven up the party?",
+      "text": "What never fails to liven up the party?",
       "template": "What never fails to liven up the party?\n{}",
       "slots": 1,
       "source_ref": "pdf:p16:r2:c1",
@@ -422,7 +422,7 @@
     },
     {
       "id": "b050",
-      "repr": "IF you like __________________, YOU MIGHT BE A REDNECK.",
+      "text": "IF you like __________________, YOU MIGHT BE A REDNECK.",
       "template": "IF you like {}, YOU MIGHT BE A REDNECK.",
       "slots": 1,
       "source_ref": "pdf:p16:r2:c2",
@@ -430,7 +430,7 @@
     },
     {
       "id": "b051",
-      "repr": "Make a haiku.",
+      "text": "Make a haiku.",
       "template": "Make a haiku.\n{}",
       "slots": 1,
       "source_ref": "pdf:p16:r2:c3",
@@ -438,7 +438,7 @@
     },
     {
       "id": "b052",
-      "repr": "What made my first kiss so awkward?",
+      "text": "What made my first kiss so awkward?",
       "template": "What made my first kiss so awkward?\n{}",
       "slots": 1,
       "source_ref": "pdf:p16:r2:c4",
@@ -446,7 +446,7 @@
     },
     {
       "id": "b053",
-      "repr": "They said we were crazy. They said we couldn’t put __________________ inside of _________. They were wrong.",
+      "text": "They said we were crazy. They said we couldn’t put __________________ inside of _________. They were wrong.",
       "template": "They said we were crazy. They said we couldn’t put {} inside of {}. They were wrong.",
       "slots": 2,
       "source_ref": "pdf:p16:r2:c5",
@@ -454,7 +454,7 @@
     },
     {
       "id": "b054",
-      "repr": "Lifetime ® presents “_________________: the Story of _________________.”",
+      "text": "Lifetime ® presents “_________________: the Story of _________________.”",
       "template": "Lifetime ® presents “{}: the Story of {}.”",
       "slots": 2,
       "source_ref": "pdf:p16:r2:c6",
@@ -462,7 +462,7 @@
     },
     {
       "id": "b055",
-      "repr": "__________________: kid-tested, mother-approved.",
+      "text": "__________________: kid-tested, mother-approved.",
       "template": "{}: kid-tested, mother-approved.",
       "slots": 1,
       "source_ref": "pdf:p16:r2:c7",
@@ -470,7 +470,7 @@
     },
     {
       "id": "b056",
-      "repr": "Why can’t I sleep at night?",
+      "text": "Why can’t I sleep at night?",
       "template": "Why can’t I sleep at night?\n{}",
       "slots": 1,
       "source_ref": "pdf:p16:r2:c8",
@@ -478,7 +478,7 @@
     },
     {
       "id": "b057",
-      "repr": "Hey guys, welcome to Chili’s! Would you like to start the night off right with _________________?",
+      "text": "Hey guys, welcome to Chili’s! Would you like to start the night off right with _________________?",
       "template": "Hey guys, welcome to Chili’s! Would you like to start the night off right with {}?",
       "slots": 1,
       "source_ref": "pdf:p16:r3:c1",
@@ -486,7 +486,7 @@
     },
     {
       "id": "b058",
-      "repr": "I got 99 problems but _______________ ain’t one.",
+      "text": "I got 99 problems but _______________ ain’t one.",
       "template": "I got 99 problems but {} ain’t one.",
       "slots": 1,
       "source_ref": "pdf:p16:r3:c2",
@@ -494,7 +494,7 @@
     },
     {
       "id": "b059",
-      "repr": "__________________. It’s a trap!",
+      "text": "__________________. It’s a trap!",
       "template": "{}. It’s a trap!",
       "slots": 1,
       "source_ref": "pdf:p16:r3:c3",
@@ -502,7 +502,7 @@
     },
     {
       "id": "b060",
-      "repr": "Bravo’s new reality show features eight washed-up celebrities living with _____________.",
+      "text": "Bravo’s new reality show features eight washed-up celebrities living with _____________.",
       "template": "Bravo’s new reality show features eight washed-up celebrities living with {}.",
       "slots": 1,
       "source_ref": "pdf:p16:r3:c4",
@@ -510,7 +510,7 @@
     },
     {
       "id": "b061",
-      "repr": "What’s that smell?",
+      "text": "What’s that smell?",
       "template": "What’s that smell?\n{}",
       "slots": 1,
       "source_ref": "pdf:p16:r3:c5",
@@ -518,7 +518,7 @@
     },
     {
       "id": "b062",
-      "repr": "After eight years in the White House, how is Obama finally letting loose?",
+      "text": "After eight years in the White House, how is Obama finally letting loose?",
       "template": "After eight years in the White House, how is Obama finally letting loose?\n{}",
       "slots": 1,
       "source_ref": "pdf:p16:r3:c6",
@@ -526,7 +526,7 @@
     },
     {
       "id": "b063",
-      "repr": "This is the way the world ends This is the way the world ends Not with a bang but with __________________.",
+      "text": "This is the way the world ends This is the way the world ends Not with a bang but with __________________.",
       "template": "This is the way the world ends This is the way the world ends Not with a bang but with {}.",
       "slots": 1,
       "source_ref": "pdf:p16:r3:c7",
@@ -534,7 +534,7 @@
     },
     {
       "id": "b064",
-      "repr": "Coming to Broadway this season, __________________: The Musical.",
+      "text": "Coming to Broadway this season, __________________: The Musical.",
       "template": "Coming to Broadway this season, {}: The Musical.",
       "slots": 1,
       "source_ref": "pdf:p16:r3:c8",
@@ -542,7 +542,7 @@
     },
     {
       "id": "b065",
-      "repr": "What would grandma find disturbing, yet oddly charming?",
+      "text": "What would grandma find disturbing, yet oddly charming?",
       "template": "What would grandma find disturbing, yet oddly charming?\n{}",
       "slots": 1,
       "source_ref": "pdf:p16:r4:c1",
@@ -550,7 +550,7 @@
     },
     {
       "id": "b066",
-      "repr": "__________________. That was so metal.",
+      "text": "__________________. That was so metal.",
       "template": "{}. That was so metal.",
       "slots": 1,
       "source_ref": "pdf:p16:r4:c2",
@@ -558,7 +558,7 @@
     },
     {
       "id": "b067",
-      "repr": "I never truly understood __________________ until I encountered _________________.",
+      "text": "I never truly understood __________________ until I encountered _________________.",
       "template": "I never truly understood {} until I encountered {}.",
       "slots": 2,
       "source_ref": "pdf:p16:r4:c3",
@@ -566,7 +566,7 @@
     },
     {
       "id": "b068",
-      "repr": "During sex, I like to think about __________________.",
+      "text": "During sex, I like to think about __________________.",
       "template": "During sex, I like to think about {}.",
       "slots": 1,
       "source_ref": "pdf:p16:r4:c4",
@@ -574,7 +574,7 @@
     },
     {
       "id": "b069",
-      "repr": "Here is the church Here is the steeple Open the doors And there is __________________.",
+      "text": "Here is the church Here is the steeple Open the doors And there is __________________.",
       "template": "Here is the church Here is the steeple Open the doors And there is {}.",
       "slots": 1,
       "source_ref": "pdf:p16:r4:c5",
@@ -582,7 +582,7 @@
     },
     {
       "id": "b070",
-      "repr": "But before I kill you, Mr. Bond, I must show you __________________.",
+      "text": "But before I kill you, Mr. Bond, I must show you __________________.",
       "template": "But before I kill you, Mr. Bond, I must show you {}.",
       "slots": 1,
       "source_ref": "pdf:p16:r4:c6",
@@ -590,7 +590,7 @@
     },
     {
       "id": "b071",
-      "repr": "A recent laboratory study shows that undergraduates have 50% less sex after being exposed to ___________________.",
+      "text": "A recent laboratory study shows that undergraduates have 50% less sex after being exposed to ___________________.",
       "template": "A recent laboratory study shows that undergraduates have 50% less sex after being exposed to {}.",
       "slots": 1,
       "source_ref": "pdf:p16:r4:c7",
@@ -598,7 +598,7 @@
     },
     {
       "id": "b072",
-      "repr": "Introducing the amazing superhero/sidekick duo! It’s __________ and _____________!",
+      "text": "Introducing the amazing superhero/sidekick duo! It’s __________ and _____________!",
       "template": "Introducing the amazing superhero/sidekick duo! It’s {} and {}!",
       "slots": 2,
       "source_ref": "pdf:p16:r4:c8",
@@ -606,7 +606,7 @@
     },
     {
       "id": "b073",
-      "repr": "What ended my last relationship?",
+      "text": "What ended my last relationship?",
       "template": "What ended my last relationship?\n{}",
       "slots": 1,
       "source_ref": "pdf:p16:r5:c1",
@@ -614,7 +614,7 @@
     },
     {
       "id": "b074",
-      "repr": "What’s that sound?",
+      "text": "What’s that sound?",
       "template": "What’s that sound?\n{}",
       "slots": 1,
       "source_ref": "pdf:p16:r5:c2",
@@ -622,7 +622,7 @@
     },
     {
       "id": "b075",
-      "repr": "Uh, hey guys, I know this was my idea, but I’m having serious doubts about ____________.",
+      "text": "Uh, hey guys, I know this was my idea, but I’m having serious doubts about ____________.",
       "template": "Uh, hey guys, I know this was my idea, but I’m having serious doubts about {}.",
       "slots": 1,
       "source_ref": "pdf:p16:r5:c3",
@@ -630,7 +630,7 @@
     },
     {
       "id": "b076",
-      "repr": "Why am I sticky?",
+      "text": "Why am I sticky?",
       "template": "Why am I sticky?\n{}",
       "slots": 1,
       "source_ref": "pdf:p16:r5:c4",
@@ -638,7 +638,7 @@
     },
     {
       "id": "b077",
-      "repr": "Next on ESPN2: The World Series of __________________.",
+      "text": "Next on ESPN2: The World Series of __________________.",
       "template": "Next on ESPN2: The World Series of {}.",
       "slots": 1,
       "source_ref": "pdf:p16:r5:c5",
@@ -646,7 +646,7 @@
     },
     {
       "id": "b078",
-      "repr": "When I am a billionaire, I shall erect a 50-foot statue to commemorate __________________.",
+      "text": "When I am a billionaire, I shall erect a 50-foot statue to commemorate __________________.",
       "template": "When I am a billionaire, I shall erect a 50-foot statue to commemorate {}.",
       "slots": 1,
       "source_ref": "pdf:p16:r5:c6",
@@ -654,7 +654,7 @@
     },
     {
       "id": "b079",
-      "repr": "Military historians remember Alexander the Great for his brilliant use of ____________________ against the Persians.",
+      "text": "Military historians remember Alexander the Great for his brilliant use of ____________________ against the Persians.",
       "template": "Military historians remember Alexander the Great for his brilliant use of {} against the Persians.",
       "slots": 1,
       "source_ref": "pdf:p16:r5:c7",
@@ -662,14 +662,14 @@
     },
     {
       "id": "b080",
-      "repr": "War! What is it good for?",
+      "text": "War! What is it good for?",
       "template": "War! What is it good for?\n{}",
       "slots": 1,
       "source_ref": "pdf:p16:r5:c8",
       "pack": "base"
     }
   ],
-  "white": [
+  "answers": [
     {
       "id": "w001",
       "text": "Silence.",

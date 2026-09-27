@@ -10,7 +10,7 @@ import zipfile
 from pathlib import Path
 
 from bad_decisions.archive import export_pack
-from bad_decisions.models import Pack
+from bad_decisions.models import PACK_SCHEMA_VERSION, Pack
 
 LEGACY_DECK_MEMBER = "bytesandcoffee-pack-v2.json"
 LICENSE_URL = "https://creativecommons.org/licenses/by-sa/4.0/"
@@ -32,8 +32,8 @@ def load_legacy(path: Path) -> tuple[dict, bytes]:
 def convert(legacy: dict, source_sha256: str) -> Pack:
     if not isinstance(legacy.get("cards"), list) or not isinstance(legacy.get("counts"), dict):
         raise ValueError("legacy deck must contain cards and counts")
-    black: list[dict] = []
-    white: list[dict] = []
+    prompts: list[dict] = []
+    answers: list[dict] = []
     for row in legacy["cards"]:
         if not isinstance(row, dict) or row.get("type") not in {"black", "white"}:
             raise ValueError("legacy deck contains an invalid card type")
@@ -49,10 +49,11 @@ def convert(legacy: dict, source_sha256: str) -> Pack:
             pick = row.get("pick")
             if type(pick) is not int or pick < 1 or text.count("____") != pick:
                 raise ValueError(f"legacy black card {original_id!r} has invalid blanks")
-            black.append(
+            prompts.append(
                 {
-                    "id": f"coffee-black-{len(black) + 1:03d}",
-                    "repr": text,
+                    # IDs predate the prompt/answer rename; they stay stable card references.
+                    "id": f"coffee-black-{len(prompts) + 1:03d}",
+                    "text": text,
                     "template": text.replace("____", "{}"),
                     "slots": pick,
                     "pack": "coffee",
@@ -60,18 +61,18 @@ def convert(legacy: dict, source_sha256: str) -> Pack:
                 }
             )
         else:
-            white.append(
+            answers.append(
                 {
-                    "id": f"coffee-white-{len(white) + 1:03d}",
+                    "id": f"coffee-white-{len(answers) + 1:03d}",
                     "text": text,
                     "pack": "coffee",
                     "source_ref": source_ref,
                 }
             )
-    if legacy["counts"] != {"black": len(black), "white": len(white)}:
+    if legacy["counts"] != {"black": len(prompts), "white": len(answers)}:  # the legacy format's own names
         raise ValueError("legacy declared counts do not match its cards")
     raw = {
-        "schema_version": 1,
+        "schema_version": PACK_SCHEMA_VERSION,
         "metadata": {
             "id": "coffee",
             "name": str(legacy.get("title", "Cards Against Coffee")),
@@ -97,8 +98,8 @@ def convert(legacy: dict, source_sha256: str) -> Pack:
                 "Raw IRC message corpus and source-message bodies intentionally excluded; only compact source references remain.",
             ],
         },
-        "black": black,
-        "white": white,
+        "prompts": prompts,
+        "answers": answers,
     }
     return Pack.model_validate(raw)
 
@@ -115,7 +116,7 @@ def main() -> int:
     args.output_json.write_text(json.dumps(pack.model_dump(mode="json"), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     if args.archive:
         export_pack(pack, args.archive)
-    print(f"converted {len(pack.black)} black and {len(pack.white)} white cards to {args.output_json}")
+    print(f"converted {len(pack.prompts)} prompts and {len(pack.answers)} answers to {args.output_json}")
     return 0
 
 

@@ -17,7 +17,7 @@ from bad_decisions import operations
 from bad_decisions import archive as archive_module
 from bad_decisions import remote as remote_module
 from bad_decisions.archive import _pack_payload, export_pack
-from bad_decisions.models import ID_PATTERN, BlackCard, Pack, WhiteCard
+from bad_decisions.models import ID_PATTERN, Prompt, Pack, Answer
 from bad_decisions.packs import load_registry
 from conftest import make_pack
 
@@ -37,8 +37,8 @@ GROUP = grp.getgrgid(os.getgid()).gr_name
 def pack(pack_id: str, *, cards: int = 3) -> Pack:
     return make_pack(
         pack_id,
-        black=tuple(BlackCard(id=f"b{i}", repr=f"Q{i} _", template=f"Q{i} {{}}", slots=1, pack=pack_id) for i in range(cards)),
-        white=tuple(WhiteCard(id=f"w{i}", text=f"A{i}", pack=pack_id) for i in range(cards * 2)),
+        prompts=tuple(Prompt(id=f"b{i}", text=f"Q{i} _", template=f"Q{i} {{}}", slots=1, pack=pack_id) for i in range(cards)),
+        answers=tuple(Answer(id=f"w{i}", text=f"A{i}", pack=pack_id) for i in range(cards * 2)),
     )
 
 

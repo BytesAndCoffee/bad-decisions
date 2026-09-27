@@ -4,7 +4,7 @@ import random
 from typing import Protocol, Sequence
 
 from .errors import RenderError
-from .models import BlackCard, PackProvenance, Round, WhiteCard
+from .models import Answer, PackProvenance, Prompt, Round
 from .packs import Registry, ResolvedPools
 
 
@@ -13,24 +13,24 @@ class RandomLike(Protocol):
     def sample(self, population: Sequence, k: int): ...
 
 
-def render_round(black_card: BlackCard, answers: Sequence[str]) -> str:
-    if len(answers) != black_card.slots:
-        raise RenderError(f"Expected {black_card.slots} answer(s), got {len(answers)}")
-    return black_card.template.format(*answers)
+def render_round(prompt: Prompt, answers: Sequence[str]) -> str:
+    if len(answers) != prompt.slots:
+        raise RenderError(f"Expected {prompt.slots} answer(s), got {len(answers)}")
+    return prompt.template.format(*answers)
 
 
 def generate_random_round(
-    black_pool: Sequence[BlackCard],
-    white_pool: Sequence[WhiteCard],
+    prompt_pool: Sequence[Prompt],
+    answer_pool: Sequence[Answer],
     *,
     registry: Registry,
     selection,
     rng: RandomLike | None = None,
 ) -> Round:
     chooser = rng or random.SystemRandom()
-    black = chooser.choice(black_pool)
-    white = tuple(chooser.sample(white_pool, black.slots))
-    represented = sorted({black.pack, *(card.pack for card in white)})
+    prompt = chooser.choice(prompt_pool)
+    answers = tuple(chooser.sample(answer_pool, prompt.slots))
+    represented = sorted({prompt.pack, *(card.pack for card in answers)})
     provenance = {
         pack_id: PackProvenance(
             version=registry.packs[pack_id].metadata.version,
@@ -42,9 +42,9 @@ def generate_random_round(
         for pack_id in represented
     }
     return Round(
-        black=black,
-        white=white,
-        result=render_round(black, [card.text for card in white]),
+        prompt=prompt,
+        answers=answers,
+        result=render_round(prompt, [card.text for card in answers]),
         selection=selection,
         provenance=provenance,
     )
@@ -52,5 +52,5 @@ def generate_random_round(
 
 def generate_from_resolved(resolved: ResolvedPools, registry: Registry, *, rng: RandomLike | None = None) -> Round:
     return generate_random_round(
-        resolved.black, resolved.white, registry=registry, selection=resolved.selection, rng=rng
+        resolved.prompts, resolved.answers, registry=registry, selection=resolved.selection, rng=rng
     )

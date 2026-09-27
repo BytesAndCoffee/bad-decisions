@@ -4,11 +4,11 @@ from types import MappingProxyType
 
 import pytest
 
-from bad_decisions.models import BlackCard, Pack, PackMetadata, Source, WhiteCard
+from bad_decisions.models import PACK_SCHEMA_VERSION, Answer, Pack, PackMetadata, Prompt, Source
 from bad_decisions.packs import Registry
 
 
-def make_pack(pack_id: str, *, black=(), white=()) -> Pack:
+def make_pack(pack_id: str, *, prompts=(), answers=()) -> Pack:
     metadata = PackMetadata(
         id=pack_id,
         name=f"{pack_id} pack",
@@ -24,26 +24,26 @@ def make_pack(pack_id: str, *, black=(), white=()) -> Pack:
         sources=(Source(origin="tests"),),
         modifications=(),
     )
-    return Pack(schema_version=1, metadata=metadata, black=tuple(black), white=tuple(white))
+    return Pack(schema_version=PACK_SCHEMA_VERSION, metadata=metadata, prompts=tuple(prompts), answers=tuple(answers))
 
 
 @pytest.fixture
 def registry() -> Registry:
     a = make_pack(
         "a",
-        black=(BlackCard(id="b1", repr="One _", template="One {}", slots=1, pack="a"),),
-        white=(
-            WhiteCard(id="w1", text="α", pack="a"),
-            WhiteCard(id="w2", text="same", pack="a"),
+        prompts=(Prompt(id="b1", text="One _", template="One {}", slots=1, pack="a"),),
+        answers=(
+            Answer(id="w1", text="α", pack="a"),
+            Answer(id="w2", text="same", pack="a"),
         ),
     )
     b = make_pack(
         "b",
-        black=(BlackCard(id="b1", repr="Two _ _", template="Two {} {}", slots=2, pack="b"),),
-        white=(
-            WhiteCard(id="w1", text="same", pack="b"),
-            WhiteCard(id="w2", text="β", pack="b"),
-            WhiteCard(id="w3", text="γ", pack="b"),
+        prompts=(Prompt(id="b1", text="Two _ _", template="Two {} {}", slots=2, pack="b"),),
+        answers=(
+            Answer(id="w1", text="same", pack="b"),
+            Answer(id="w2", text="β", pack="b"),
+            Answer(id="w3", text="γ", pack="b"),
         ),
     )
     return Registry(MappingProxyType({"a": a, "b": b}))

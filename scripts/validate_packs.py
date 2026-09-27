@@ -13,7 +13,7 @@ def main() -> int:
     parser.add_argument("pack_dir", type=Path, nargs="?")
     args = parser.parse_args()
     registry = load_registry(args.pack_dir.resolve() if args.pack_dir else None)
-    print(json.dumps({pack_id: {"black": len(pack.black), "white": len(pack.white)} for pack_id, pack in registry.packs.items()}, indent=2))
+    print(json.dumps({pack_id: {"prompts": len(pack.prompts), "answers": len(pack.answers)} for pack_id, pack in registry.packs.items()}, indent=2))
     return 0
 
 

@@ -11,7 +11,7 @@ from typing import Iterable, Mapping
 from pydantic import ValidationError
 
 from .errors import EmptyPoolError, InsufficientCapacityError, PackConfigurationError, SelectorError, UnknownPackError
-from .models import BlackCard, Pack, Selection, WhiteCard
+from .models import Answer, Pack, Prompt, Selection
 
 
 @dataclass(frozen=True)
@@ -25,8 +25,8 @@ class Registry:
 
 @dataclass(frozen=True)
 class ResolvedPools:
-    black: tuple[BlackCard, ...]
-    white: tuple[WhiteCard, ...]
+    prompts: tuple[Prompt, ...]
+    answers: tuple[Answer, ...]
     selection: Selection
 
 
@@ -89,21 +89,21 @@ def _parse_selector(value: str, registry: Registry, side: str) -> tuple[str, ...
 
 
 def resolve_pools(
-    registry: Registry, *, packs: str | None = None, black_packs: str | None = None, white_packs: str | None = None
+    registry: Registry, *, packs: str | None = None, prompt_packs: str | None = None, answer_packs: str | None = None
 ) -> ResolvedPools:
     base_ids = registry.ids if packs is None else _parse_selector(packs, registry, "packs")
-    black_ids = _parse_selector(black_packs, registry, "black") if black_packs is not None else base_ids
-    white_ids = _parse_selector(white_packs, registry, "white") if white_packs is not None else base_ids
-    black = tuple(card for pack_id in black_ids for card in registry.packs[pack_id].black)
-    white = tuple(card for pack_id in white_ids for card in registry.packs[pack_id].white)
-    if not black:
-        raise EmptyPoolError("Selected black pool is empty", {"side": "black", "available_packs": list(registry.ids)})
-    if not white:
-        raise EmptyPoolError("Selected white pool is empty", {"side": "white", "available_packs": list(registry.ids)})
-    required = max(card.slots for card in black)
-    if len(white) < required:
+    prompt_ids = _parse_selector(prompt_packs, registry, "prompt") if prompt_packs is not None else base_ids
+    answer_ids = _parse_selector(answer_packs, registry, "answer") if answer_packs is not None else base_ids
+    prompts = tuple(card for pack_id in prompt_ids for card in registry.packs[pack_id].prompts)
+    answers = tuple(card for pack_id in answer_ids for card in registry.packs[pack_id].answers)
+    if not prompts:
+        raise EmptyPoolError("The selected packs have no prompts", {"side": "prompt", "available_packs": list(registry.ids)})
+    if not answers:
+        raise EmptyPoolError("The selected packs have no answers", {"side": "answer", "available_packs": list(registry.ids)})
+    required = max(card.slots for card in prompts)
+    if len(answers) < required:
         raise InsufficientCapacityError(
-            f"Selected white pool has {len(white)} cards but black selection requires {required}",
-            {"available": len(white), "required": required},
+            f"The selected packs have {len(answers)} answers but a selected prompt needs {required}",
+            {"available": len(answers), "required": required},
         )
-    return ResolvedPools(black, white, Selection(black_packs=black_ids, white_packs=white_ids))
+    return ResolvedPools(prompts, answers, Selection(prompt_packs=prompt_ids, answer_packs=answer_ids))

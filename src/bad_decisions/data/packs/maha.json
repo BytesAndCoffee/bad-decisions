@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "metadata": {
     "id": "maha",
     "name": "MAHA Pack",
@@ -27,10 +27,10 @@
       "Added stable IDs, pack identifiers, source references, and metadata; card fields and ordering unchanged."
     ]
   },
-  "black": [
+  "prompts": [
     {
       "id": "b001",
-      "repr": "The FDA has announced that _ is now approved to treat _.",
+      "text": "The FDA has announced that _ is now approved to treat _.",
       "template": "The FDA has announced that {} is now approved to treat {}.",
       "slots": 2,
       "pack": "maha",
@@ -38,7 +38,7 @@
     },
     {
       "id": "b002",
-      "repr": "RFK Jr. has promised to remove _ from the American food supply by 2028.",
+      "text": "RFK Jr. has promised to remove _ from the American food supply by 2028.",
       "template": "RFK Jr. has promised to remove {} from the American food supply by 2028.",
       "slots": 1,
       "pack": "maha",
@@ -46,7 +46,7 @@
     },
     {
       "id": "b003",
-      "repr": "Doctors hate this one weird trick involving _.",
+      "text": "Doctors hate this one weird trick involving _.",
       "template": "Doctors hate this one weird trick involving {}.",
       "slots": 1,
       "pack": "maha",
@@ -54,7 +54,7 @@
     },
     {
       "id": "b004",
-      "repr": "The CDC is investigating a multistate outbreak linked to _.",
+      "text": "The CDC is investigating a multistate outbreak linked to _.",
       "template": "The CDC is investigating a multistate outbreak linked to {}.",
       "slots": 1,
       "pack": "maha",
@@ -62,7 +62,7 @@
     },
     {
       "id": "b005",
-      "repr": "MAHA: Make America _ Again.",
+      "text": "MAHA: Make America _ Again.",
       "template": "MAHA: Make America {} Again.",
       "slots": 1,
       "pack": "maha",
@@ -70,7 +70,7 @@
     },
     {
       "id": "b006",
-      "repr": "Ask your doctor if _ is right for you.",
+      "text": "Ask your doctor if _ is right for you.",
       "template": "Ask your doctor if {} is right for you.",
       "slots": 1,
       "pack": "maha",
@@ -78,7 +78,7 @@
     },
     {
       "id": "b007",
-      "repr": "The Department of Health and Human Services recommends at least 30 minutes of _ every day.",
+      "text": "The Department of Health and Human Services recommends at least 30 minutes of _ every day.",
       "template": "The Department of Health and Human Services recommends at least 30 minutes of {} every day.",
       "slots": 1,
       "pack": "maha",
@@ -86,7 +86,7 @@
     },
     {
       "id": "b008",
-      "repr": "After extensive clinical trials, researchers found that _ significantly reduces the risk of _.",
+      "text": "After extensive clinical trials, researchers found that _ significantly reduces the risk of _.",
       "template": "After extensive clinical trials, researchers found that {} significantly reduces the risk of {}.",
       "slots": 2,
       "pack": "maha",
@@ -94,7 +94,7 @@
     },
     {
       "id": "b009",
-      "repr": "The FDA would like to remind Americans that _ is not, technically speaking, medicine.",
+      "text": "The FDA would like to remind Americans that _ is not, technically speaking, medicine.",
       "template": "The FDA would like to remind Americans that {} is not, technically speaking, medicine.",
       "slots": 1,
       "pack": "maha",
@@ -102,7 +102,7 @@
     },
     {
       "id": "b010",
-      "repr": "NEW STUDY: Scientists find a surprising connection between _ and _.",
+      "text": "NEW STUDY: Scientists find a surprising connection between _ and _.",
       "template": "NEW STUDY: Scientists find a surprising connection between {} and {}.",
       "slots": 2,
       "pack": "maha",
@@ -110,7 +110,7 @@
     },
     {
       "id": "b011",
-      "repr": "The Surgeon General has issued a warning about teenagers doing _ on TikTok.",
+      "text": "The Surgeon General has issued a warning about teenagers doing _ on TikTok.",
       "template": "The Surgeon General has issued a warning about teenagers doing {} on TikTok.",
       "slots": 1,
       "pack": "maha",
@@ -118,7 +118,7 @@
     },
     {
       "id": "b012",
-      "repr": "Nine out of ten doctors recommend _. The tenth doctor recommends _.",
+      "text": "Nine out of ten doctors recommend _. The tenth doctor recommends _.",
       "template": "Nine out of ten doctors recommend {}. The tenth doctor recommends {}.",
       "slots": 2,
       "pack": "maha",
@@ -126,7 +126,7 @@
     },
     {
       "id": "b013",
-      "repr": "Side effects may include nausea, dizziness, and _.",
+      "text": "Side effects may include nausea, dizziness, and _.",
       "template": "Side effects may include nausea, dizziness, and {}.",
       "slots": 1,
       "pack": "maha",
@@ -134,7 +134,7 @@
     },
     {
       "id": "b014",
-      "repr": "If _ lasts longer than four hours, seek immediate medical attention.",
+      "text": "If _ lasts longer than four hours, seek immediate medical attention.",
       "template": "If {} lasts longer than four hours, seek immediate medical attention.",
       "slots": 1,
       "pack": "maha",
@@ -142,7 +142,7 @@
     },
     {
       "id": "b015",
-      "repr": "Due to recent regulatory changes, _ may now legally be called \"cheese.\"",
+      "text": "Due to recent regulatory changes, _ may now legally be called \"cheese.\"",
       "template": "Due to recent regulatory changes, {} may now legally be called \"cheese.\"",
       "slots": 1,
       "pack": "maha",
@@ -150,7 +150,7 @@
     },
     {
       "id": "b016",
-      "repr": "The wellness influencer assured me that _ would \"reset my mitochondria.\"",
+      "text": "The wellness influencer assured me that _ would \"reset my mitochondria.\"",
       "template": "The wellness influencer assured me that {} would \"reset my mitochondria.\"",
       "slots": 1,
       "pack": "maha",
@@ -158,7 +158,7 @@
     },
     {
       "id": "b017",
-      "repr": "My insurance denied _, but somehow approved _.",
+      "text": "My insurance denied _, but somehow approved _.",
       "template": "My insurance denied {}, but somehow approved {}.",
       "slots": 2,
       "pack": "maha",
@@ -166,7 +166,7 @@
     },
     {
       "id": "b018",
-      "repr": "In lieu of universal healthcare, America offers you _.",
+      "text": "In lieu of universal healthcare, America offers you _.",
       "template": "In lieu of universal healthcare, America offers you {}.",
       "slots": 1,
       "pack": "maha",
@@ -174,7 +174,7 @@
     },
     {
       "id": "b019",
-      "repr": "The clinical trial was terminated early after participants began _.",
+      "text": "The clinical trial was terminated early after participants began _.",
       "template": "The clinical trial was terminated early after participants began {}.",
       "slots": 1,
       "pack": "maha",
@@ -182,7 +182,7 @@
     },
     {
       "id": "b020",
-      "repr": "Health Canada has politely asked Americans to stop putting _ in _.",
+      "text": "Health Canada has politely asked Americans to stop putting _ in _.",
       "template": "Health Canada has politely asked Americans to stop putting {} in {}.",
       "slots": 2,
       "pack": "maha",
@@ -190,7 +190,7 @@
     },
     {
       "id": "b021",
-      "repr": "The label says \"all natural,\" so I'm choosing not to ask about _.",
+      "text": "The label says \"all natural,\" so I'm choosing not to ask about _.",
       "template": "The label says \"all natural,\" so I'm choosing not to ask about {}.",
       "slots": 1,
       "pack": "maha",
@@ -198,7 +198,7 @@
     },
     {
       "id": "b022",
-      "repr": "The placebo group received a sugar pill. The treatment group received _.",
+      "text": "The placebo group received a sugar pill. The treatment group received _.",
       "template": "The placebo group received a sugar pill. The treatment group received {}.",
       "slots": 1,
       "pack": "maha",
@@ -206,7 +206,7 @@
     },
     {
       "id": "b023",
-      "repr": "BREAKING: The food pyramid has been replaced with _.",
+      "text": "BREAKING: The food pyramid has been replaced with _.",
       "template": "BREAKING: The food pyramid has been replaced with {}.",
       "slots": 1,
       "pack": "maha",
@@ -214,7 +214,7 @@
     },
     {
       "id": "b024",
-      "repr": "According to this podcast, the real cause of chronic disease is _.",
+      "text": "According to this podcast, the real cause of chronic disease is _.",
       "template": "According to this podcast, the real cause of chronic disease is {}.",
       "slots": 1,
       "pack": "maha",
@@ -222,7 +222,7 @@
     },
     {
       "id": "b025",
-      "repr": "Talk to your healthcare provider before attempting _.",
+      "text": "Talk to your healthcare provider before attempting _.",
       "template": "Talk to your healthcare provider before attempting {}.",
       "slots": 1,
       "pack": "maha",
@@ -230,7 +230,7 @@
     },
     {
       "id": "b026",
-      "repr": "The FDA inspection went pretty well until they opened the door marked \"_.\"",
+      "text": "The FDA inspection went pretty well until they opened the door marked \"_.\"",
       "template": "The FDA inspection went pretty well until they opened the door marked \"{}.\"",
       "slots": 1,
       "pack": "maha",
@@ -238,14 +238,14 @@
     },
     {
       "id": "b027",
-      "repr": "After eliminating _ from his diet, Brian was finally cured of _.",
+      "text": "After eliminating _ from his diet, Brian was finally cured of _.",
       "template": "After eliminating {} from his diet, Brian was finally cured of {}.",
       "slots": 2,
       "pack": "maha",
       "source_ref": "legacy:BLACK_CARDS:27"
     }
   ],
-  "white": [
+  "answers": [
     {
       "id": "w001",
       "text": "RFK's raspy voice",

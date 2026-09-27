@@ -41,7 +41,7 @@ def publish_archive(archive_path: str | Path, *, bucket: str, public_base_url: s
         "bucket": bucket, "object_key": archive_key, "url": f"{public_base_url.rstrip('/')}/{quote(archive_key)}",
         "sha256": digest, "size_bytes": len(archive_bytes), "last_modified": datetime.now(timezone.utc).isoformat(), "etag": digest,
         "archive": {"format": FORMAT, "format_version": FORMAT_VERSION, "pack_id": pack_id, "pack_sha256": hashlib.sha256(runtime).hexdigest()},
-        "metadata": pack.metadata.model_dump(mode="json"), "black_card_count": len(pack.black), "white_card_count": len(pack.white),
+        "metadata": pack.metadata.model_dump(mode="json"), "prompt_count": len(pack.prompts), "answer_count": len(pack.answers),
     }
     catalog = (json.dumps(metadata, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n").encode()
     client = _session(profile, region).client("s3", config=_RETRY)
@@ -65,7 +65,7 @@ def read_catalog(*, bucket: str, profile: str | None = None, region: str | None 
         response = client.get_object(Bucket=bucket, Key="packs/index")
     except ClientError as exc:
         if exc.response.get("Error", {}).get("Code") in {"NoSuchKey", "404"}:
-            return {"schema_version": 1, "pack_count": 0, "packs": []}
+            return {"schema_version": 2, "pack_count": 0, "packs": []}
         raise
     return json.loads(response["Body"].read())
 

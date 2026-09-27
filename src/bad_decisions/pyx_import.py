@@ -14,7 +14,7 @@ from pathlib import Path
 
 from .archive import export_pack
 from .errors import PackConfigurationError
-from .models import Pack
+from .models import PACK_SCHEMA_VERSION, Pack
 
 LICENSE_ID = "CC-BY-NC-SA-3.0"
 LICENSE_URL = "https://creativecommons.org/licenses/by-nc-sa/3.0/"
@@ -223,37 +223,37 @@ def convert(payload: bytes, *, source_url: str, retrieved: str | None = None, in
         if not include_inactive and not card_set.active:
             continue
         pack_id = f"pyx-{card_set.id}-{_slug(card_set.name)}"
-        pack_black: list[dict[str, object]] = []
+        prompts: list[dict[str, object]] = []
         for card_id in black_membership.get(card_set.id, []):
             row = black.get(card_id)
             if row is None:
-                raise _error(f"card set {card_set.id}: missing black card {card_id}")
+                raise _error(f"card set {card_set.id}: missing prompt {card_id} (black_cards)")
             text = _text(row, "text", table="black_cards")
             pick = _integer(row, "pick", table="black_cards")
             if pick < 1 or (text.count("____") and text.count("____") != pick):
-                raise _error(f"black card {card_id}: unsupported pick/blank combination")
-            pack_black.append(
+                raise _error(f"prompt {card_id} (black_cards): unsupported pick/blank combination")
+            prompts.append(
                 {
-                    "id": f"pyx-black-{card_id}", "repr": text, "template": _template(text, pick), "slots": pick,
+                    "id": f"pyx-prompt-{card_id}", "text": text, "template": _template(text, pick), "slots": pick,
                     "pack": pack_id,
                     "source_ref": _source_ref(card_id=card_id, watermark=row.get("watermark"), draw=_integer(row, "draw", table="black_cards"), pick=pick),
                 }
             )
-        pack_white: list[dict[str, object]] = []
+        answers: list[dict[str, object]] = []
         for card_id in white_membership.get(card_set.id, []):
             row = white.get(card_id)
             if row is None:
-                raise _error(f"card set {card_set.id}: missing white card {card_id}")
-            pack_white.append(
+                raise _error(f"card set {card_set.id}: missing answer {card_id} (white_cards)")
+            answers.append(
                 {
-                    "id": f"pyx-white-{card_id}", "text": _text(row, "text", table="white_cards"), "pack": pack_id,
+                    "id": f"pyx-answer-{card_id}", "text": _text(row, "text", table="white_cards"), "pack": pack_id,
                     "source_ref": _source_ref(card_id=card_id, watermark=row.get("watermark")),
                 }
             )
-        if not pack_black and not pack_white:
+        if not prompts and not answers:
             continue
         result.append(Pack.model_validate({
-            "schema_version": 1,
+            "schema_version": PACK_SCHEMA_VERSION,
             "metadata": {
                 "id": pack_id, "name": f"Pretend You're Xyzzy: {card_set.name}",
                 "description": card_set.description or f"Card set {card_set.name} imported from a Pretend You're Xyzzy SQL dump.",
@@ -264,7 +264,7 @@ def convert(payload: bytes, *, source_url: str, retrieved: str | None = None, in
                 "sources": [{"origin": source_url, "edition": f"Pretend You're Xyzzy SQL card set {card_set.id}: {card_set.name}", "sha256": digest, "retrieved": retrieved, "license_evidence": "cah_cards.sql header: ‘Pretend You're Xyzzy cards by Andy Janata’ under CC BY-NC-SA 3.0; it states the cards are based on Cards Against Humanity materials."}],
                 "modifications": ["Converted PostgreSQL COPY rows to CardDeck fields while preserving card text, order, card-set membership, watermarks, and source identifiers.", "Prompts with no blank receive newline-appended answer placeholders, matching Bad Decisions' existing prompt representation. Prompt draw counts are retained in source_ref; the runtime does not implement draw mechanics."],
             },
-            "black": pack_black, "white": pack_white,
+            "prompts": prompts, "answers": answers,
         }))
     if not result:
         raise _error("no non-empty card sets selected")

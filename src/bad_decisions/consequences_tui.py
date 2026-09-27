@@ -109,7 +109,7 @@ class ConsequencesApp(App[None]):
         if not self.registry: return None
         pack = self.registry.packs.get(pack_id)
         if not pack: return None
-        card = next((card for card in (*pack.black, *pack.white) if card.id == card_id), None)
+        card = next((card for card in (*pack.prompts, *pack.answers) if card.id == card_id), None)
         if card is None: return None
         return card.text if hasattr(card, "text") else card.repr
 

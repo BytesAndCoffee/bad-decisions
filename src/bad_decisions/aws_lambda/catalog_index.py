@@ -39,7 +39,7 @@ def build_catalog(client, bucket: str) -> dict[str, object]:
             seen.add(pack_id)
             entries.append(entry)
     entries.sort(key=lambda item: (str(item.get("bucket", "")), str(item.get("object_key", ""))))
-    return {"schema_version": 1, "generated_at": datetime.now(timezone.utc).isoformat(), "buckets": [bucket], "pack_count": len(entries), "packs": entries, "rejected_archives": []}
+    return {"schema_version": 2, "generated_at": datetime.now(timezone.utc).isoformat(), "buckets": [bucket], "pack_count": len(entries), "packs": entries, "rejected_archives": []}
 
 def handler(_event, _context):
     bucket = os.environ["BUCKET"]

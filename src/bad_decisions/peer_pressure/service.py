@@ -21,7 +21,7 @@ PLAYER_ID = re.compile(r"^player_[0-9a-f]{32}$")
 REQUEST_ID = re.compile(r"^req_[0-9a-f]{32}$")
 STATES = {"WAITING", "PLAYING", "JUDGING", "ROUND_RESULT", "ENDED"}
 ACTIVE_STATES = {"PLAYING", "JUDGING", "ROUND_RESULT"}
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 # Half-built rooms live under this name until they are linked into place.
 BUILDING_SUFFIX = ".building"
 
@@ -57,19 +57,19 @@ CREATE TABLE players(
   connected INTEGER NOT NULL DEFAULT 1, last_seen INTEGER NOT NULL, joined_at INTEGER NOT NULL
 );
 CREATE TABLE drawn_cards(
-  kind TEXT NOT NULL CHECK(kind IN ('question','response')), card_key TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK(kind IN ('prompt','answer')), card_key TEXT NOT NULL,
   PRIMARY KEY(kind, card_key)
 );
 CREATE TABLE rounds(
-  id TEXT PRIMARY KEY, round_number INTEGER NOT NULL UNIQUE, question_key TEXT NOT NULL,
-  question_id TEXT NOT NULL, question_pack TEXT NOT NULL, representation TEXT NOT NULL,
+  id TEXT PRIMARY KEY, round_number INTEGER NOT NULL UNIQUE, prompt_key TEXT NOT NULL,
+  prompt_id TEXT NOT NULL, prompt_pack TEXT NOT NULL, prompt_text TEXT NOT NULL,
   template TEXT NOT NULL, slots INTEGER NOT NULL, responsible_adult_player_id TEXT NOT NULL REFERENCES players(id),
   state TEXT NOT NULL, winning_submission_id TEXT, started_at INTEGER NOT NULL, judged_at INTEGER
 );
 CREATE TABLE hands(
   player_id TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE, card_instance_id TEXT PRIMARY KEY,
-  response_key TEXT NOT NULL, response_id TEXT NOT NULL, response_pack TEXT NOT NULL,
-  response_text TEXT NOT NULL, dealt_at INTEGER NOT NULL
+  answer_key TEXT NOT NULL, answer_id TEXT NOT NULL, answer_pack TEXT NOT NULL,
+  answer_text TEXT NOT NULL, dealt_at INTEGER NOT NULL
 );
 CREATE TABLE submissions(
   id TEXT PRIMARY KEY, round_id TEXT NOT NULL REFERENCES rounds(id) ON DELETE CASCADE,
@@ -78,29 +78,15 @@ CREATE TABLE submissions(
 );
 CREATE TABLE submission_cards(
   submission_id TEXT NOT NULL REFERENCES submissions(id) ON DELETE CASCADE, position INTEGER NOT NULL,
-  card_instance_id TEXT NOT NULL, response_id TEXT NOT NULL, response_pack TEXT NOT NULL,
-  response_text TEXT NOT NULL, PRIMARY KEY(submission_id, position)
+  card_instance_id TEXT NOT NULL, answer_id TEXT NOT NULL, answer_pack TEXT NOT NULL,
+  answer_text TEXT NOT NULL, PRIMARY KEY(submission_id, position)
 );
 CREATE TABLE processed_requests(
   request_id TEXT PRIMARY KEY, player_id TEXT NOT NULL, request_type TEXT NOT NULL,
   result_revision INTEGER NOT NULL, result_payload TEXT NOT NULL, created_at INTEGER NOT NULL
 );
-PRAGMA user_version=2;
+PRAGMA user_version=3;
 """
-
-# Rooms created before cards were streamed held full shuffled decks. Keep what
-# they already drew so no card repeats, then drop the decks.
-UPGRADE_FROM_DECKS = """
-CREATE TABLE IF NOT EXISTS drawn_cards(
-  kind TEXT NOT NULL CHECK(kind IN ('question','response')), card_key TEXT NOT NULL,
-  PRIMARY KEY(kind, card_key)
-);
-INSERT OR IGNORE INTO drawn_cards SELECT 'question', card_key FROM question_deck WHERE drawn=1;
-INSERT OR IGNORE INTO drawn_cards SELECT 'response', card_key FROM response_deck WHERE drawn=1;
-DROP TABLE question_deck;
-DROP TABLE response_deck;
-"""
-
 
 class PeerPressureService:
     """Server-authoritative multiplayer using one disposable SQLite DB per room.
@@ -136,8 +122,8 @@ class PeerPressureService:
         self.now = now
         self.rng = rng or random.SystemRandom()
         self._pools: dict[str, tuple[tuple[str, Any], ...]] = {
-            "question": tuple((f"{card.pack}:{card.id}", card) for pack in registry.packs.values() for card in pack.black),
-            "response": tuple((f"{card.pack}:{card.id}", card) for pack in registry.packs.values() for card in pack.white),
+            "prompt": tuple((f"{card.pack}:{card.id}", card) for pack in registry.packs.values() for card in pack.prompts),
+            "answer": tuple((f"{card.pack}:{card.id}", card) for pack in registry.packs.values() for card in pack.answers),
         }
 
     @staticmethod
@@ -179,20 +165,9 @@ class PeerPressureService:
 
     @staticmethod
     def _upgrade(connection: sqlite3.Connection) -> None:
-        if connection.execute("PRAGMA user_version").fetchone()[0] >= SCHEMA_VERSION:
-            return
-        connection.execute("BEGIN IMMEDIATE")
-        try:
-            if connection.execute("PRAGMA user_version").fetchone()[0] < SCHEMA_VERSION:
-                if connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='question_deck'").fetchone():
-                    for statement in UPGRADE_FROM_DECKS.split(";"):
-                        if statement.strip():
-                            connection.execute(statement)
-                connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
-            connection.commit()
-        except Exception:
-            connection.rollback()
-            raise
+        """Rooms are disposable, so older room schemas are refused rather than migrated."""
+        if connection.execute("PRAGMA user_version").fetchone()[0] < SCHEMA_VERSION:
+            raise PeerPressureError("room_expired", "That room was created by an older server version; start a new room", status=410)
 
     def cleanup_expired(self) -> int:
         removed = 0
@@ -377,7 +352,7 @@ class PeerPressureService:
         A departed Responsible Adult hands the role to the next connected player
         in seat order. That player's own decision this round (if any) is
         withdrawn and returned to their hand, so they never judge their own
-        response; with no decisions left, the round goes back to collecting them.
+        answers; with no decisions left, the round goes back to collecting them.
         """
         room = self._room(connection)
         if room["state"] not in ACTIVE_STATES:
@@ -412,7 +387,7 @@ class PeerPressureService:
         for card in connection.execute("SELECT * FROM submission_cards WHERE submission_id=?", (submission[0],)).fetchall():
             connection.execute(
                 "INSERT INTO hands VALUES(?,?,?,?,?,?,?)",
-                (player_id, card["card_instance_id"], f"{card['response_pack']}:{card['response_id']}", card["response_id"], card["response_pack"], card["response_text"], 0),
+                (player_id, card["card_instance_id"], f"{card['answer_pack']}:{card['answer_id']}", card["answer_id"], card["answer_pack"], card["answer_text"], 0),
             )
         connection.execute("DELETE FROM submissions WHERE id=?", (submission[0],))
 
@@ -432,30 +407,30 @@ class PeerPressureService:
     def _submit(self, connection: sqlite3.Connection, player: sqlite3.Row, cards: list[str]) -> None:
         room = self._room(connection)
         if room["state"] != "PLAYING":
-            raise PeerPressureError("illegal_transition", "Responses are not being accepted right now", status=409)
+            raise PeerPressureError("illegal_transition", "Answers are not being accepted right now", status=409)
         round_ = self._current_round(connection)
         if player["id"] == round_["responsible_adult_player_id"]:
             raise PeerPressureError("responsible_adult_cannot_submit", "The Responsible Adult cannot submit a decision", status=403)
         if connection.execute("SELECT 1 FROM submissions WHERE round_id=? AND player_id=?", (round_["id"], player["id"])).fetchone():
             raise PeerPressureError("already_submitted", "You already submitted a decision this round", status=409)
         if len(cards) != round_["slots"]:
-            raise PeerPressureError("wrong_card_count", f"This question requires {round_['slots']} responses")
+            raise PeerPressureError("wrong_card_count", f"This prompt needs {round_['slots']} answers")
         if len(set(cards)) != len(cards):
-            raise PeerPressureError("duplicate_card", "A response instance may only be used once")
+            raise PeerPressureError("duplicate_card", "Each answer card may only be used once")
         owned = connection.execute(
             f"SELECT * FROM hands WHERE player_id=? AND card_instance_id IN ({','.join('?' for _ in cards)})",
             (player["id"], *cards),
         ).fetchall() if cards else []
         by_id = {row["card_instance_id"]: row for row in owned}
         if len(by_id) != len(cards):
-            raise PeerPressureError("card_not_in_hand", "Every submitted response must be in your hand", status=403)
+            raise PeerPressureError("card_not_in_hand", "Every submitted answer must be in your hand", status=403)
         submission = f"sub_{uuid.uuid4().hex}"
         connection.execute("INSERT INTO submissions(id,round_id,player_id,submitted_at) VALUES(?,?,?,?)", (submission, round_["id"], player["id"], int(self.now())))
         for index, card_id in enumerate(cards):
             row = by_id[card_id]
             connection.execute(
                 "INSERT INTO submission_cards VALUES(?,?,?,?,?,?)",
-                (submission, index, card_id, row["response_id"], row["response_pack"], row["response_text"]),
+                (submission, index, card_id, row["answer_id"], row["answer_pack"], row["answer_text"]),
             )
             connection.execute("DELETE FROM hands WHERE card_instance_id=?", (card_id,))
         self._maybe_begin_judging(connection, round_)
@@ -540,18 +515,18 @@ class PeerPressureService:
         room = self._room(connection)
         count = connection.execute("SELECT COUNT(*) FROM hands WHERE player_id=?", (player_id,)).fetchone()[0]
         now = int(self.now())
-        for key, card in self._draw(connection, "response", room["hand_size"] - count):
+        for key, card in self._draw(connection, "answer", room["hand_size"] - count):
             connection.execute(
                 "INSERT INTO hands VALUES(?,?,?,?,?,?,?)",
                 (player_id, f"card_{uuid.uuid4().hex}", key, card.id, card.pack, card.text, now),
             )
 
     def _new_round(self, connection: sqlite3.Connection, responsible_adult: str, number: int) -> None:
-        [(key, question)] = self._draw(connection, "question", 1)
+        [(key, prompt)] = self._draw(connection, "prompt", 1)
         round_id = f"round_{uuid.uuid4().hex}"
         connection.execute(
             "INSERT INTO rounds VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            (round_id, number, key, question.id, question.pack, question.repr, question.template, question.slots, responsible_adult, "PLAYING", None, int(self.now()), None),
+            (round_id, number, key, prompt.id, prompt.pack, prompt.text, prompt.template, prompt.slots, responsible_adult, "PLAYING", None, int(self.now()), None),
         )
         connection.execute("UPDATE room SET state='PLAYING',round_number=? WHERE id=1", (number,))
 
@@ -578,7 +553,7 @@ class PeerPressureService:
             "room": {"code": room, "state": metadata["state"], "revision": metadata["revision"], "round": metadata["round_number"]},
             "players": [{"id": row["id"], "name": row["display_name"], "score": row["score"], "connected": bool(row["connected"])} for row in players],
             "responsible_adult": None,
-            "question": None,
+            "prompt": None,
             "you": {"id": player_id, "hand": [], "submitted": False, "room_owner": self._host(connection) == player_id},
             "judging": None,
             "result": None,
@@ -588,21 +563,21 @@ class PeerPressureService:
             return value
         adult = next(row for row in players if row["id"] == round_["responsible_adult_player_id"])
         value["responsible_adult"] = {"id": adult["id"], "name": adult["display_name"]}
-        value["question"] = {"id": round_["question_id"], "pack": round_["question_pack"], "text": round_["representation"], "slots": round_["slots"]}
+        value["prompt"] = {"id": round_["prompt_id"], "pack": round_["prompt_pack"], "text": round_["prompt_text"], "slots": round_["slots"]}
         value["you"]["hand"] = [
-            {"card_instance_id": row["card_instance_id"], "id": row["response_id"], "pack": row["response_pack"], "text": row["response_text"]}
+            {"card_instance_id": row["card_instance_id"], "id": row["answer_id"], "pack": row["answer_pack"], "text": row["answer_text"]}
             for row in connection.execute("SELECT * FROM hands WHERE player_id=? ORDER BY dealt_at,card_instance_id", (player_id,))
         ]
         value["you"]["submitted"] = connection.execute("SELECT 1 FROM submissions WHERE round_id=? AND player_id=?", (round_["id"], player_id)).fetchone() is not None
         if metadata["state"] == "JUDGING" and player_id == round_["responsible_adult_player_id"]:
             value["judging"] = {"decisions": [
-                {"submission_id": submission["id"], "responses": [card[0] for card in connection.execute("SELECT response_text FROM submission_cards WHERE submission_id=? ORDER BY position", (submission["id"],))]}
+                {"submission_id": submission["id"], "answers": [card[0] for card in connection.execute("SELECT answer_text FROM submission_cards WHERE submission_id=? ORDER BY position", (submission["id"],))]}
                 for submission in connection.execute("SELECT id FROM submissions WHERE round_id=? ORDER BY presentation_order", (round_["id"],))
             ]}
         if metadata["state"] == "ROUND_RESULT":
             winner = connection.execute("SELECT s.player_id,p.display_name FROM submissions s JOIN players p ON p.id=s.player_id WHERE s.id=?", (round_["winning_submission_id"],)).fetchone()
-            cards = [row[0] for row in connection.execute("SELECT response_text FROM submission_cards WHERE submission_id=? ORDER BY position", (round_["winning_submission_id"],))]
-            value["result"] = {"winning_player": {"id": winner[0], "name": winner[1]}, "responses": cards, "rendered": round_["template"].format(*cards)}
+            cards = [row[0] for row in connection.execute("SELECT answer_text FROM submission_cards WHERE submission_id=? ORDER BY position", (round_["winning_submission_id"],))]
+            value["result"] = {"winning_player": {"id": winner[0], "name": winner[1]}, "answers": cards, "rendered": round_["template"].format(*cards)}
         return value
 
     @staticmethod

@@ -410,9 +410,9 @@ def test_dynamo_consequences_stores_raw_elements(registry, monkeypatch):
     decoder = TypeDeserializer()
     item = {name: decoder.deserialize(value) for name, value in raw.items()}
     assert issued.combination_hash == item["combination_hash"]
-    assert item["elements"][0]["text"] == round_.black.repr
-    assert [element["text"] for element in item["elements"][1:]] == [card.text for card in round_.white]
-    assert item["elements"][0]["license"] == round_.provenance[round_.black.pack].license_id
+    assert item["elements"][0]["text"] == round_.prompt.text
+    assert [element["text"] for element in item["elements"][1:]] == [card.text for card in round_.answers]
+    assert item["elements"][0]["license"] == round_.provenance[round_.prompt.pack].license_id
 
 def test_catalog_lambda_builds_stable_compatible_index():
     from bad_decisions.aws_lambda.catalog_index import build_catalog
@@ -429,7 +429,7 @@ def test_catalog_lambda_builds_stable_compatible_index():
             body = json.dumps({"archive": {"pack_id": pack_id}, "url": f"https://packs.example/packs/{pack_id}.carddeck", "object_key": f"packs/{pack_id}.carddeck"}).encode()
             return {"ContentLength": len(body), "Body": Body(body)}
     result = build_catalog(CatalogS3(), "bucket")
-    assert result["schema_version"] == 1
+    assert result["schema_version"] == 2  # counts are prompt_count/answer_count
     assert [entry["archive"]["pack_id"] for entry in result["packs"]] == ["a", "z"]
     assert result["rejected_archives"] == []
 

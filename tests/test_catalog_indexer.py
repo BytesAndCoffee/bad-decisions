@@ -37,7 +37,7 @@ catalog = _load_catalog()
 def build_archive(members: dict[str, bytes] | None = None, *, compression=zipfile.ZIP_DEFLATED, patch=None) -> bytes:
     contents = {
         "manifest.json": json.dumps({"format": "carddeck", "format_version": 1, "pack_id": "x", "pack_sha256": "0" * 64}).encode(),
-        "pack.json": json.dumps({"metadata": {"id": "x"}, "black": [{}], "white": [{}, {}]}).encode(),
+        "pack.json": json.dumps({"schema_version": 2, "metadata": {"id": "x"}, "prompts": [{}], "answers": [{}, {}]}).encode(),
         "LICENSE.txt": b"license",
         "ATTRIBUTION.md": b"attribution",
     }
@@ -93,7 +93,15 @@ def test_good_archive_is_listed():
     payload = make_catalog({"good.carddeck": build_archive()}).payload()
     assert payload["pack_count"] == 1
     assert payload["rejected_archives"] == []
-    assert (payload["packs"][0]["black_card_count"], payload["packs"][0]["white_card_count"]) == (1, 2)
+    assert (payload["packs"][0]["prompt_count"], payload["packs"][0]["answer_count"]) == (1, 2)
+    assert payload["schema_version"] == 2
+
+
+def test_schema_1_archives_are_still_catalogued():
+    v1 = json.dumps({"schema_version": 1, "metadata": {"id": "x"}, "black": [{}, {}], "white": [{}]}).encode()
+    payload = make_catalog({"old.carddeck": build_archive({"pack.json": v1})}).payload()
+    assert payload["rejected_archives"] == []
+    assert (payload["packs"][0]["prompt_count"], payload["packs"][0]["answer_count"]) == (2, 1)
 
 
 def corrupt_deflate() -> bytes:
@@ -140,7 +148,10 @@ HOSTILE = {
     "oversized-member": (lambda: build_archive({"LICENSE.txt": _random(catalog.MAX_MEMBER_BYTES + 1)}, compression=zipfile.ZIP_STORED), "too large"),
     "pack-is-list": (lambda: build_archive({"pack.json": b"[]"}), "JSON objects"),
     "metadata-not-object": (lambda: build_archive({"pack.json": b'{"metadata": 3}'}), "JSON objects"),
-    "cards-not-list": (lambda: build_archive({"pack.json": b'{"metadata": {}, "black": 3}'}), "JSON arrays"),
+    "cards-not-list": (lambda: build_archive({"pack.json": b'{"schema_version": 2, "metadata": {}, "prompts": 3}'}), "JSON arrays"),
+    "v1-cards-not-list": (lambda: build_archive({"pack.json": b'{"schema_version": 1, "metadata": {}, "black": 3}'}), "JSON arrays"),
+    "no-schema-version": (lambda: build_archive({"pack.json": b'{"metadata": {}, "prompts": []}'}), "schema_version 1 or 2"),
+    "boolean-schema-version": (lambda: build_archive({"pack.json": b'{"schema_version": true, "metadata": {}}'}), "schema_version 1 or 2"),
     "manifest-not-json": (lambda: build_archive({"manifest.json": b"\xff\xfe"}), None),
     "not-a-zip": (lambda: b"this is not a zip", None),
 }

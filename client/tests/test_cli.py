@@ -29,10 +29,10 @@ def test_round_prints_only_result(capsys):
 
 
 def test_list_packs(capsys):
-    payload = '[{"id":"maha","name":"MAHA Pack","counts":{"black":27,"white":52}}]'
+    payload = '[{"id":"maha","name":"MAHA Pack","counts":{"prompts":27,"answers":52}}]'
     with patch("bad_decisions_client.cli.urlopen", return_value=Response(payload)):
         assert cli.run(["--list-packs"]) == 0
-    assert capsys.readouterr().out == "maha\tMAHA Pack\tblack=27\twhite=52\n"
+    assert capsys.readouterr().out == "maha\tMAHA Pack\tprompts=27\tanswers=52\n"
 
 
 def test_json_and_validation(capsys):
@@ -49,26 +49,26 @@ def test_deal_saves_provenance_and_command_prints_every_pack(tmp_path, capsys, m
     payload = {
         "result": "A completed round",
         "provenance": {
-            "white-pack": {
+            "zulu-pack": {
                 "version": "2",
-                "attribution": "White Creator",
+                "attribution": "Zulu Creator",
                 "license_id": "CC-BY-SA-4.0",
-                "license_url": "https://example.invalid/white",
+                "license_url": "https://example.invalid/zulu",
                 "sources": [{
-                    "origin": "white source",
+                    "origin": "zulu source",
                     "edition": "Second",
                     "sha256": "a" * 64,
                     "retrieved": "2026-09-23",
                     "license_evidence": "Owner declaration",
                 }],
             },
-            "black-pack": {
+            "alpha-pack": {
                 "version": "1",
-                "attribution": "Black Creator",
+                "attribution": "Alpha Creator",
                 "license_id": "MIT",
                 "license_url": None,
                 "sources": [{
-                    "origin": "https://example.invalid/black",
+                    "origin": "https://example.invalid/alpha",
                     "edition": None,
                     "sha256": None,
                     "retrieved": None,
@@ -83,10 +83,10 @@ def test_deal_saves_provenance_and_command_prints_every_pack(tmp_path, capsys, m
 
     assert cli.run(["provenance"]) == 0
     output = capsys.readouterr().out
-    assert output.index("black-pack") < output.index("white-pack")
+    assert output.index("alpha-pack") < output.index("zulu-pack")
     assert "License: MIT" in output
     assert "License: CC-BY-SA-4.0" in output
-    assert "Attribution: White Creator" in output
+    assert "Attribution: Zulu Creator" in output
     assert "License evidence: Owner declaration" in output
 
     assert cli.run(["provenance", "--json"]) == 0

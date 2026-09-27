@@ -149,19 +149,19 @@ def render(state: dict[str, Any]) -> None:
     print("Table: " + ", ".join(f"{player['name']} ({player['score']})" + (" [away]" if not player["connected"] else "") for player in state["players"]))
     if state.get("responsible_adult"):
         print(f"Responsible Adult: {state['responsible_adult']['name']}")
-    if state.get("question"):
-        print(f"Question: {state['question']['text']}")
+    if state.get("prompt"):
+        print(f"Prompt: {state['prompt']['text']}")
     if state.get("result"):
         print(f"Consequence: {state['result']['rendered']}")
         print(f"Peer pressure worked on {state['result']['winning_player']['name']}.")
 
 
-def choose_responses(state: dict[str, Any], input_: Callable[[str], str]) -> list[str] | None:
+def choose_answers(state: dict[str, Any], input_: Callable[[str], str]) -> list[str] | None:
     hand = state["you"]["hand"]
     for index, card in enumerate(hand, 1):
         print(f"  {index:2}. {card['text']}")
-    needed = state["question"]["slots"]
-    raw = input_(f"Choose {needed} response{'s' if needed != 1 else ''} (comma-separated, or q): ").strip()
+    needed = state["prompt"]["slots"]
+    raw = input_(f"Choose {needed} answer{'s' if needed != 1 else ''} (comma-separated, or q): ").strip()
     if raw.lower() == "q":
         return None
     try:
@@ -195,7 +195,7 @@ def run_together(client: TogetherClient, input_: Callable[[str], str] = input, h
                     if input_("Waiting for everyone else to decide. [Enter] Refresh · [q] Regret alone: ").strip().lower() == "q":
                         client.mutate("leave"); break
                 elif room_state == "PLAYING" and not you["submitted"]:
-                    cards = choose_responses(state, input_)
+                    cards = choose_answers(state, input_)
                     if cards is None:
                         client.mutate("leave"); break
                     if cards:
@@ -206,7 +206,7 @@ def run_together(client: TogetherClient, input_: Callable[[str], str] = input, h
                 elif room_state == "JUDGING" and adult:
                     decisions = state["judging"]["decisions"]
                     for index, decision in enumerate(decisions, 1):
-                        print(f"  {index:2}. " + " / ".join(decision["responses"]))
+                        print(f"  {index:2}. " + " / ".join(decision["answers"]))
                     raw = input_("Choose the consequence (number): ").strip()
                     try:
                         choice = int(raw)

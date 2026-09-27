@@ -13,7 +13,7 @@ import pytest
 import bad_decisions.archive as archive_module
 from bad_decisions.archive import export_pack, import_pack, initialize_registry, validate_archive
 from bad_decisions.errors import PackConfigurationError
-from bad_decisions.models import BlackCard, Pack, PackMetadata, Source
+from bad_decisions.models import Prompt, Pack, PackMetadata, Source
 from bad_decisions.packs import load_registry
 
 
@@ -60,8 +60,8 @@ def test_archive_round_trip_preserves_declared_content_rights(tmp_path):
     pack = Pack(
         schema_version=1,
         metadata=metadata,
-        black=(BlackCard(id="b1", repr="Why? ____", template="Why? {}", slots=1, pack="rights-test"),),
-        white=(),
+        prompts=(Prompt(id="b1", text="Why? ____", template="Why? {}", slots=1, pack="rights-test"),),
+        answers=(),
     )
 
     archive = export_pack(pack, tmp_path / "rights-test.carddeck")

@@ -34,10 +34,11 @@ def test_converts_active_card_sets_with_provenance_and_exact_text(tmp_path):
     assert pack.metadata.id == "pyx-1-test-set"
     assert pack.metadata.license_id == "CC-BY-NC-SA-3.0"
     assert pack.metadata.sources[0].sha256
-    assert pack.black[0].repr == "Prompt with ____ and {braces}."
-    assert pack.black[0].template == "Prompt with {} and {{braces}}."
-    assert pack.black[0].source_ref == "pyx-card:10;watermark:TST;draw:2;pick:1"
-    assert pack.white[0].text == "A response\twith a tab."
+    assert (pack.prompts[0].id, pack.answers[0].id) == ("pyx-prompt-10", "pyx-answer-20")
+    assert pack.prompts[0].text == "Prompt with ____ and {braces}."
+    assert pack.prompts[0].template == "Prompt with {} and {{braces}}."
+    assert pack.prompts[0].source_ref == "pyx-card:10;watermark:TST;draw:2;pick:1"
+    assert pack.answers[0].text == "A response\twith a tab."
     paths = export_all(packs, tmp_path)
     assert paths == (tmp_path / "pyx-1-test-set.carddeck",)
     with zipfile.ZipFile(paths[0]) as archive:
@@ -52,10 +53,10 @@ def test_can_include_inactive_card_sets():
 def test_no_blank_prompt_appends_its_answer_placeholder():
     no_blank = SQL.replace(b"Prompt with ____ and {braces}.", b"What is the answer?")
     pack = convert(no_blank, source_url="https://example.test/pyx/cah_cards.sql")[0]
-    assert pack.black[0].template == "What is the answer?\n{}"
+    assert pack.prompts[0].template == "What is the answer?\n{}"
 
 
-def test_rejects_missing_provenance_or_unsupported_black_card():
+def test_rejects_missing_provenance_or_unsupported_prompt():
     with pytest.raises(PackConfigurationError, match="source_url"):
         convert(SQL, source_url="")
     bad = SQL.replace(b"2\t1\tPrompt", b"2\t2\tPrompt")
@@ -71,9 +72,9 @@ def test_rejects_missing_provenance_or_unsupported_black_card():
 URL = "https://example.test/pyx/cah_cards.sql"
 
 
-def _white_text(escaped: str, *, sql: bytes = SQL) -> str:
+def _answer_text(escaped: str, *, sql: bytes = SQL) -> str:
     edited = sql.replace(b"A response\\twith a tab.", escaped.encode("utf-8"))
-    return convert(edited, source_url=URL)[0].white[0].text
+    return convert(edited, source_url=URL)[0].answers[0].text
 
 
 @pytest.mark.parametrize(
@@ -95,7 +96,7 @@ def _white_text(escaped: str, *, sql: bytes = SQL) -> str:
     ],
 )
 def test_copy_escapes_octal_and_hex(escaped, expected):
-    assert _white_text(escaped) == expected
+    assert _answer_text(escaped) == expected
 
 
 @pytest.mark.parametrize(
@@ -110,7 +111,7 @@ def test_copy_escapes_octal_and_hex(escaped, expected):
     ],
 )
 def test_copy_byte_escapes_decode_as_utf8(escaped, expected):
-    assert _white_text(escaped) == expected
+    assert _answer_text(escaped) == expected
 
 
 @pytest.mark.parametrize(
@@ -127,29 +128,29 @@ def test_copy_byte_escapes_decode_as_utf8(escaped, expected):
 )
 def test_invalid_utf8_byte_escapes_are_rejected_as_configuration_errors(escaped):
     with pytest.raises(PackConfigurationError) as caught:
-        _white_text(escaped)
+        _answer_text(escaped)
     assert "invalid UTF-8 in COPY byte escapes" in str(caught.value)
     assert "SQL dump must be UTF-8" not in str(caught.value)
 
 
 def test_out_of_range_octal_escape_is_rejected():
     with pytest.raises(PackConfigurationError, match="out of range"):
-        _white_text(r"\777")
+        _answer_text(r"\777")
 
 
 @pytest.mark.parametrize("separator", [" ", " ", "\u0085", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e"])
 def test_raw_unicode_line_separators_stay_inside_card_text(separator):
-    assert _white_text(f"before{separator}after") == f"before{separator}after"
+    assert _answer_text(f"before{separator}after") == f"before{separator}after"
 
 
 def test_crlf_dump_is_accepted():
     crlf = SQL.replace(b"\n", b"\r\n")
     pack = convert(crlf, source_url=URL)[0]
-    assert pack.white[0].text == "A response\twith a tab."
-    assert pack.black[0].repr == "Prompt with ____ and {braces}."
+    assert pack.answers[0].text == "A response\twith a tab."
+    assert pack.prompts[0].text == "Prompt with ____ and {braces}."
 
 
 def test_only_one_trailing_carriage_return_is_stripped():
     doubled = SQL.replace(b"20\tA response\\twith a tab.\tTST\n", b"20\tA response\\twith a tab.\tTST\r\r\n")
     pack = convert(doubled, source_url=URL)[0]
-    assert pack.white[0].source_ref == "pyx-card:20;watermark:TST\r"
+    assert pack.answers[0].source_ref == "pyx-card:20;watermark:TST\r"

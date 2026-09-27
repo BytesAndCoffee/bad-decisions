@@ -13,9 +13,9 @@ def canonical_hash(payload: dict[str, Any]) -> str:
     return hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
 
 def round_identity(round_: Round) -> tuple[str, list[str], str]:
-    prompt = canonical_hash({"schema":"consequences.prompt.v1","text":round_.black.repr,"template":round_.black.template,"pick":round_.black.slots})
-    answers = [canonical_hash({"schema":"consequences.answer.v1","text":card.text}) for card in round_.white]
-    combination = canonical_hash({"schema":"consequences.combination.v1","prompt":prompt,"answers":answers,"rendering":{"template":round_.black.template}})
+    prompt = canonical_hash({"schema":"consequences.prompt.v1","text":round_.prompt.text,"template":round_.prompt.template,"pick":round_.prompt.slots})
+    answers = [canonical_hash({"schema":"consequences.answer.v1","text":card.text}) for card in round_.answers]
+    combination = canonical_hash({"schema":"consequences.combination.v1","prompt":prompt,"answers":answers,"rendering":{"template":round_.prompt.template}})
     return prompt, answers, combination
 
 def valid_uuid(value: str | None) -> str | None:
@@ -80,9 +80,9 @@ CREATE TABLE IF NOT EXISTS combination_stats(combination_hash TEXT PRIMARY KEY R
         with self._connect() as c:
             c.execute("BEGIN IMMEDIATE")
             try:
-                c.execute("INSERT OR IGNORE INTO combinations VALUES(?,?,?,?,?,?)", (combo,HASH_SCHEMA,prompt,json.dumps(answers),json.dumps({"template":round_.black.template}),now))
+                c.execute("INSERT OR IGNORE INTO combinations VALUES(?,?,?,?,?,?)", (combo,HASH_SCHEMA,prompt,json.dumps(answers),json.dumps({"template":round_.prompt.template}),now))
                 c.execute("INSERT INTO rounds VALUES(?,?,?,?,?,?,?,?)", (round_id,now,request_id,combo,client_id,session_id,now+self.feedback_ttl_seconds,verifier))
-                cards = [("prompt",0,prompt,round_.black.repr,round_.black)] + [("answer",i,d,card.text,card) for i,(d,card) in enumerate(zip(answers,round_.white))]
+                cards = [("prompt",0,prompt,round_.prompt.text,round_.prompt)] + [("answer",i,d,card.text,card) for i,(d,card) in enumerate(zip(answers,round_.answers))]
                 c.executemany("INSERT INTO round_elements VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", [(round_id,role,slot,digest,text,card.pack,packs[card.pack].version,card.id,card.source_ref,packs[card.pack].license_id,packs[card.pack].attribution,"[]") for role,slot,digest,text,card in cards])
                 c.execute("INSERT INTO combination_stats(combination_hash,draw_count,updated_at) VALUES(?,1,?) ON CONFLICT(combination_hash) DO UPDATE SET draw_count=draw_count+1,updated_at=excluded.updated_at", (combo,now))
                 if request_id: c.execute("UPDATE request_events SET round_id=? WHERE request_id=?", (round_id,request_id))

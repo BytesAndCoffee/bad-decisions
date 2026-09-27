@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "metadata": {
     "id": "coffee",
     "name": "Cards Against Coffee",
@@ -28,10 +28,10 @@
       "Raw IRC message corpus and source-message bodies intentionally excluded; only compact source references remain."
     ]
   },
-  "black": [
+  "prompts": [
     {
       "id": "coffee-black-001",
-      "repr": "My expectations are in the floor, and corporate still surprises me with ____.",
+      "text": "My expectations are in the floor, and corporate still surprises me with ____.",
       "template": "My expectations are in the floor, and corporate still surprises me with {}.",
       "slots": 1,
       "pack": "coffee",
@@ -39,7 +39,7 @@
     },
     {
       "id": "coffee-black-002",
-      "repr": "Weird. Something I made at work got export restricted. Apparently the problem was ____.",
+      "text": "Weird. Something I made at work got export restricted. Apparently the problem was ____.",
       "template": "Weird. Something I made at work got export restricted. Apparently the problem was {}.",
       "slots": 1,
       "pack": "coffee",
@@ -47,7 +47,7 @@
     },
     {
       "id": "coffee-black-003",
-      "repr": "Why is my computer asking me to contact my administrator? I AM ____.",
+      "text": "Why is my computer asking me to contact my administrator? I AM ____.",
       "template": "Why is my computer asking me to contact my administrator? I AM {}.",
       "slots": 1,
       "pack": "coffee",
@@ -55,7 +55,7 @@
     },
     {
       "id": "coffee-black-004",
-      "repr": "We didn't just lose access to the network. Thanks to ____, we also lost access to the physical office.",
+      "text": "We didn't just lose access to the network. Thanks to ____, we also lost access to the physical office.",
       "template": "We didn't just lose access to the network. Thanks to {}, we also lost access to the physical office.",
       "slots": 1,
       "pack": "coffee",
@@ -63,7 +63,7 @@
     },
     {
       "id": "coffee-black-005",
-      "repr": "At the end of the day, all this infrastructure is for ____.",
+      "text": "At the end of the day, all this infrastructure is for ____.",
       "template": "At the end of the day, all this infrastructure is for {}.",
       "slots": 1,
       "pack": "coffee",
@@ -71,7 +71,7 @@
     },
     {
       "id": "coffee-black-006",
-      "repr": "But really, what's wrong with using MySQL for ____?",
+      "text": "But really, what's wrong with using MySQL for ____?",
       "template": "But really, what's wrong with using MySQL for {}?",
       "slots": 1,
       "pack": "coffee",
@@ -79,7 +79,7 @@
     },
     {
       "id": "coffee-black-007",
-      "repr": "Fuck. I can't remember where I left ____ running.",
+      "text": "Fuck. I can't remember where I left ____ running.",
       "template": "Fuck. I can't remember where I left {} running.",
       "slots": 1,
       "pack": "coffee",
@@ -87,7 +87,7 @@
     },
     {
       "id": "coffee-black-008",
-      "repr": "In my defense, it was an intentional shitpost in the form of ____.",
+      "text": "In my defense, it was an intentional shitpost in the form of ____.",
       "template": "In my defense, it was an intentional shitpost in the form of {}.",
       "slots": 1,
       "pack": "coffee",
@@ -95,7 +95,7 @@
     },
     {
       "id": "coffee-black-009",
-      "repr": "The customer is NOT always right. Today the customer wanted ____.",
+      "text": "The customer is NOT always right. Today the customer wanted ____.",
       "template": "The customer is NOT always right. Today the customer wanted {}.",
       "slots": 1,
       "pack": "coffee",
@@ -103,7 +103,7 @@
     },
     {
       "id": "coffee-black-010",
-      "repr": "I'm done wrangling electrons that only sometimes do what I say. My next career: ____.",
+      "text": "I'm done wrangling electrons that only sometimes do what I say. My next career: ____.",
       "template": "I'm done wrangling electrons that only sometimes do what I say. My next career: {}.",
       "slots": 1,
       "pack": "coffee",
@@ -111,7 +111,7 @@
     },
     {
       "id": "coffee-black-011",
-      "repr": "D&D, but make it ____.",
+      "text": "D&D, but make it ____.",
       "template": "D&D, but make it {}.",
       "slots": 1,
       "pack": "coffee",
@@ -119,7 +119,7 @@
     },
     {
       "id": "coffee-black-012",
-      "repr": "Oh god. Why did I have to bring up ____?",
+      "text": "Oh god. Why did I have to bring up ____?",
       "template": "Oh god. Why did I have to bring up {}?",
       "slots": 1,
       "pack": "coffee",
@@ -127,7 +127,7 @@
     },
     {
       "id": "coffee-black-013",
-      "repr": "I started by talking about workplace accommodations. Somehow the channel is now discussing ____.",
+      "text": "I started by talking about workplace accommodations. Somehow the channel is now discussing ____.",
       "template": "I started by talking about workplace accommodations. Somehow the channel is now discussing {}.",
       "slots": 1,
       "pack": "coffee",
@@ -135,7 +135,7 @@
     },
     {
       "id": "coffee-black-014",
-      "repr": "Giving Bucket access to ____ may have been a mistake.",
+      "text": "Giving Bucket access to ____ may have been a mistake.",
       "template": "Giving Bucket access to {} may have been a mistake.",
       "slots": 1,
       "pack": "coffee",
@@ -143,7 +143,7 @@
     },
     {
       "id": "coffee-black-015",
-      "repr": "We've achieved artificial general intelligence. Unfortunately, it also developed ____.",
+      "text": "We've achieved artificial general intelligence. Unfortunately, it also developed ____.",
       "template": "We've achieved artificial general intelligence. Unfortunately, it also developed {}.",
       "slots": 1,
       "pack": "coffee",
@@ -151,7 +151,7 @@
     },
     {
       "id": "coffee-black-016",
-      "repr": "Under my Sexuality Level Agreement, you're entitled to ____.",
+      "text": "Under my Sexuality Level Agreement, you're entitled to ____.",
       "template": "Under my Sexuality Level Agreement, you're entitled to {}.",
       "slots": 1,
       "pack": "coffee",
@@ -159,7 +159,7 @@
     },
     {
       "id": "coffee-black-017",
-      "repr": "My personality is ____, but my body is ____.",
+      "text": "My personality is ____, but my body is ____.",
       "template": "My personality is {}, but my body is {}.",
       "slots": 2,
       "pack": "coffee",
@@ -167,7 +167,7 @@
     },
     {
       "id": "coffee-black-018",
-      "repr": "I'm so gay, even ____ can't stay straight.",
+      "text": "I'm so gay, even ____ can't stay straight.",
       "template": "I'm so gay, even {} can't stay straight.",
       "slots": 1,
       "pack": "coffee",
@@ -175,7 +175,7 @@
     },
     {
       "id": "coffee-black-019",
-      "repr": "Everyone knows Big Gay is secretly responsible for ____.",
+      "text": "Everyone knows Big Gay is secretly responsible for ____.",
       "template": "Everyone knows Big Gay is secretly responsible for {}.",
       "slots": 1,
       "pack": "coffee",
@@ -183,7 +183,7 @@
     },
     {
       "id": "coffee-black-020",
-      "repr": "All the housemates are gay. For drama, we've told them one of them is ____.",
+      "text": "All the housemates are gay. For drama, we've told them one of them is ____.",
       "template": "All the housemates are gay. For drama, we've told them one of them is {}.",
       "slots": 1,
       "pack": "coffee",
@@ -191,7 +191,7 @@
     },
     {
       "id": "coffee-black-021",
-      "repr": "I called the wrong necromancer. All I got was ____.",
+      "text": "I called the wrong necromancer. All I got was ____.",
       "template": "I called the wrong necromancer. All I got was {}.",
       "slots": 1,
       "pack": "coffee",
@@ -199,7 +199,7 @@
     },
     {
       "id": "coffee-black-022",
-      "repr": "I like my dicks below the belt. I like my personalities with ____.",
+      "text": "I like my dicks below the belt. I like my personalities with ____.",
       "template": "I like my dicks below the belt. I like my personalities with {}.",
       "slots": 1,
       "pack": "coffee",
@@ -207,7 +207,7 @@
     },
     {
       "id": "coffee-black-023",
-      "repr": "Is your ass full of important files? Because it needs ____.",
+      "text": "Is your ass full of important files? Because it needs ____.",
       "template": "Is your ass full of important files? Because it needs {}.",
       "slots": 1,
       "pack": "coffee",
@@ -215,7 +215,7 @@
     },
     {
       "id": "coffee-black-024",
-      "repr": "“That's what he said” hits differently after ____.",
+      "text": "“That's what he said” hits differently after ____.",
       "template": "“That's what he said” hits differently after {}.",
       "slots": 1,
       "pack": "coffee",
@@ -223,7 +223,7 @@
     },
     {
       "id": "coffee-black-025",
-      "repr": "I changed my work Slack picture to my fursona. My new status: ____.",
+      "text": "I changed my work Slack picture to my fursona. My new status: ____.",
       "template": "I changed my work Slack picture to my fursona. My new status: {}.",
       "slots": 1,
       "pack": "coffee",
@@ -231,7 +231,7 @@
     },
     {
       "id": "coffee-black-026",
-      "repr": "A soy vanilla latte is a three-bean soup. By the same logic, ____ is ____.",
+      "text": "A soy vanilla latte is a three-bean soup. By the same logic, ____ is ____.",
       "template": "A soy vanilla latte is a three-bean soup. By the same logic, {} is {}.",
       "slots": 2,
       "pack": "coffee",
@@ -239,7 +239,7 @@
     },
     {
       "id": "coffee-black-027",
-      "repr": "Trifle is just a sweet British ____.",
+      "text": "Trifle is just a sweet British ____.",
       "template": "Trifle is just a sweet British {}.",
       "slots": 1,
       "pack": "coffee",
@@ -247,7 +247,7 @@
     },
     {
       "id": "coffee-black-028",
-      "repr": "Semi-cursed pasta fact: Alfredo is just ____.",
+      "text": "Semi-cursed pasta fact: Alfredo is just ____.",
       "template": "Semi-cursed pasta fact: Alfredo is just {}.",
       "slots": 1,
       "pack": "coffee",
@@ -255,7 +255,7 @@
     },
     {
       "id": "coffee-black-029",
-      "repr": "We've made the opposite of an Uncrustable. It's entirely ____.",
+      "text": "We've made the opposite of an Uncrustable. It's entirely ____.",
       "template": "We've made the opposite of an Uncrustable. It's entirely {}.",
       "slots": 1,
       "pack": "coffee",
@@ -263,7 +263,7 @@
     },
     {
       "id": "coffee-black-030",
-      "repr": "I used ____ to destroy ____.",
+      "text": "I used ____ to destroy ____.",
       "template": "I used {} to destroy {}.",
       "slots": 2,
       "pack": "coffee",
@@ -271,7 +271,7 @@
     },
     {
       "id": "coffee-black-031",
-      "repr": "Tonight's dinner: ____ baked in a pie shell.",
+      "text": "Tonight's dinner: ____ baked in a pie shell.",
       "template": "Tonight's dinner: {} baked in a pie shell.",
       "slots": 1,
       "pack": "coffee",
@@ -279,7 +279,7 @@
     },
     {
       "id": "coffee-black-032",
-      "repr": "The recipe called for two tablespoons of butter. I added ____.",
+      "text": "The recipe called for two tablespoons of butter. I added ____.",
       "template": "The recipe called for two tablespoons of butter. I added {}.",
       "slots": 1,
       "pack": "coffee",
@@ -287,7 +287,7 @@
     },
     {
       "id": "coffee-black-033",
-      "repr": "I bought a big fucking bag of ____. Time to make everything amazing.",
+      "text": "I bought a big fucking bag of ____. Time to make everything amazing.",
       "template": "I bought a big fucking bag of {}. Time to make everything amazing.",
       "slots": 1,
       "pack": "coffee",
@@ -295,7 +295,7 @@
     },
     {
       "id": "coffee-black-034",
-      "repr": "You know what's a real pizza crime? ____.",
+      "text": "You know what's a real pizza crime? ____.",
       "template": "You know what's a real pizza crime? {}.",
       "slots": 1,
       "pack": "coffee",
@@ -303,7 +303,7 @@
     },
     {
       "id": "coffee-black-035",
-      "repr": "I only go to Subway when I'm craving ____.",
+      "text": "I only go to Subway when I'm craving ____.",
       "template": "I only go to Subway when I'm craving {}.",
       "slots": 1,
       "pack": "coffee",
@@ -311,7 +311,7 @@
     },
     {
       "id": "coffee-black-036",
-      "repr": "It's illegal to be sad when you have ____.",
+      "text": "It's illegal to be sad when you have ____.",
       "template": "It's illegal to be sad when you have {}.",
       "slots": 1,
       "pack": "coffee",
@@ -319,7 +319,7 @@
     },
     {
       "id": "coffee-black-037",
-      "repr": "Goodnight. Time to pass out and vividly hallucinate about ____.",
+      "text": "Goodnight. Time to pass out and vividly hallucinate about ____.",
       "template": "Goodnight. Time to pass out and vividly hallucinate about {}.",
       "slots": 1,
       "pack": "coffee",
@@ -327,7 +327,7 @@
     },
     {
       "id": "coffee-black-038",
-      "repr": "My summer bod is whatever I fucking give summer. This year: ____.",
+      "text": "My summer bod is whatever I fucking give summer. This year: ____.",
       "template": "My summer bod is whatever I fucking give summer. This year: {}.",
       "slots": 1,
       "pack": "coffee",
@@ -335,7 +335,7 @@
     },
     {
       "id": "coffee-black-039",
-      "repr": "I'd love to live in a literal castle, but then there's the problem of ____.",
+      "text": "I'd love to live in a literal castle, but then there's the problem of ____.",
       "template": "I'd love to live in a literal castle, but then there's the problem of {}.",
       "slots": 1,
       "pack": "coffee",
@@ -343,7 +343,7 @@
     },
     {
       "id": "coffee-black-040",
-      "repr": "Instructions unclear. Used ____. Received multiple lacerations to the face.",
+      "text": "Instructions unclear. Used ____. Received multiple lacerations to the face.",
       "template": "Instructions unclear. Used {}. Received multiple lacerations to the face.",
       "slots": 1,
       "pack": "coffee",
@@ -351,7 +351,7 @@
     },
     {
       "id": "coffee-black-041",
-      "repr": "Use it wrong enough and any ____ becomes a smoke machine.",
+      "text": "Use it wrong enough and any ____ becomes a smoke machine.",
       "template": "Use it wrong enough and any {} becomes a smoke machine.",
       "slots": 1,
       "pack": "coffee",
@@ -359,7 +359,7 @@
     },
     {
       "id": "coffee-black-042",
-      "repr": "For some reason, I imagined surgically inserting ____ into a piece of KFC.",
+      "text": "For some reason, I imagined surgically inserting ____ into a piece of KFC.",
       "template": "For some reason, I imagined surgically inserting {} into a piece of KFC.",
       "slots": 1,
       "pack": "coffee",
@@ -367,7 +367,7 @@
     },
     {
       "id": "coffee-black-043",
-      "repr": "Behold, the ____-inator! It gives people a second butt.",
+      "text": "Behold, the ____-inator! It gives people a second butt.",
       "template": "Behold, the {}-inator! It gives people a second butt.",
       "slots": 1,
       "pack": "coffee",
@@ -375,7 +375,7 @@
     },
     {
       "id": "coffee-black-044",
-      "repr": "Right question. Right channel. Wrong ____.",
+      "text": "Right question. Right channel. Wrong ____.",
       "template": "Right question. Right channel. Wrong {}.",
       "slots": 1,
       "pack": "coffee",
@@ -383,7 +383,7 @@
     },
     {
       "id": "coffee-black-045",
-      "repr": "I heard someone was stirring up shit, so I came for ____.",
+      "text": "I heard someone was stirring up shit, so I came for ____.",
       "template": "I heard someone was stirring up shit, so I came for {}.",
       "slots": 1,
       "pack": "coffee",
@@ -391,7 +391,7 @@
     },
     {
       "id": "coffee-black-046",
-      "repr": "Bucket has been put in the timeout bucket for ____.",
+      "text": "Bucket has been put in the timeout bucket for ____.",
       "template": "Bucket has been put in the timeout bucket for {}.",
       "slots": 1,
       "pack": "coffee",
@@ -399,7 +399,7 @@
     },
     {
       "id": "coffee-black-047",
-      "repr": "The situation now calls for a strike team of ____.",
+      "text": "The situation now calls for a strike team of ____.",
       "template": "The situation now calls for a strike team of {}.",
       "slots": 1,
       "pack": "coffee",
@@ -407,7 +407,7 @@
     },
     {
       "id": "coffee-black-048",
-      "repr": "Today's agenda: find a warm sunbeam, then ____.",
+      "text": "Today's agenda: find a warm sunbeam, then ____.",
       "template": "Today's agenda: find a warm sunbeam, then {}.",
       "slots": 1,
       "pack": "coffee",
@@ -415,7 +415,7 @@
     },
     {
       "id": "coffee-black-049",
-      "repr": "Quebecers don't fuck around with ____.",
+      "text": "Quebecers don't fuck around with ____.",
       "template": "Quebecers don't fuck around with {}.",
       "slots": 1,
       "pack": "coffee",
@@ -423,14 +423,14 @@
     },
     {
       "id": "coffee-black-050",
-      "repr": "I arrived at my hotel to find two kilos of ____ waiting for me.",
+      "text": "I arrived at my hotel to find two kilos of ____ waiting for me.",
       "template": "I arrived at my hotel to find two kilos of {} waiting for me.",
       "slots": 1,
       "pack": "coffee",
       "source_ref": "legacy-card:B050;source-ids:34693697"
     }
   ],
-  "white": [
+  "answers": [
     {
       "id": "coffee-white-001",
       "text": "Constant Fucking Disbelief",

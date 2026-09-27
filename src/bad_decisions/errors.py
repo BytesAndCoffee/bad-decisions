@@ -29,7 +29,7 @@ class EmptyPoolError(SelectorError):
 
 
 class InsufficientCapacityError(SelectorError):
-    code = "insufficient_white_capacity"
+    code = "insufficient_answer_capacity"
 
 
 class RenderError(BadDecisionsError):
