@@ -317,7 +317,7 @@ def test_status_aws_uses_saved_token(tmp_path, monkeypatch, capsys):
 
     def open_request(request, timeout):
         assert timeout == 10
-        assert request.full_url == "https://example.invalid/v1/manage/status"
+        assert request.full_url == "https://example.invalid/v2/manage/status"
         assert request.get_header("Authorization") == "Bearer secret"
         return Response(b'{"status":"ok"}')
 

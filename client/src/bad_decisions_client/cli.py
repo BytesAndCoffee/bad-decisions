@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urljoin, urlsplit
 from urllib.request import Request, urlopen
 from . import __version__
 from .together import TogetherClient, load_session, run_together, save_session
@@ -167,11 +167,16 @@ def _request_json(url: str, *, timeout: float, method: str="GET", payload: dict[
     except HTTPError as exc:
         try:
             body=json.loads(exc.read().decode("utf-8"))
-            # Peer Pressure refusals are protocol NACKs rather than the API's error envelope.
-            if isinstance(body,dict) and body.get("type")=="NACK": raise RuntimeError(f"{body.get('reason')}: {body.get('message')}") from exc
             error=body.get("error",{}) if isinstance(body,dict) else {}; raise RuntimeError(f"{error.get('code')}: {error.get('message')}" if error.get("code") else error.get("message",f"HTTP {exc.code}")) from exc
         except (UnicodeDecodeError,json.JSONDecodeError): raise RuntimeError(f"HTTP {exc.code}: {exc.reason}") from exc
     except (URLError,TimeoutError) as exc: raise RuntimeError(f"Cannot reach API: {exc.reason if isinstance(exc,URLError) else exc}") from exc
+
+def _feedback_url(api_url: str, path: str) -> str:
+    """Resolve the server's feedback path against the API origin; it already includes any public prefix."""
+    base=_base_url(api_url)
+    url=urljoin(base+"/",path)
+    if urlsplit(url)[:2]!=urlsplit(base)[:2]: raise ValueError("the saved feedback URL points at a different server")
+    return url
 
 def _print_packs(packs: list[dict[str,Any]]) -> None:
     for pack in packs:
@@ -192,7 +197,7 @@ def _feedback(argv: Sequence[str]) -> int:
         return 1
     try:
         method="DELETE" if args.choice=="clear" else "PUT"; body=None if method=="DELETE" else {"enjoyed":args.choice=="enjoy"}
-        _request_json(_base_url(args.api_url)+saved["url"],timeout=args.timeout,method=method,payload=body,headers={"X-Regret-Feedback-Token":saved["token"]})
+        _request_json(_feedback_url(args.api_url,saved["url"]),timeout=args.timeout,method=method,payload=body,headers={"X-Feedback-Token":saved["token"]})
         print("feedback cleared" if args.choice=="clear" else f"marked {args.choice}")
         return 0
     except (RuntimeError,ValueError,KeyError) as exc: print(f"regret: {exc}",file=sys.stderr); return 1
@@ -298,16 +303,16 @@ def run(argv: Sequence[str] | None=None) -> int:
         if args.health:
             payload,_=_request_json(f"{base}/healthz",timeout=args.timeout); print(json.dumps(payload,ensure_ascii=False,indent=2) if args.json else payload["status"]); return 0
         if args.list_packs:
-            payload,_=_request_json(f"{base}/v1/packs",timeout=args.timeout)
+            payload,_=_request_json(f"{base}/v2/packs",timeout=args.timeout)
             if args.json: print(json.dumps(payload,ensure_ascii=False,indent=2))
             else: _print_packs(payload)
             return 0
         params={k:v for k,v in {"packs":args.packs,"prompt_packs":args.prompt_packs,"answer_packs":args.answer_packs}.items() if v is not None}
         headers={}; client_id=_client_id()
-        if client_id: headers={"X-Regret-Client-ID":client_id,"X-Regret-Session-ID":str(uuid.uuid4())}
-        payload,response_headers=_request_json(f"{base}/v1/round"+(f"?{urlencode(params)}" if params else ""),timeout=args.timeout,headers=headers)
+        if client_id: headers={"X-Client-ID":client_id,"X-Session-ID":str(uuid.uuid4())}
+        payload,response_headers=_request_json(f"{base}/v2/round"+(f"?{urlencode(params)}" if params else ""),timeout=args.timeout,headers=headers)
         feedback=payload.get("feedback",{}) if _consequences_enabled(config) else {}
-        token=response_headers.get("X-Regret-Feedback-Token")
+        token=response_headers.get("X-Feedback-Token")
         saved={"provenance":payload["provenance"]} if isinstance(payload.get("provenance"),dict) else None
         if saved is not None:
             if token and feedback.get("available"):

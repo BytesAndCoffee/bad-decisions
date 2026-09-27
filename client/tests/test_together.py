@@ -21,10 +21,10 @@ def test_protocol_client_authenticates_and_tracks_revisions():
     def request_json(url, **kwargs):
         calls.append((url, kwargs))
         if url.endswith("/join"):
-            return {"type": "SYNACK", "player_id": "player_1", "session_token": "token", "revision": 2, "state": {"room": {"revision": 2}}}, {}
+            return {"player_id": "player_1", "session_token": "token", "revision": 2, "state": {"room": {"revision": 2}}}, {}
         if url.endswith("/sync"):
-            return {"type": "SYNACK", "revision": 3, "state": {"room": {"revision": 3}}}, {}
-        return {"type": "ACK", "request_id": kwargs["payload"].get("request_id"), "revision": 3}, {}
+            return {"revision": 3, "state": {"room": {"revision": 3}}}, {}
+        return {"request_id": kwargs["payload"].get("request_id"), "revision": 3}, {}
 
     client = TogetherClient("https://example.invalid/root", "ohno", 4, request_json)
     client.join("Alice")
@@ -32,7 +32,35 @@ def test_protocol_client_authenticates_and_tracks_revisions():
     client.sync()
     assert client.revision == 3
     assert calls[-1][1]["headers"] == {"Authorization": "Bearer token"}
-    assert calls[-1][1]["payload"] == {"player_id": "player_1"}
+    assert "payload" not in calls[-1][1], "the bearer token alone identifies the player"
+
+
+def test_rejoin_sends_only_the_saved_token():
+    calls = []
+
+    def request_json(url, **kwargs):
+        calls.append(kwargs)
+        return {"player_id": "player_1", "session_token": "token", "revision": 2, "state": {"room": {"revision": 2}}}, {}
+
+    TogetherClient("https://example.invalid", "ohno", 4, request_json).join("Alice", {"player_id": "player_1", "session_token": "token", "display_name": "Alice"})
+    assert calls[0]["payload"] == {"display_name": "Alice", "create": True}
+    assert calls[0]["headers"] == {"Authorization": "Bearer token"}
+
+
+def test_heartbeat_resyncs_when_the_server_says_so():
+    calls = []
+
+    def request_json(url, **kwargs):
+        calls.append(url)
+        if url.endswith("/heartbeat"):
+            assert kwargs["payload"] == {"revision": 4}
+            return {"revision": 5, "resync": True}, {}
+        return {"revision": 5, "state": {"room": {"revision": 5}}}, {}
+
+    client = TogetherClient("https://example.invalid", "ohno", 4, request_json)
+    client.session_token, client.revision = "token", 4
+    assert client.heartbeat() is True
+    assert calls[-1].endswith("/sync") and client.revision == 5
 
 
 def test_lost_ack_retries_the_same_idempotency_key():
@@ -43,8 +71,8 @@ def test_lost_ack_retries_the_same_idempotency_key():
             attempts.append(kwargs["payload"].copy())
             if len(attempts) == 1:
                 raise RuntimeError("Cannot reach API: connection reset")
-            return {"type": "ACK", "request_id": kwargs["payload"]["request_id"], "revision": 5}, {}
-        return {"type": "SYNACK", "revision": 5, "state": {"room": {"revision": 5}}}, {}
+            return {"request_id": kwargs["payload"]["request_id"], "revision": 5}, {}
+        return {"revision": 5, "state": {"room": {"revision": 5}}}, {}
 
     client = TogetherClient("https://example.invalid", "ohno", 4, request_json)
     client.player_id = "player_1"
@@ -91,10 +119,10 @@ def _nack(monkeypatch, status, body):
     monkeypatch.setattr(cli, "urlopen", urlopen)
 
 
-def test_peer_pressure_nacks_keep_their_reason_and_message(monkeypatch):
-    _nack(monkeypatch, 409, {"type": "NACK", "reason": "display_name_taken", "message": "That display name is already in this room", "resync": False})
+def test_peer_pressure_errors_keep_their_code_and_message(monkeypatch):
+    _nack(monkeypatch, 409, {"error": {"code": "display_name_taken", "message": "That display name is already in this room", "details": {"resync": False}, "request_id": "r"}})
     try:
-        cli._request_json("https://example.invalid/v1/peer-pressure/rooms/test/join", timeout=1, method="POST", payload={})
+        cli._request_json("https://example.invalid/v2/peer-pressure/rooms/test/join", timeout=1, method="POST", payload={})
     except RuntimeError as exc:
         assert str(exc) == "display_name_taken: That display name is already in this room"
     else:
@@ -104,14 +132,14 @@ def test_peer_pressure_nacks_keep_their_reason_and_message(monkeypatch):
 def test_api_error_envelopes_are_still_reported(monkeypatch):
     _nack(monkeypatch, 404, {"error": {"code": "pack_not_found", "message": "Unknown pack", "details": {}}})
     try:
-        cli._request_json("https://example.invalid/v1/packs/x", timeout=1)
+        cli._request_json("https://example.invalid/v2/packs/x", timeout=1)
     except RuntimeError as exc:
         assert str(exc) == "pack_not_found: Unknown pack"
 
 
 def test_together_explains_a_taken_name(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(cli, "load_session", lambda *_args: None)
-    _nack(monkeypatch, 409, {"type": "NACK", "reason": "display_name_taken", "message": "That display name is already in this room", "resync": False})
+    _nack(monkeypatch, 409, {"error": {"code": "display_name_taken", "message": "That display name is already in this room", "details": {"resync": False}, "request_id": "r"}})
     assert cli.run(["together", "test", "--name", "michael"]) == 1
     err = capsys.readouterr().err
     assert "display_name_taken: That display name is already in this room" in err
@@ -125,7 +153,7 @@ def test_stale_revision_nack_triggers_a_resync(monkeypatch):
         if url.endswith("/submit"):
             raise RuntimeError("stale_revision: Room state changed; synchronize and try again")
         synced.append(url)
-        return {"type": "SYNACK", "revision": 9, "state": {"room": {"revision": 9}}}, {}
+        return {"revision": 9, "state": {"room": {"revision": 9}}}, {}
 
     client = TogetherClient("https://example.invalid", "ohno", 4, request_json)
     client.player_id, client.session_token, client.revision = "player_1", "token", 4

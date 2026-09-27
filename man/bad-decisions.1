@@ -184,6 +184,21 @@ Minimum connected participants required before the Responsible Adult may start.
 .TP
 .B BAD_DECISIONS_PEER_PRESSURE_DISCONNECT_TIMEOUT_SECONDS
 Heartbeat grace period before a participant is marked away without deleting their room slot, hand, score, or submission.
+.TP
+.B BAD_DECISIONS_PEER_PRESSURE_MAX_ROOMS
+Live rooms the server will host at once (default 200); further room creation gets 503 too_many_rooms.
+.TP
+.B BAD_DECISIONS_PEER_PRESSURE_MAX_PLAYERS
+Players per room (default 12); further joins get 409 room_full.
+.TP
+.B BAD_DECISIONS_PEER_PRESSURE_MIN_FREE_MB
+Free space the room directory must keep before a new room is created (default 256).
+.TP
+.B BAD_DECISIONS_RATE_LIMIT_PER_MINUTE
+Per-client limit, per worker, for room creation, joins, and feedback (default 30); excess requests get 429 with Retry-After.
+.TP
+.B BAD_DECISIONS_CORS_ORIGINS
+Comma-separated exact origins (https://host[:port]) whose browser pages may call the API. Unset means no cross-origin access.
 .SH FILES
 .TP
 .I ~/.config/bad-decisions/config.env

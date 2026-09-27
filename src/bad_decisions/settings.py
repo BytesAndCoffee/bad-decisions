@@ -25,6 +25,11 @@ class Settings:
     peer_pressure_hand_size: int = 10
     peer_pressure_minimum_players: int = 3
     peer_pressure_disconnect_timeout_seconds: int = 30
+    peer_pressure_max_rooms: int = 200
+    peer_pressure_max_players: int = 12
+    peer_pressure_min_free_mb: int = 256
+    rate_limit_per_minute: int = 30
+    cors_origins: tuple[str, ...] = ()
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -57,6 +62,11 @@ class Settings:
                 raise ValueError(f"{name} must be greater than zero")
             return value
 
+        cors_origins = tuple(item.strip().rstrip("/") for item in os.getenv("BAD_DECISIONS_CORS_ORIGINS", "").split(",") if item.strip())
+        for origin in cors_origins:
+            scheme, _, host = origin.partition("://")
+            if scheme not in {"http", "https"} or not host or "/" in host or "*" in origin:
+                raise ValueError("BAD_DECISIONS_CORS_ORIGINS must list exact http(s)://host[:port] origins, comma-separated")
         retention_days = positive("BAD_DECISIONS_CONSEQUENCES_RETENTION_DAYS", 90)
         feedback_ttl = positive("BAD_DECISIONS_CONSEQUENCES_FEEDBACK_TTL_SECONDS", 7 * 24 * 60 * 60)
         if feedback_ttl > retention_days * 24 * 60 * 60:
@@ -79,4 +89,9 @@ class Settings:
             peer_pressure_hand_size=positive("BAD_DECISIONS_PEER_PRESSURE_HAND_SIZE", 10),
             peer_pressure_minimum_players=positive("BAD_DECISIONS_PEER_PRESSURE_MINIMUM_PLAYERS", 3),
             peer_pressure_disconnect_timeout_seconds=positive("BAD_DECISIONS_PEER_PRESSURE_DISCONNECT_TIMEOUT_SECONDS", 30),
+            peer_pressure_max_rooms=positive("BAD_DECISIONS_PEER_PRESSURE_MAX_ROOMS", 200),
+            peer_pressure_max_players=positive("BAD_DECISIONS_PEER_PRESSURE_MAX_PLAYERS", 12),
+            peer_pressure_min_free_mb=positive("BAD_DECISIONS_PEER_PRESSURE_MIN_FREE_MB", 256),
+            rate_limit_per_minute=positive("BAD_DECISIONS_RATE_LIMIT_PER_MINUTE", 30),
+            cors_origins=cors_origins,
         )

@@ -25,7 +25,7 @@ def test_round_prints_only_result(capsys):
     with patch("bad_decisions_client.cli.urlopen", return_value=Response('{"result":"A completed round"}')) as request:
         assert cli.run(["--packs", "maha"]) == 0
     assert capsys.readouterr().out == "A completed round\n"
-    assert request.call_args.args[0].full_url.endswith("/v1/round?packs=maha")
+    assert request.call_args.args[0].full_url.endswith("/v2/round?packs=maha")
 
 
 def test_list_packs(capsys):
@@ -127,3 +127,18 @@ def test_version_prints_the_package_version_without_prompting(capsys):
         except SystemExit as exited:
             assert exited.code == 0
     assert capsys.readouterr().out.strip() == f"regret {__version__}"
+
+
+def test_feedback_url_resolves_the_servers_prefixed_path_once():
+    # The server returns its path with the public prefix; 1.x doubled it (/bad-decisions/bad-decisions/...).
+    url = cli._feedback_url("https://bytes.example/bad-decisions", "/bad-decisions/v2/rounds/r1/feedback")
+    assert url == "https://bytes.example/bad-decisions/v2/rounds/r1/feedback"
+    assert cli._feedback_url("http://127.0.0.1:8000", "/v2/rounds/r1/feedback") == "http://127.0.0.1:8000/v2/rounds/r1/feedback"
+
+
+def test_feedback_url_never_sends_the_token_to_another_server():
+    import pytest
+
+    for hostile in ("https://evil.example/v2/rounds/r1/feedback", "//evil.example/steal"):
+        with pytest.raises(ValueError):
+            cli._feedback_url("https://bytes.example/bad-decisions", hostile)

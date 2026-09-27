@@ -7,6 +7,7 @@ import os
 import random
 import re
 import secrets
+import shutil
 import sqlite3
 import time
 import uuid
@@ -35,10 +36,9 @@ class PeerPressureError(Exception):
         self.revision = revision
         self.resync = resync
 
-    def nack(self, request_id: str | None = None) -> dict[str, Any]:
-        value: dict[str, Any] = {"type": "NACK", "reason": self.reason, "message": self.message, "resync": self.resync}
-        if request_id:
-            value["request_id"] = request_id
+    def details(self) -> dict[str, Any]:
+        """Extra fields for the API's error envelope."""
+        value: dict[str, Any] = {"resync": self.resync}
         if self.revision is not None:
             value["revision"] = self.revision
         return value
@@ -105,6 +105,9 @@ class PeerPressureService:
         hand_size: int = 10,
         minimum_players: int = 3,
         disconnect_timeout_seconds: int = 30,
+        max_rooms: int = 200,
+        max_players: int = 12,
+        min_free_mb: int = 256,
         now: Callable[[], float] = time.time,
         rng: random.Random | random.SystemRandom | None = None,
     ):
@@ -119,6 +122,9 @@ class PeerPressureService:
         self.hand_size = hand_size
         self.minimum_players = minimum_players
         self.disconnect_timeout_seconds = disconnect_timeout_seconds
+        self.max_rooms = max_rooms
+        self.max_players = max_players
+        self.min_free_mb = min_free_mb
         self.now = now
         self.rng = rng or random.SystemRandom()
         self._pools: dict[str, tuple[tuple[str, Any], ...]] = {
@@ -197,6 +203,10 @@ class PeerPressureService:
         path = self._path(room)
         if path.exists():
             raise PeerPressureError("room_exists", "That room already exists", status=409)
+        if sum(1 for _ in self.root.glob("*.sqlite3")) >= self.max_rooms:
+            raise PeerPressureError("too_many_rooms", "The server is hosting as many rooms as it can; try again later", status=503)
+        if shutil.disk_usage(self.root).free < self.min_free_mb * 1024 * 1024:
+            raise PeerPressureError("server_busy", "The server is low on space for new rooms; try again later", status=503)
         building = self.root / f".{room}.{secrets.token_hex(8)}{BUILDING_SUFFIX}"
         try:
             descriptor = os.open(building, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
@@ -236,16 +246,14 @@ class PeerPressureService:
             self._ensure_live(room, metadata)
             now = int(self.now())
             if player_id or session_token:
-                if not player_id or not session_token or not PLAYER_ID.fullmatch(player_id):
-                    raise PeerPressureError("invalid_session", "A complete room session is required", status=401)
-                player = connection.execute("SELECT * FROM players WHERE id=?", (player_id,)).fetchone()
-                if player is None or not hmac.compare_digest(player["session_token_hash"], self._hash_token(session_token)):
-                    raise PeerPressureError("invalid_session", "That room session is not valid", status=401)
+                player_id = self._authenticate(connection, player_id, session_token or "")["id"]
                 self._touch(connection, player_id)
             else:
                 self._touch(connection, None)
                 if metadata["state"] != "WAITING":
                     raise PeerPressureError("game_in_progress", "New players cannot join after the game begins", status=409)
+                if connection.execute("SELECT COUNT(*) FROM players").fetchone()[0] >= self.max_players:
+                    raise PeerPressureError("room_full", f"This room already has {self.max_players} players", status=409)
                 duplicate = connection.execute("SELECT 1 FROM players WHERE display_name=? COLLATE NOCASE", (display_name,)).fetchone()
                 if duplicate:
                     raise PeerPressureError("display_name_taken", "That display name is already in this room", status=409)
@@ -264,43 +272,41 @@ class PeerPressureService:
             raise
         connection.close()
         projection = self.project(room, player_id, session_token)
-        return {"type": "SYNACK", "room": room, "player_id": player_id, "session_token": session_token, "revision": projection["room"]["revision"], "state": projection}
+        return {"room": room, "player_id": player_id, "session_token": session_token, "revision": projection["room"]["revision"], "state": projection}
 
-    def sync(self, room: str, player_id: str, session_token: str) -> dict[str, Any]:
+    def sync(self, room: str, player_id: str | None, session_token: str) -> dict[str, Any]:
         state = self.project(room, player_id, session_token, touch=True)
-        return {"type": "SYNACK", "room": room, "revision": state["room"]["revision"], "state": state}
+        return {"room": room, "revision": state["room"]["revision"], "state": state}
 
-    def heartbeat(self, room: str, player_id: str, session_token: str, revision: int) -> dict[str, Any]:
+    def heartbeat(self, room: str, player_id: str | None, session_token: str, revision: int) -> dict[str, Any]:
         with closing(self._connect(room)) as connection:
             connection.execute("BEGIN IMMEDIATE")
             try:
-                self._authenticate(connection, player_id, session_token)
+                player_id = self._authenticate(connection, player_id, session_token)["id"]
                 self._touch(connection, player_id)
                 current = self._room(connection)["revision"]
                 connection.commit()
             except Exception:
                 connection.rollback()
                 raise
-        if revision != current:
-            return {"type": "NACK", "reason": "stale_revision", "revision": current, "resync": True}
-        return {"type": "ACK", "revision": current}
+        return {"revision": current, "resync": revision != current}
 
-    def leave(self, room: str, player_id: str, session_token: str, request_id: str, revision: int) -> dict[str, Any]:
+    def leave(self, room: str, player_id: str | None, session_token: str, request_id: str, revision: int) -> dict[str, Any]:
         return self._mutation(room, player_id, session_token, request_id, revision, "leave", self._leave)
 
-    def start(self, room: str, player_id: str, session_token: str, request_id: str, revision: int) -> dict[str, Any]:
+    def start(self, room: str, player_id: str | None, session_token: str, request_id: str, revision: int) -> dict[str, Any]:
         return self._mutation(room, player_id, session_token, request_id, revision, "start", self._start)
 
-    def submit(self, room: str, player_id: str, session_token: str, request_id: str, revision: int, cards: list[str]) -> dict[str, Any]:
+    def submit(self, room: str, player_id: str | None, session_token: str, request_id: str, revision: int, cards: list[str]) -> dict[str, Any]:
         return self._mutation(room, player_id, session_token, request_id, revision, "submit", lambda c, p: self._submit(c, p, cards))
 
-    def judge(self, room: str, player_id: str, session_token: str, request_id: str, revision: int, submission_id: str) -> dict[str, Any]:
+    def judge(self, room: str, player_id: str | None, session_token: str, request_id: str, revision: int, submission_id: str) -> dict[str, Any]:
         return self._mutation(room, player_id, session_token, request_id, revision, "judge", lambda c, p: self._judge(c, p, submission_id))
 
-    def advance(self, room: str, player_id: str, session_token: str, request_id: str, revision: int) -> dict[str, Any]:
+    def advance(self, room: str, player_id: str | None, session_token: str, request_id: str, revision: int) -> dict[str, Any]:
         return self._mutation(room, player_id, session_token, request_id, revision, "advance", self._advance)
 
-    def end(self, room: str, player_id: str, session_token: str, request_id: str, revision: int) -> dict[str, Any]:
+    def end(self, room: str, player_id: str | None, session_token: str, request_id: str, revision: int) -> dict[str, Any]:
         result = self._mutation(room, player_id, session_token, request_id, revision, "end", self._end)
         self._path(room).unlink(missing_ok=True)
         return result
@@ -312,6 +318,7 @@ class PeerPressureService:
         try:
             connection.execute("BEGIN IMMEDIATE")
             player = self._authenticate(connection, player_id, token)
+            player_id = player["id"]
             previous = connection.execute("SELECT result_payload FROM processed_requests WHERE request_id=? AND player_id=?", (request_id, player_id)).fetchone()
             if previous:
                 connection.rollback()
@@ -322,7 +329,7 @@ class PeerPressureService:
             self._touch(connection, player_id)
             operation(connection, player)
             result_revision = self._bump(connection)
-            result = {"type": "ACK", "request_id": request_id, "revision": result_revision}
+            result = {"request_id": request_id, "revision": result_revision}
             connection.execute(
                 "INSERT INTO processed_requests VALUES(?,?,?,?,?,?)",
                 (request_id, player_id, action, result_revision, json.dumps(result, separators=(",", ":")), int(self.now())),
@@ -530,12 +537,12 @@ class PeerPressureService:
         )
         connection.execute("UPDATE room SET state='PLAYING',round_number=? WHERE id=1", (number,))
 
-    def project(self, room: str, player_id: str, token: str, *, touch: bool = False) -> dict[str, Any]:
+    def project(self, room: str, player_id: str | None, token: str, *, touch: bool = False) -> dict[str, Any]:
         """Build one player's view from a single consistent snapshot."""
         with closing(self._connect(room)) as connection:
             connection.execute("BEGIN IMMEDIATE" if touch else "BEGIN")
             try:
-                self._authenticate(connection, player_id, token)
+                player_id = self._authenticate(connection, player_id, token)["id"]
                 if touch:
                     self._touch(connection, player_id)
                 value = self._project(connection, room, player_id)
@@ -593,11 +600,13 @@ class PeerPressureService:
             raise PeerPressureError("room_expired", "That room has expired", status=410)
 
     @staticmethod
-    def _authenticate(connection: sqlite3.Connection, player_id: str, token: str) -> sqlite3.Row:
-        if not PLAYER_ID.fullmatch(player_id or "") or not token:
+    def _authenticate(connection: sqlite3.Connection, player_id: str | None, token: str) -> sqlite3.Row:
+        """The session token identifies the player; a player_id, when given, must match it."""
+        if not token or (player_id is not None and not PLAYER_ID.fullmatch(player_id)):
             raise PeerPressureError("invalid_session", "Valid room credentials are required", status=401)
-        player = connection.execute("SELECT * FROM players WHERE id=?", (player_id,)).fetchone()
-        if player is None or not hmac.compare_digest(player["session_token_hash"], PeerPressureService._hash_token(token)):
+        token_hash = PeerPressureService._hash_token(token)
+        player = connection.execute("SELECT * FROM players WHERE session_token_hash=?", (token_hash,)).fetchone()
+        if player is None or not hmac.compare_digest(player["session_token_hash"], token_hash) or player_id not in (None, player["id"]):
             raise PeerPressureError("invalid_session", "Valid room credentials are required", status=401)
         return player
 

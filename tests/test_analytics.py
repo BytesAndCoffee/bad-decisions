@@ -14,9 +14,9 @@ def configured(tmp_path, monkeypatch):
     return database
 
 def issue(client):
-    response=client.get("/v1/round",headers={"X-Regret-Client-ID":"not-a-uuid"})
+    response=client.get("/v2/round",headers={"X-Client-ID":"not-a-uuid"})
     assert response.status_code == 200
-    return response, response.json(), response.headers["X-Regret-Feedback-Token"]
+    return response, response.json(), response.headers["X-Feedback-Token"]
 
 def test_hash_identity_is_deterministic_and_ordered(sample_pack):
     from bad_decisions.engine import generate_from_resolved
@@ -31,7 +31,7 @@ def test_feedback_transitions_and_no_token_leak(tmp_path, monkeypatch):
     with TestClient(create_app()) as client:
         response,body,token=issue(client)
         assert token not in response.text and body["feedback"]["available"]
-        url=body["feedback"]["url"]; headers={"X-Regret-Feedback-Token":token}
+        url=body["feedback"]["url"]; headers={"X-Feedback-Token":token}
         assert client.put(url,json={"enjoyed":True},headers=headers).status_code == 201
         assert client.put(url,json={"enjoyed":True},headers=headers).status_code == 200
         assert client.put(url,json={"enjoyed":False},headers=headers).json()["changed"] is True
@@ -50,13 +50,13 @@ def test_optional_storage_fails_open(tmp_path,monkeypatch):
         with TestClient(create_app()): pass
     monkeypatch.delenv("BAD_DECISIONS_CONSEQUENCES_DB")
     with TestClient(create_app()) as client:
-        response=client.get("/v1/round")
+        response=client.get("/v2/round")
     assert response.status_code == 200 and "round_id" not in response.json()
 
 def test_request_metadata_errors_and_concurrent_votes(tmp_path,monkeypatch):
     database=configured(tmp_path,monkeypatch)
     with TestClient(create_app()) as client:
-        client.get("/v1/nope")
+        client.get("/v2/nope")
         _,body,token=issue(client)
     store=ConsequencesStore(database)
     def vote(value): return store.feedback(body["round_id"],token,value)[0]
@@ -73,7 +73,7 @@ def test_expired_capability(tmp_path,monkeypatch):
         _,body,token=issue(client)
     with sqlite3.connect(database) as connection: connection.execute("UPDATE rounds SET feedback_expires_at=0")
     with TestClient(create_app()) as client:
-        assert client.put(body["feedback"]["url"],json={"enjoyed":True},headers={"X-Regret-Feedback-Token":token}).status_code == 410
+        assert client.put(body["feedback"]["url"],json={"enjoyed":True},headers={"X-Feedback-Token":token}).status_code == 410
 
 
 def test_consequences_report_defaults_to_configured_database(tmp_path, monkeypatch):

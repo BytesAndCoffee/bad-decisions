@@ -13,7 +13,7 @@ function clientHeaders() {
   if (localStorage.getItem(identityOffKey) === "true") return { Accept: "application/json" };
   let clientId = null;
   try { clientId = localStorage.getItem(identityKey) || crypto.randomUUID(); localStorage.setItem(identityKey, clientId); } catch (_) { clientId = crypto.randomUUID ? crypto.randomUUID() : null; }
-  return { Accept: "application/json", ...(clientId ? {"X-Regret-Client-ID":clientId} : {}), ...(sessionId ? {"X-Regret-Session-ID":sessionId} : {}) };
+  return { Accept: "application/json", ...(clientId ? {"X-Client-ID":clientId} : {}), ...(sessionId ? {"X-Session-ID":sessionId} : {}) };
 }
 function renderFeedback() {
   const available = consequencesEnabled() && Boolean(currentFeedback && currentFeedback.token);
@@ -25,7 +25,7 @@ async function vote(choice) {
   if (!feedback) return;
   feedbackStatus.textContent = "Recording your consequences...";
   try {
-    const response = await fetch(feedback.url, {method:choice === "clear" ? "DELETE" : "PUT", headers:{"Content-Type":"application/json","X-Regret-Feedback-Token":feedback.token}, body:choice === "clear" ? undefined : JSON.stringify({enjoyed:choice === "true"})});
+    const response = await fetch(feedback.url, {method:choice === "clear" ? "DELETE" : "PUT", headers:{"Content-Type":"application/json","X-Feedback-Token":feedback.token}, body:choice === "clear" ? undefined : JSON.stringify({enjoyed:choice === "true"})});
     if (!response.ok && response.status !== 204) throw new Error();
     if (currentFeedback !== feedback) return;
     feedback.choice = choice === "clear" ? null : choice === "true";
@@ -49,7 +49,7 @@ let indexedPacks = [];
 let indexedSelection = new Set();
 let indexedDraft = new Set();
 let indexedModalReturnFocus = null;
-const apiBase = window.location.pathname.replace(/\/web\/?$/, "/v1");
+const apiBase = window.location.pathname.replace(/\/web\/?$/, "/v2");
 
 function apiUrl(path) {
   return `${apiBase}/${path}`;
@@ -173,7 +173,7 @@ async function deal() {
       return answer;
     }));
     resultElement.textContent = body.result;
-    const token = response.headers.get("X-Regret-Feedback-Token");
+    const token = response.headers.get("X-Feedback-Token");
     currentFeedback = consequencesEnabled() && body.feedback?.available && token ? { url: body.feedback.url, token, choice: null } : null;
     feedbackStatus.textContent = "";
     renderFeedback();

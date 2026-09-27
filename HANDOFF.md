@@ -14,7 +14,7 @@ Read AGENTS.md first. The plan and its checkboxes are in patchnotes.md under
 ## Status
 - [x] Stage 1: prompt/answer rename and pack schema 2 (commit a4b1fd1).
 - [x] Stage 2: `[aws]` (boto3), `[aws-deploy]` (+CDK), `[tui]` extras; requirements.lock is server-only, requirements-extras.lock pins the rest.
-- [ ] Stage 3: `/v2` API and security fixes (see patchnotes "API v2").
+- [x] Stage 3: `/v2` API (src/bad_decisions/api.py rewritten), regret/web/doctor/smoke/activator clients moved to v2; tests/test_api_v2.py pins the contract.
 - [ ] Stage 4: dead code and backlog.
 - [ ] Stage 5: docs, man pages, migration guide, 2.0.0 release, deploy, Homebrew.
 
@@ -27,4 +27,7 @@ Read AGENTS.md first. The plan and its checkboxes are in patchnotes.md under
 
 ## Docs to update in stage 5
 - README/DEPLOYMENT/EASY_DEPLOY/AWS docs: install extras (`pipx install 'bad-decisions[aws-deploy]'` for AWS management, `[tui]` for the dashboard).
-- CARDDECK.md: pack schema 2 (prompts/answers/text), schema 1 still read; catalog schema 2.
+- CARDDECK.md: pack schema 2 (prompts/answers/text), schema 1 still read; catalog schema 2.- PEER_PRESSURE.md: v2 protocol (token-only identity, POST end, heartbeat {revision, resync}, error envelope, caps, rate limits).
+- API reference in README: /v2 paths, headers X-Client-ID/X-Session-ID/X-Feedback-Token, 410 for /v1.
+- Operator: `scripts/smoke_peer_pressure.py` now speaks v2, so the owner's droplet postflight will fail against 1.x until 2.0 is deployed.
+- Fixed 1.x bug worth a changelog line: `regret feedback` doubled the public prefix in the feedback URL (404 behind nginx).

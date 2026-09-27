@@ -72,23 +72,23 @@ def check_service(report: Report, base: str, expected_version: str | None, timeo
     else:
         report.fail(f"/healthz reports version {version}, expected {expected_version}")
     try:
-        packs = _json(f"{base}/v1/packs", timeout)
+        packs = _json(f"{base}/v2/packs", timeout)
         if not isinstance(packs, list) or not packs:
-            report.fail("/v1/packs lists no packs")
+            report.fail("/v2/packs lists no packs")
         elif health.get("pack_count") not in (None, len(packs)):
-            report.fail(f"/v1/packs lists {len(packs)} packs but /healthz counts {health.get('pack_count')}")
+            report.fail(f"/v2/packs lists {len(packs)} packs but /healthz counts {health.get('pack_count')}")
         else:
-            report.ok(f"/v1/packs lists {len(packs)} packs")
+            report.ok(f"/v2/packs lists {len(packs)} packs")
     except (OSError, ValueError) as exc:
-        report.fail(f"/v1/packs failed: {exc}")
+        report.fail(f"/v2/packs failed: {exc}")
     try:
-        round_ = _json(f"{base}/v1/round", timeout)
+        round_ = _json(f"{base}/v2/round", timeout)
         if isinstance(round_, dict) and round_.get("result"):
-            report.ok("/v1/round deals from every pack")
+            report.ok("/v2/round deals from every pack")
         else:
-            report.fail("/v1/round returned no result")
+            report.fail("/v2/round returned no result")
     except (OSError, ValueError) as exc:
-        report.fail(f"/v1/round failed: {exc}")
+        report.fail(f"/v2/round failed: {exc}")
     try:
         status, _headers, body = _get(f"{base}/web/", timeout)
         if status == 200 and b"<html" in body.lower():

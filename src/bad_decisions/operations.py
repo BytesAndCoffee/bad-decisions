@@ -811,7 +811,7 @@ def status_aws(argv: list[str]) -> int:
         print(f"Missing AWS endpoint or token in {AWS_ENV}; deploy AWS first.", file=sys.stderr)
         return 2
     request = urllib.request.Request(
-        f"{endpoint.rstrip('/')}/v1/manage/status",
+        f"{endpoint.rstrip('/')}/v2/manage/status",
         headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
     )
     try:

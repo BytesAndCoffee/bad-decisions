@@ -34,8 +34,8 @@ def _serve(responses: dict[str, tuple[int, dict[str, str], str]]):
 def _healthy(**overrides):
     responses = {
         f"{PREFIX}/healthz": (200, {}, json.dumps({"status": "ok", "version": __version__, "pack_count": 2})),
-        f"{PREFIX}/v1/packs": (200, {}, json.dumps([{"id": "a"}, {"id": "b"}])),
-        f"{PREFIX}/v1/round": (200, {}, json.dumps({"result": "A bad decision."})),
+        f"{PREFIX}/v2/packs": (200, {}, json.dumps([{"id": "a"}, {"id": "b"}])),
+        f"{PREFIX}/v2/round": (200, {}, json.dumps({"result": "A bad decision."})),
         f"{PREFIX}/web/": (200, {}, "<!doctype html><html></html>"),
         f"{PREFIX}/docs/": (307, {"Location": f"{PREFIX}/docs"}, ""),
     }
@@ -73,8 +73,8 @@ def test_a_healthy_deployment_passes_every_check(served, tmp_path, capsys):
 
 @pytest.mark.parametrize("override,message", [
     ({f"{PREFIX}/healthz": (200, {}, json.dumps({"status": "ok", "version": "0.0.1", "pack_count": 2}))}, "expected " + __version__),
-    ({f"{PREFIX}/v1/packs": (200, {}, json.dumps([{"id": "a"}]))}, "lists 1 packs but /healthz counts 2"),
-    ({f"{PREFIX}/v1/round": (500, {}, "{}")}, "/v1/round failed: HTTP 500"),
+    ({f"{PREFIX}/v2/packs": (200, {}, json.dumps([{"id": "a"}]))}, "lists 1 packs but /healthz counts 2"),
+    ({f"{PREFIX}/v2/round": (500, {}, "{}")}, "/v2/round failed: HTTP 500"),
     ({f"{PREFIX}/web/": (404, {}, "")}, "/web/ returned HTTP 404"),
     ({f"{PREFIX}/docs/": (307, {"Location": "/docs"}, "")}, "/docs/ redirects outside"),
 ])

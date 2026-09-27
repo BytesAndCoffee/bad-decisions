@@ -16,7 +16,7 @@ def test_health_check_retry_is_bounded():
 
 
 def test_smoke_test_does_not_hard_code_the_base_pack():
-    (line,) = curl_lines("/v1/round")
+    (line,) = curl_lines("/v2/round")
     assert "packs=" not in line
     assert not any("packs=base" in item for item in SCRIPT)
 
@@ -310,7 +310,7 @@ def test_failed_watermark_write_warns_and_never_replaces_the_file(host):
 
 
 def test_smoke_test_output_is_not_dumped_to_the_terminal():
-    (line,) = curl_lines("/v1/round")
+    (line,) = curl_lines("/v2/round")
     assert line.rstrip().endswith(">/dev/null")
 
 

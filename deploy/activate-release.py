@@ -28,6 +28,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -649,8 +650,15 @@ def _validate_with_release(args: argparse.Namespace, payload: bytes, new_id: str
 
 
 def _runtime_pack_ids(args: argparse.Namespace) -> set[str]:
-    with urllib.request.urlopen(f"http://{args.bind_host}:{args.port}/v1/packs", timeout=5) as response:
-        return {entry["id"] for entry in json.loads(response.read(8 * 1024 * 1024))}
+    # 2.0 serves /v2/packs; the activator may run while a 1.x release still serves /v1.
+    for path in ("/v2/packs", "/v1/packs"):
+        try:
+            with urllib.request.urlopen(f"http://{args.bind_host}:{args.port}{path}", timeout=5) as response:
+                return {entry["id"] for entry in json.loads(response.read(8 * 1024 * 1024))}
+        except urllib.error.HTTPError as exc:
+            if exc.code not in (404, 410):
+                raise
+    raise ActivationError("the service exposes neither /v2/packs nor /v1/packs")
 
 
 def _backup_pack(app_root: Path, request_id: str, name: str, data: bytes) -> None:
@@ -684,7 +692,7 @@ def replace_pack(args: argparse.Namespace, value: dict[str, str], state: dict[st
     """Replace one explicitly named registry pack with a staged, validated one.
 
     Publish ``<new>.json`` (never overwriting), retire ``<old>.json`` by an atomic
-    rename, restart, and require /healthz plus /v1/packs to show the new id and not
+    rename, restart, and require /healthz plus /v2/packs (or 1.x /v1/packs) to show the new id and not
     the old one. Any failure renames the old file back (same inode, so content,
     mode, owner, and mtime are exact), removes the new file only if it is ours,
     and restarts the service again if it had been restarted.

@@ -36,7 +36,7 @@ def test_api_success_metadata_and_cache():
         howto = client.get("/")
         assert howto.status_code == 200
         assert howto.headers["content-type"].startswith("text/plain")
-        assert "/v1/round" in howto.text
+        assert "/v2/round" in howto.text
         assert "CARDDECK.md" in howto.text
         assert client.get("/healthz").json() == {"status": "ok", "version": __version__, "pack_count": 3}
         web = client.get("/web/")
@@ -58,11 +58,11 @@ def test_api_success_metadata_and_cache():
         assert "contain: layout paint" in style.text
         favicon = client.get("/web/favicon.svg")
         assert favicon.headers["content-type"].startswith("image/svg+xml")
-        packs = client.get("/v1/packs").json()
+        packs = client.get("/v2/packs").json()
         assert [p["id"] for p in packs] == ["base", "coffee", "maha"]
-        assert client.get("/v1/packs/coffee").json()["counts"] == {"prompts": 50, "answers": 100}
-        assert client.get("/v1/packs/maha").json()["counts"] == {"prompts": 27, "answers": 52}
-        response = client.get("/v1/round", params={"prompt_packs": "maha", "answer_packs": "base,maha"})
+        assert client.get("/v2/packs/coffee").json()["counts"] == {"prompts": 50, "answers": 100}
+        assert client.get("/v2/packs/maha").json()["counts"] == {"prompts": 27, "answers": 52}
+        response = client.get("/v2/round", params={"prompt_packs": "maha", "answer_packs": "base,maha"})
         assert response.status_code == 200
         body = response.json()
         assert body["prompt"]["pack"] == "maha"
@@ -86,12 +86,12 @@ def test_trailing_slash_redirects_keep_the_proxy_prefix(monkeypatch, root_path, 
     # and sent /bad-decisions/docs/ to /docs.
     monkeypatch.setenv("BAD_DECISIONS_ROOT_PATH", root_path)
     with TestClient(create_app()) as client:
-        for path in ("/docs/", "/healthz/", "/v1/packs/", "/v1/packs/base/"):
+        for path in ("/docs/", "/healthz/", "/v2/packs/", "/v2/packs/base/"):
             response = client.get(path, follow_redirects=False)
             assert response.status_code == 307
             assert response.headers["location"] == prefix + path.rstrip("/")
-        response = client.get("/v1/round/?packs=base", follow_redirects=False)
-        assert response.headers["location"] == f"{prefix}/v1/round?packs=base"
+        response = client.get("/v2/round/?packs=base", follow_redirects=False)
+        assert response.headers["location"] == f"{prefix}/v2/round?packs=base"
         for path in ("/no-such-path/", "//evil.example/"):
             response = client.get(f"http://testserver{path}", follow_redirects=False)
             assert response.status_code == 404, path
@@ -102,10 +102,10 @@ def test_trailing_slash_redirects_keep_the_proxy_prefix(monkeypatch, root_path, 
 def test_api_normalized_errors():
     with TestClient(create_app()) as client:
         cases = [
-            ("/v1/round?prompt_packs=typo", 400, "unknown_pack"),
-            ("/v1/round?packs=base&packs=maha", 400, "repeated_query_parameter"),
-            ("/v1/round?wat=x", 400, "unknown_query_parameter"),
-            ("/v1/packs/nope", 404, "pack_not_found"),
+            ("/v2/round?prompt_packs=typo", 422, "unknown_pack"),
+            ("/v2/round?packs=base&packs=maha", 400, "repeated_query_parameter"),
+            ("/v2/round?wat=x", 400, "unknown_query_parameter"),
+            ("/v2/packs/nope", 404, "pack_not_found"),
             ("/no-such-path", 404, "path_not_found"),
         ]
         for path, status, code in cases:
@@ -128,11 +128,11 @@ def test_default_packs_work_without_base_in_custom_registry(tmp_path, monkeypatc
     directory = custom_registry_without_base(tmp_path)
     monkeypatch.setenv("BAD_DECISIONS_PACK_DIR", str(directory))
     with TestClient(create_app()) as client:
-        response = client.get("/v1/round")
+        response = client.get("/v2/round")
         assert response.status_code == 200
         assert response.json()["selection"] == {"prompt_packs": ["maha"], "answer_packs": ["maha"]}
-        missing = client.get("/v1/round", params={"packs": "base"})
-        assert missing.status_code == 400
+        missing = client.get("/v2/round", params={"packs": "base"})
+        assert missing.status_code == 422
         assert missing.json()["error"]["code"] == "unknown_pack"
     result = run_cli_env({"BAD_DECISIONS_PACK_DIR": str(directory)}, "--oneshot")
     assert result.returncode == 0
@@ -152,7 +152,7 @@ def run_cli_env(env, *args):
 
 def test_api_default_selects_every_bundled_pack():
     with TestClient(create_app()) as client:
-        selection = client.get("/v1/round").json()["selection"]
+        selection = client.get("/v2/round").json()["selection"]
         assert selection == {
             "prompt_packs": ["base", "coffee", "maha"],
             "answer_packs": ["base", "coffee", "maha"],
@@ -162,10 +162,10 @@ def test_api_default_selects_every_bundled_pack():
 def test_management_status_requires_configured_bearer(monkeypatch):
     monkeypatch.setenv("BAD_DECISIONS_MANAGEMENT_TOKEN", "correct-token")
     with TestClient(create_app()) as client:
-        denied = client.get("/v1/manage/status")
+        denied = client.get("/v2/manage/status")
         assert denied.status_code == 401
         assert denied.json()["error"]["code"] == "unauthorized"
-        accepted = client.get("/v1/manage/status", headers={"Authorization": "Bearer correct-token"})
+        accepted = client.get("/v2/manage/status", headers={"Authorization": "Bearer correct-token"})
         assert accepted.status_code == 200
         assert accepted.json() == {"status": "ok", "version": __version__, "pack_count": 3}
 

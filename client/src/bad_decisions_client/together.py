@@ -53,16 +53,16 @@ class TogetherClient:
 
     @property
     def endpoint(self) -> str:
-        return f"{self.api_url}/v1/peer-pressure/rooms/{quote(self.room, safe='')}"
+        return f"{self.api_url}/v2/peer-pressure/rooms/{quote(self.room, safe='')}"
 
     def _headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self.session_token}"}
 
     def join(self, display_name: str, saved: dict[str, str] | None = None) -> dict[str, Any]:
         payload: dict[str, Any] = {"display_name": display_name, "create": True}
-        if saved:
-            payload.update({"player_id": saved["player_id"], "session_token": saved["session_token"]})
-        response, _ = self.request_json(f"{self.endpoint}/join", timeout=self.timeout, method="POST", payload=payload)
+        # A saved session token rejoins as the same player; it alone identifies them.
+        headers = {"Authorization": f"Bearer {saved['session_token']}"} if saved else None
+        response, _ = self.request_json(f"{self.endpoint}/join", timeout=self.timeout, method="POST", payload=payload, headers=headers)
         self.player_id = response["player_id"]
         self.session_token = response["session_token"]
         self._apply(response)
@@ -79,8 +79,7 @@ class TogetherClient:
 
     def sync(self) -> dict[str, Any]:
         response, _ = self.request_json(
-            f"{self.endpoint}/sync", timeout=self.timeout, method="POST",
-            payload={"player_id": self.player_id}, headers=self._headers(),
+            f"{self.endpoint}/sync", timeout=self.timeout, method="POST", headers=self._headers(),
         )
         self._apply(response)
         return self.state
@@ -90,9 +89,9 @@ class TogetherClient:
             revision = self.revision
         response, _ = self.request_json(
             f"{self.endpoint}/heartbeat", timeout=self.timeout, method="POST",
-            payload={"player_id": self.player_id, "revision": revision}, headers=self._headers(),
+            payload={"revision": revision}, headers=self._headers(),
         )
-        if response.get("type") == "NACK" and response.get("resync"):
+        if response.get("resync"):
             self.sync()
             return True
         return False
@@ -101,7 +100,7 @@ class TogetherClient:
         request_id = f"req_{uuid.uuid4().hex}"
         with self._lock:
             revision = self.revision
-        body = {"player_id": self.player_id, "request_id": request_id, "revision": revision, **payload}
+        body = {"request_id": request_id, "revision": revision, **payload}
         try:
             response, _ = self.request_json(f"{self.endpoint}/{action}", timeout=self.timeout, method="POST", payload=body, headers=self._headers())
         except RuntimeError as exc:

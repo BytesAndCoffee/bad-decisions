@@ -70,16 +70,16 @@ Packaging
 - [x] `bad-decisions[aws]`, `[aws-deploy]`, and `[tui]` extras; the core install is 32 MB instead of 469 MB.
 
 API v2
-- [ ] `/v2` routes with prompt/answer names; `/v1/*` returns 410 with an upgrade hint; `/healthz` stays unversioned.
-- [ ] One error envelope (Peer Pressure NACKs included) with `request_id`; meaningful status per code.
-- [ ] 422 responses do not echo request input.
-- [ ] Response models for every route in OpenAPI, including errors.
-- [ ] `ETag`/`Cache-Control` for packs; long-lived cache for versioned web assets.
-- [ ] Configurable CORS allowlist, off by default.
-- [ ] Neutral headers (`X-Client-ID`, `X-Session-ID`, `X-Feedback-Token`).
-- [ ] Peer Pressure: bearer token alone identifies the player; `POST .../end` replaces DELETE with a body.
-- [ ] Peer Pressure caps: live rooms, players per room, disk space before creating a room.
-- [ ] App-level rate limit for room creation, join, and feedback.
+- [x] `/v2` routes with prompt/answer names; `/v1/*` returns 410 with an upgrade hint; `/healthz` stays unversioned.
+- [x] One error envelope (Peer Pressure NACKs included) with `request_id`; meaningful status per code.
+- [x] 422 responses do not echo request input.
+- [x] Response models in OpenAPI for health, packs, rounds, feedback, and the error envelope on every route (Peer Pressure state stays documented in PEER_PRESSURE.md).
+- [x] `ETag`/`Cache-Control` for packs; long-lived cache for versioned web assets.
+- [x] Configurable CORS allowlist, off by default.
+- [x] Neutral headers (`X-Client-ID`, `X-Session-ID`, `X-Feedback-Token`).
+- [x] Peer Pressure: bearer token alone identifies the player; `POST .../end` replaces DELETE with a body.
+- [x] Peer Pressure caps: live rooms, players per room, disk space before creating a room.
+- [x] App-level rate limit for room creation, join, and feedback.
 
 Cleanup
 - [ ] Remove `remote_cli.py`, `infra/aws/`, the `analytics` alias, and the client's `legacy_main`.

@@ -157,10 +157,10 @@ def test_missed_heartbeats_mark_away_without_losing_room_state(tmp_path):
     bob_before = service.sync("ohno", *credentials(bob))["state"]["you"]["hand"]
     clock[0] += 31
     heartbeat = service.heartbeat("ohno", *credentials(alice), started["revision"])
-    assert heartbeat == {"type": "NACK", "reason": "stale_revision", "revision": started["revision"] + 1, "resync": True}
+    assert heartbeat == {"revision": started["revision"] + 1, "resync": True}
     state = service.sync("ohno", *credentials(alice))["state"]
     assert next(player for player in state["players"] if player["name"] == "Bob")["connected"] is False
-    reconnected = service.join("ohno", "Bob", player_id=bob["player_id"], session_token=bob["session_token"])
+    reconnected = service.join("ohno", "Bob", session_token=bob["session_token"])  # the token alone identifies Bob
     assert reconnected["state"]["you"]["hand"] == bob_before
 
 
@@ -183,34 +183,31 @@ def test_concurrent_mutations_cannot_commit_the_same_revision(tmp_path):
     outcomes = []
     for future in futures:
         try:
-            outcomes.append(future.result()["type"])
+            outcomes.append("ok" if "revision" in future.result() else "?")
         except PeerPressureError as exc:
             outcomes.append(exc.reason)
-    assert sorted(outcomes) == ["ACK", "stale_revision"]
+    assert sorted(outcomes) == ["ok", "stale_revision"]
 
 
 def test_http_protocol_uses_responsible_adult_and_protects_state(tmp_path, monkeypatch):
     monkeypatch.setenv("BAD_DECISIONS_PEER_PRESSURE_DIR", str(tmp_path))
     with TestClient(create_app()) as client:
         joined = [
-            client.post("/v1/peer-pressure/rooms/tabletop/join", json={"display_name": name, "create": True}).json()
+            client.post("/v2/peer-pressure/rooms/tabletop/join", json={"display_name": name, "create": True}).json()
             for name in ("Alice", "Bob", "Carol")
         ]
-        assert all(item["type"] == "SYNACK" for item in joined)
+        assert all(set(item) >= {"player_id", "session_token", "revision", "state"} for item in joined)
         alice = joined[0]
         headers = {"Authorization": f"Bearer {alice['session_token']}"}
-        denied = client.get("/v1/peer-pressure/rooms/tabletop/state", headers={"X-Peer-Pressure-Player": alice["player_id"]})
-        assert denied.status_code == 401 and denied.json()["reason"] == "invalid_session"
+        denied = client.get("/v2/peer-pressure/rooms/tabletop/state")
+        assert denied.status_code == 401 and denied.json()["error"]["code"] == "invalid_session"
         started = client.post(
-            "/v1/peer-pressure/rooms/tabletop/start",
+            "/v2/peer-pressure/rooms/tabletop/start",
             headers=headers,
-            json={"player_id": alice["player_id"], "request_id": request(40), "revision": joined[-1]["revision"]},
+            json={"request_id": request(40), "revision": joined[-1]["revision"]},
         )
-        assert started.status_code == 200 and started.json()["type"] == "ACK"
-        state = client.get(
-            "/v1/peer-pressure/rooms/tabletop/state",
-            headers={**headers, "X-Peer-Pressure-Player": alice["player_id"]},
-        ).json()
+        assert started.status_code == 200 and started.json()["revision"] == joined[-1]["revision"] + 1
+        state = client.get("/v2/peer-pressure/rooms/tabletop/state", headers=headers).json()
         assert state["responsible_adult"]["name"] == "Alice"
         assert all("hand" not in player for player in state["players"])
         schema = client.get("/openapi.json").text.lower()

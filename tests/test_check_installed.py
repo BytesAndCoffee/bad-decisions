@@ -28,7 +28,7 @@ elif args[:1] == ["-c"]:
 elif args[:1] == ["serve"]:
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
-            body = {{"/healthz": json.dumps({{"status": "ok", "version": VERSION}}), "/v1/round": json.dumps({{"result": "x"}}),
+            body = {{"/healthz": json.dumps({{"status": "ok", "version": VERSION}}), "/v2/round": json.dumps({{"result": "x"}}),
                     "/web/": "<html></html>"}}.get(self.path)
             self.send_response(200 if body else 404); self.end_headers(); self.wfile.write((body or "").encode())
         def log_message(self, *_): pass
