@@ -52,6 +52,47 @@ Tracks fixes from the 2026-09-19 code review. Tick an item when its fix and test
 - [ ] Harden `client/cli.py` `_get_json` (size cap, non-dict error payload, `http.client` errors).
 - [x] Tests: concurrent imports, catalog malformed archives, PYX escape edge cases.
 
+## 2.0.0 plan
+
+Decided 2026-09-27: unify on prompt/answer(s); `/v1` is removed (the owner is
+its only consumer) and `/v2` replaces it; schema-v1 packs stay readable;
+server-sent events are deferred to 2.1, but the v2 room API must allow them.
+
+Rename (prompt/answer)
+- [ ] Pack schema v2 (`prompts`/`answers`); read v1 and v2, write v2.
+- [ ] Models, engine, pools, errors, CLIs (`--prompt-packs`/`--answer-packs`), PYX import output.
+- [ ] Consequences hashes byte-identical to 1.x (golden test over bundled packs).
+- [ ] Peer Pressure storage `prompt`/`answer` (room schema 3).
+- [ ] Catalog `prompt_count`/`answer_count` (indexer and AWS archive); activator reads v1 and v2.
+- [ ] Web UI: no "BLACK CARD" label or dark-prompt/light-answer pairing.
+
+Packaging
+- [ ] `bad-decisions[aws]` and `[tui]` extras; the core install drops aws-cdk-lib (373 MB), boto3, textual.
+
+API v2
+- [ ] `/v2` routes with prompt/answer names; `/v1/*` returns 410 with an upgrade hint; `/healthz` stays unversioned.
+- [ ] One error envelope (Peer Pressure NACKs included) with `request_id`; meaningful status per code.
+- [ ] 422 responses do not echo request input.
+- [ ] Response models for every route in OpenAPI, including errors.
+- [ ] `ETag`/`Cache-Control` for packs; long-lived cache for versioned web assets.
+- [ ] Configurable CORS allowlist, off by default.
+- [ ] Neutral headers (`X-Client-ID`, `X-Session-ID`, `X-Feedback-Token`).
+- [ ] Peer Pressure: bearer token alone identifies the player; `POST .../end` replaces DELETE with a body.
+- [ ] Peer Pressure caps: live rooms, players per room, disk space before creating a room.
+- [ ] App-level rate limit for room creation, join, and feedback.
+
+Cleanup
+- [ ] Remove `remote_cli.py`, `infra/aws/`, the `analytics` alias, and the client's `legacy_main`.
+- [ ] Fix or remove `bad-decisions setup` (writes a config nothing reads); honor the service name.
+- [ ] Client: Python 3.10+, no `packaging` dependency (dependency-free again).
+- [ ] Reject C0 control characters in card text (checked against the production registry first).
+- [ ] A configured S3 pack bucket that yields nothing is an error, not a silent fallback.
+- [ ] Remaining "Should consider" and "Minor" items above.
+
+Release
+- [ ] Docs, man pages, changelogs, and a 1.x to 2.0 migration guide.
+- [ ] Version 2.0.0; merge, tag, publish, deploy (activator re-bootstrap if it changed), Homebrew tap update.
+
 ## Log
 <!-- date - item - what changed -->
 2026-09-19 - 1 - Catalog indexer enforces importer-equivalent per-member size, ratio, symlink, encryption and total-size limits (5 MiB archive cap); any per-archive error goes to `rejected_archives` instead of a 503. Tests: `tests/test_catalog_indexer.py`.
