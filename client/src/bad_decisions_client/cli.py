@@ -262,6 +262,7 @@ def _identity(argv: Sequence[str]) -> int:
     print("identity omitted" if config.get("REGRET_ANALYTICS_IDENTITY")=="off" else "identity enabled")
     return 0
 
+STALE_SESSION_REASONS = ("invalid_session:", "room_expired:", "room_not_found:")
 TOGETHER_HINTS = {
     "display_name_taken": "someone at that table already uses that name. If it was you on another device, rejoin from there; otherwise choose another with --name.",
     "game_in_progress": "that table has already started, and new players can only join before the first round. Try another room name.",
@@ -285,7 +286,13 @@ def _together(argv: Sequence[str]) -> int:
         return 1
     client=TogetherClient(base,args.room,args.timeout,_request_json)
     try:
-        joined=client.join(name,saved)
+        try:
+            joined=client.join(name,saved)
+        except RuntimeError as exc:
+            # A saved session can outlive its room (expired, recreated, or from an older server).
+            if not saved or not str(exc).startswith(STALE_SESSION_REASONS): raise
+            print("regret: the saved seat for this room is gone; joining as a new player",file=sys.stderr)
+            joined=client.join(name,None)
         save_session(base,args.room,{"player_id":joined["player_id"],"session_token":joined["session_token"],"display_name":name},_atomic_json)
         return run_together(client,heartbeat_interval=args.heartbeat)
     except (RuntimeError,OSError,KeyError,TypeError,ValueError) as exc:

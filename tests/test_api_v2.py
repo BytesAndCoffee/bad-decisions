@@ -27,11 +27,24 @@ def request_id() -> str:
     return f"req_{uuid.uuid4().hex}"
 
 
-@pytest.mark.parametrize("method,path", [("GET", "/v1/round"), ("GET", "/v1/packs"), ("POST", "/v1/peer-pressure/rooms"), ("DELETE", "/v1/rounds/x/feedback")])
+@pytest.mark.parametrize(
+    "method,path",
+    [
+        ("GET", "/v1"),
+        ("HEAD", "/v1/round"),
+        ("OPTIONS", "/v1/packs"),
+        ("GET", "/v1/round"),
+        ("POST", "/v1/peer-pressure/rooms"),
+        ("DELETE", "/v1/rounds/x/feedback"),
+    ],
+)
 def test_v1_is_gone_with_an_upgrade_hint(api, method, path):
     with api() as client:
         response = client.request(method, path)
     assert response.status_code == 410
+    if method == "HEAD":
+        assert response.content == b""
+        return
     body = response.json()["error"]
     assert body["code"] == "api_version_removed" and "/v2" in body["message"] and "regret" in body["message"]
 
@@ -89,7 +102,14 @@ def test_cors_is_off_unless_origins_are_configured(api):
         assert "access-control-allow-origin" not in client.get("/v2/packs", headers={"Origin": "https://evil.example"}).headers
 
 
-@pytest.mark.parametrize("value", ["*", "game.example", "https://game.example/path", "ftp://game.example"])
+@pytest.mark.parametrize(
+    "value",
+    [
+        "*", "game.example", "https://game.example/path", "ftp://game.example",
+        "https://game.example?origin=evil", "https://game.example#fragment",
+        "https://user:password@game.example", "https://game.example:not-a-port",
+    ],
+)
 def test_cors_origins_must_be_exact(api, value):
     with pytest.raises(ValueError, match="CORS_ORIGINS"):
         api(CORS_ORIGINS=value)

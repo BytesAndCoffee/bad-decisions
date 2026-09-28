@@ -68,7 +68,7 @@ Workflows run in the repository the package metadata links to
 - Those exact wheels are installed into a clean virtualenv with
   `requirements.lock`, and `scripts/check_installed.py` checks the console
   scripts and `--version`, the bundled packs, the packaged lock, the manual
-  pages, and a live `bad-decisions serve` (`/healthz`, `/v1/round`, `/web/`).
+  pages, and a live `bad-decisions serve` (`/healthz`, `/v2/round`, `/web/`).
 
 ## Notes
 

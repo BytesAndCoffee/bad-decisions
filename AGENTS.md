@@ -42,7 +42,7 @@ validation, licenses, backups, and ZIP-bomb defenses are not.
 - `BAD_DECISIONS_PACK_DIR` replaces the bundled registry. Use `bad-decisions pack init-registry`
   before importing a portable pack when bundled packs should remain available.
 - An omitted `packs` selector means every pack in the loaded registry (API
-  `/v1/round`, CLI `--packs`, deploy smoke test). Never hard-code a default pack
+  `/v2/round`, CLI `--packs`, deploy smoke test). Never hard-code a default pack
   id: custom registries may not contain `base`.
 - Keep CLI one-shot output clean: no banners, logs, or diagnostics on stdout.
 - Maintain strict Pydantic validation and stable JSON error envelopes. Do not

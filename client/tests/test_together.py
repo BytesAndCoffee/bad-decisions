@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import stat
 
+import pytest
+
 from bad_decisions_client import cli
 from bad_decisions_client.together import TogetherClient, choose_answers, load_session, render, save_session
 
@@ -162,3 +164,38 @@ def test_stale_revision_nack_triggers_a_resync(monkeypatch):
     except RuntimeError:
         pass
     assert synced and client.revision == 9
+
+
+@pytest.mark.parametrize("reason", ["invalid_session", "room_expired", "room_not_found"])
+def test_a_stale_saved_session_falls_back_to_a_fresh_join(tmp_path, monkeypatch, capsys, reason):
+    saved = {"player_id": "player_old", "session_token": "stale", "display_name": "Alice"}
+    monkeypatch.setattr(cli, "load_session", lambda *_args: saved)
+    stored = []
+    monkeypatch.setattr(cli, "save_session", lambda _base, _room, session, _write: stored.append(session))
+    monkeypatch.setattr(cli, "run_together", lambda *_args, **_kwargs: 0)
+    calls = []
+
+    def request_json(url, **kwargs):
+        calls.append(kwargs.get("headers"))
+        if kwargs.get("headers"):
+            raise RuntimeError(f"{reason}: gone")
+        return {"player_id": "player_new", "session_token": "fresh", "revision": 1, "state": {"room": {"revision": 1}}}, {}
+
+    monkeypatch.setattr(cli, "_request_json", request_json)
+    assert cli.run(["together", "ohno"]) == 0
+    assert calls == [{"Authorization": "Bearer stale"}, None]
+    assert stored == [{"player_id": "player_new", "session_token": "fresh", "display_name": "Alice"}]
+    assert "joining as a new player" in capsys.readouterr().err
+
+
+def test_other_join_errors_are_not_retried(monkeypatch, capsys):
+    monkeypatch.setattr(cli, "load_session", lambda *_args: {"player_id": "p", "session_token": "t", "display_name": "Alice"})
+    calls = []
+
+    def request_json(url, **kwargs):
+        calls.append(url)
+        raise RuntimeError("game_in_progress: started")
+
+    monkeypatch.setattr(cli, "_request_json", request_json)
+    assert cli.run(["together", "ohno"]) == 1
+    assert len(calls) == 1

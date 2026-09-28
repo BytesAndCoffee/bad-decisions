@@ -5,7 +5,7 @@ card games. It provides a validated pack registry, a stateless REST API, a
 browser client, a terminal client, and CardDeck portable-pack archives.
 
 The engine makes no network requests while serving a hand and never changes
-packs through the HTTP API. Prompt and response selectors are independent; the
+packs through the HTTP API. Prompt and answer selectors are independent; the
 registry is loaded at startup and can be run with multiple workers.
 
 ## Install
@@ -132,6 +132,7 @@ that is between you and the stew.
 - [Remote imports](docs/REMOTE_IMPORTS.md)
 - [Attribution and content rights](docs/ATTRIBUTION.md)
 - [Peer Pressure multiplayer](docs/PEER_PRESSURE.md)
+- [Migrating to 2.0](docs/MIGRATING-2.0.md)
 - [Easy deploy](docs/EASY_DEPLOY.md)
 - [Deployment](docs/DEPLOYMENT.md)
 - [Release process](docs/RELEASING.md)
@@ -145,9 +146,9 @@ that is between you and the stew.
 ```bash
 uvicorn bad_decisions.api:create_app --factory --host 127.0.0.1 --port 8000
 curl http://127.0.0.1:8000/healthz
-curl http://127.0.0.1:8000/v1/packs
-curl http://127.0.0.1:8000/v1/round
-curl 'http://127.0.0.1:8000/v1/round?packs=maha'
+curl http://127.0.0.1:8000/v2/packs
+curl http://127.0.0.1:8000/v2/round
+curl 'http://127.0.0.1:8000/v2/round?packs=maha'
 ```
 
 Without a `packs` parameter (or `--packs` in the CLI), rounds draw from every pack
@@ -188,7 +189,7 @@ Consequences records route templates, method, status, duration, optional random
 client/session UUIDs, and authoritative drawn-card/provenance records. It does not
 record IP addresses, user agents, raw query strings, raw request headers, or
 feedback capabilities. Capability tokens are returned only in
-`X-Regret-Feedback-Token`, are stored as verifiers, and expire after seven days.
+`X-Feedback-Token`, are stored as verifiers, and expire after seven days.
 
 Set `BAD_DECISIONS_CONSEQUENCES_FEEDBACK=0` to retain analytics without voting.
 Public combination summaries are off unless
@@ -232,7 +233,6 @@ contacting the API; add `--json` for machine-readable output.
 Bad Decisions is Linux-native for production deployment:
 
 ```bash
-bad-decisions setup
 sudo NGINX_SITE_CONFIG=/etc/nginx/sites-available/example.com \
   PUBLIC_BASE_URL=https://example.com/bad-decisions \
   ./deploy.sh

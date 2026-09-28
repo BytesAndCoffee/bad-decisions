@@ -2,6 +2,58 @@
 
 ## [Unreleased]
 
+## [2.0.0] - Bad Decisions 2.0: Terrible choices at terrifying speeds
+
+### Added
+
+- A version-2 REST API and OpenAPI surface using prompts and answers throughout,
+  with stable error envelopes, conditional pack responses, strict CORS origins,
+  and bounded mutation rate limits.
+- CardDeck pack schema 2, catalog schema 2, schema-1 read compatibility, exact
+  license/attribution document matching, and reproducible audited tooling for
+  rebuilding the complete public archive collection.
+- Peer Pressure v2 sessions: bearer-token identity, explicit room ending,
+  revision/resync heartbeats, bounded rooms and players, free-space admission,
+  and server-authoritative ephemeral gameplay.
+- Optional AWS deployment dependencies are split into `[aws]` and
+  `[aws-deploy]`; the Textual Consequences dashboard remains in core.
+- A 1.x-to-2.0 migration guide and comprehensive release manuals.
+
+### Changed
+
+- The project vocabulary is now prompt/answer: CLI selectors are
+  `--prompt-packs` and `--answer-packs`, pack payloads contain `prompts`
+  and `answers`, and prompt display text is `text`.
+- Newly exported archives always use pack schema 2. Existing schema-1 packs are
+  upgraded strictly in memory and remain importable.
+- CardDeck catalogs expose prompt and answer counts and reject invalid
+  manifests, checksums, pack identities, licenses, attribution, unsafe control
+  characters, and hostile archive structures.
+- Rootless deployment preflights the live registry with the candidate release,
+  enforces disk and version gates, and provides explicit redeploy/older-version
+  overrides.
+
+### Removed
+
+- The version-1 API. Every `/v1` route now returns HTTP 410 with an upgrade
+  hint; callers must move to `/v2`.
+- Legacy black/white CLI flags, the unused plain `bad-decisions setup`
+  command, and obsolete deployment code.
+
+### Fixed
+
+- Peer Pressure no longer loops on impossible draws, accepts mismatched room
+  schemas, shares idempotency keys between players, or stalls when its
+  Responsible Adult disconnects.
+- `regret feedback` no longer doubles a reverse-proxy path prefix.
+- Catalog storage/network failures preserve the last good index, while
+  archive-content failures are reported per object.
+
+### Known issue
+
+- A good decision was made during release engineering. Root cause analysis is
+  ongoing. No recurrence is expected.
+
 ## [1.8.5]
 
 ### Added

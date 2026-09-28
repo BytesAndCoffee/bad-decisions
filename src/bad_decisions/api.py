@@ -300,8 +300,9 @@ def create_app() -> FastAPI:
             status_code=200 if ready else 503,
         )
 
-    @app.api_route("/v1/{rest:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"], include_in_schema=False)
-    def v1_removed(request: Request, rest: str):
+    @app.api_route("/v1", methods=["GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"], include_in_schema=False)
+    @app.api_route("/v1/{rest:path}", methods=["GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"], include_in_schema=False)
+    def v1_removed(request: Request, rest: str = ""):
         return error(
             request, "api_version_removed",
             "The /v1 API was removed in Bad Decisions 2.0; use /v2. Upgrade regret with brew upgrade regret or pip install --upgrade bad-decisions-client.",

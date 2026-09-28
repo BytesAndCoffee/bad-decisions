@@ -17,15 +17,15 @@ The importer collapses visual line wrapping, converts printed underscore runs
 to anonymous template placeholders, and appends an answer on a new line to
 question prompts without a printed blank. No endorsement is implied.
 
-Imported coverage is exactly this edition: 80 black cards and 500 white cards.
+Imported coverage is exactly this edition: 80 prompts and 500 answers.
 Instructions, rules, and terms are excluded. Commercial expansions, future
 releases, third-party decks, and the unverified “complete” online collections
 are not included.
 
 ## MAHA pack
 
-The custom `maha` pack was migrated from the supplied `cah_maha.py`: 27 black
-cards and 52 white cards. The project owner declared this content theirs and
+The custom `maha` pack was migrated from the supplied `cah_maha.py`: 27 prompts
+and 52 answers. The project owner declared this content theirs and
 created with ChatGPT assistance on 2026-09-16, authorizing this service
 deployment. It is licensed as CC BY-SA 4.0; attribution and share-alike apply.
 The authoritative legal code is preserved at

@@ -53,31 +53,39 @@ uncompressed bytes in `pack.json`; it is not a digest of re-serialized JSON.
 
 ## Pack payload
 
-`pack.json` is UTF-8 JSON with `schema_version: 1`. It contains:
+`pack.json` is UTF-8 JSON with `schema_version: 2`. It contains:
 
 ```text
 schema_version
 metadata
-black
-white
+prompts
+answers
 ```
 
 `metadata` MUST include a stable ID, name, description, version, language,
 custom flag, authors, attribution, license ID, license notice, sources, and
 modifications. It MAY include `license_url`.
 
-Each black card has a unique ID, `repr`, `template`, positive integer `slots`,
-and its pack ID. Its template MAY use only anonymous `{}` fields and escaped
-`{{`/`}}`; the number of anonymous fields MUST equal `slots`. Each white card
-has a unique ID, non-empty `text`, and its pack ID. A pack MUST contain at least
-one card. Card IDs are unique across both colors. Implementations SHOULD retain
+Each prompt has a unique ID, non-empty `text`, `template`, positive integer
+`slots`, and its pack ID. Its template MAY use only anonymous `{}` fields and
+escaped `{{`/`}}`; the number of anonymous fields MUST equal `slots`. Each
+answer has a unique ID, non-empty `text`, and its pack ID. A pack MUST contain
+at least one card. Card IDs are unique across prompts and answers.
+Implementations SHOULD retain
 optional `source_ref` values as provenance without treating them as executable
-or network-resolvable references.
+or network-resolvable references. C0 control characters other than tab and
+newline, and DEL, are invalid in card text and printed metadata.
 
-The pack metadata's attribution and license notice describe the cards, while
-the adjacent files provide the human-readable material needed to redistribute
-them. Pack authors are responsible for having the rights necessary to share
-their card text and source references.
+Schema-1 payloads used `black`/`white` collections and `repr` for prompt
+text. The reference importer continues to read and strictly validate schema 1,
+translates it to schema 2 in memory, and writes only schema 2. New archives
+MUST use schema 2.
+
+The pack metadata's attribution and license notice describe the cards.
+`LICENSE.txt` MUST exactly equal `metadata.license_notice` after surrounding
+whitespace is stripped, and `ATTRIBUTION.md` MUST likewise equal
+`metadata.attribution`. Pack authors are responsible for having the rights
+necessary to share their card text and source references.
 
 ### Licensing boundary
 
@@ -127,7 +135,7 @@ recommended but is not required for conformance.
 
 ## Compatibility
 
-Consumers MUST reject `format_version` values they do not understand. A future
+Consumers MUST reject `format_version` values they do not understand. Future
 CardDeck versions may add capabilities only through a new version; version-1
 readers MUST NOT silently accept unknown archive members or manifest fields.
 

@@ -4,6 +4,7 @@ import os
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlsplit
 
 
 @dataclass(frozen=True)
@@ -64,8 +65,24 @@ class Settings:
 
         cors_origins = tuple(item.strip().rstrip("/") for item in os.getenv("BAD_DECISIONS_CORS_ORIGINS", "").split(",") if item.strip())
         for origin in cors_origins:
-            scheme, _, host = origin.partition("://")
-            if scheme not in {"http", "https"} or not host or "/" in host or "*" in origin:
+            parsed = urlsplit(origin)
+            try:
+                parsed.port
+            except ValueError:
+                invalid_port = True
+            else:
+                invalid_port = False
+            if (
+                parsed.scheme not in {"http", "https"}
+                or not parsed.hostname
+                or parsed.path
+                or parsed.query
+                or parsed.fragment
+                or parsed.username is not None
+                or parsed.password is not None
+                or invalid_port
+                or "*" in origin
+            ):
                 raise ValueError("BAD_DECISIONS_CORS_ORIGINS must list exact http(s)://host[:port] origins, comma-separated")
         retention_days = positive("BAD_DECISIONS_CONSEQUENCES_RETENTION_DAYS", 90)
         feedback_ttl = positive("BAD_DECISIONS_CONSEQUENCES_FEEDBACK_TTL_SECONDS", 7 * 24 * 60 * 60)

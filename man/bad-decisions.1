@@ -1,4 +1,4 @@
-.TH BAD-DECISIONS 1 "2026-09-27" "Bad Decisions 1.8.5" "User Commands"
+.TH BAD-DECISIONS 1 "2026-09-27" "Bad Decisions 2.0.0" "User Commands"
 .SH NAME
 bad-decisions \- deal, validate, import, and inspect Bad Decisions card packs
 .SH SYNOPSIS
@@ -12,7 +12,7 @@ bad-decisions \- deal, validate, import, and inspect Bad Decisions card packs
 .RI {report|tui|rebuild|purge} ...
 .br
 .B bad-decisions
-.RI {setup|serve|deploy|status|reload|stop|doctor} ...
+.RI {serve|deploy|status|reload|stop|doctor} ...
 .br
 .B bad-decisions
 .RI {deploy|rollback} " local" ...
@@ -41,11 +41,11 @@ Delay between rapid rounds. Must be positive and finite.
 .BI "--packs " ids
 Comma-separated pack IDs for both card colors.
 .TP
-.BI "--black-packs " ids
-Override the black-card selector.
+.BI "--prompt-packs " ids
+Override the prompt-pack selector.
 .TP
-.BI "--white-packs " ids
-Override the white-card selector.
+.BI "--answer-packs " ids
+Override the answer-pack selector.
 .TP
 .BR --list-packs
 List available packs and exit.
@@ -85,9 +85,6 @@ Purge retained records and rebuild counters.
 .SH SERVICE COMMANDS
 These manage a systemd install on Linux.
 .TP
-.BI setup " [--config path] [--pack-dir path]"
-Create the user configuration file (default ~/.config/bad-decisions/config.env, mode 0600) if it does not exist. --pack-dir must name an existing absolute registry, which is loaded to validate it.
-.TP
 .BI serve " [--host address] [--port port] [--workers n]"
 Run the API in the foreground with uvicorn. The defaults are 127.0.0.1, 8000, and one worker.
 .TP
@@ -101,7 +98,7 @@ Show systemctl status for bad-decisions.service.
 Reload or stop bad-decisions.service. Require root.
 .TP
 .BI doctor " [--url url] [--expect-version version | --any-version] [--app-root path] [--min-free-mb n] [--timeout seconds]"
-Check a running deployment without changing anything: /healthz reports the expected version (by default this command's), /v1/packs agrees with its pack count, /v1/round deals, /web/ serves, and /docs/ redirects stay within the public prefix. When APP_ROOT exists it also reports a pending activation request, unused staged files, and free disk space. Give the public base URL, including any prefix, with --url (default http://127.0.0.1:8000). Exits 1 if any check fails.
+Check a running deployment without changing anything: /healthz reports the expected version (by default this command's), /v2/packs agrees with its pack count, /v2/round deals, /web/ serves, and /docs/ redirects stay within the public prefix. When APP_ROOT exists it also reports a pending activation request, unused staged files, and free disk space. Give the public base URL, including any prefix, with --url (default http://127.0.0.1:8000). Exits 1 if any check fails.
 .SH LOCAL DEPLOYMENT COMMANDS
 These talk to a root-owned activator installed once with sudo ./deploy.sh bootstrap-rootless; the caller must be in the deployment group. They refuse to run from inside APP_ROOT/current or APP_ROOT/releases: install the management command separately, for example with pipx. Only one request can be pending; a second is refused until the activator writes its result.
 .TP
@@ -109,7 +106,7 @@ These talk to a root-owned activator installed once with sudo ./deploy.sh bootst
 Deploy the installed version, so upgrading the management install (pipx upgrade bad-decisions or pip install --upgrade bad-decisions) and then running this command updates the server. It refuses to run when PyPI has a newer version than the installed command (pass --allow-older to deploy it anyway), and the activator refuses to reinstall the version that is already serving unless --redeploy is given. The activator also requires free space under APP_ROOT/releases (1 GiB by default) and, when bootstrapped with PACK_DIR, loads the live pack registry with the new release before switching to it. Interrupting the command does not cancel a request that was already submitted; the activator finishes it. The wheel is ./dist's matching build, --wheel, or else this version's wheel downloaded from PyPI and checked against its published SHA-256; the pinned requirements.lock ships with the package. On failure, the tail of APP_ROOT/activation/log.txt is printed. Stage them for a root-owned release activator previously installed with sudo ./deploy.sh bootstrap-rootless. This application-only update does not grant access to service definitions, nginx, secrets, or existing immutable releases.
 .TP
 .BI "pack replace-local" " old-pack-id url --new-id new-pack-id [--app-root path] [--timeout seconds]"
-Replace one named pack in a rootless install's registry (enabled by bootstrap-rootless with PACK_DIR). The HTTPS CardDeck archive is downloaded within the usual limits, fully validated, and must declare new-pack-id. The activator publishes it without overwriting, retires old-pack-id, restarts, and restores the exact previous files unless /healthz and /v1/packs show the new id without the old one.
+Replace one named pack in a rootless install's registry (enabled by bootstrap-rootless with PACK_DIR). The HTTPS CardDeck archive is downloaded within the usual limits, fully validated, and must declare new-pack-id. The activator publishes it without overwriting, retires old-pack-id, restarts, and restores the exact previous files unless /healthz and /v2/packs show the new id without the old one.
 .TP
 .BI "rollback local" " [release-id] [--app-root path] [--timeout seconds]"
 Ask the same activator to switch back to the newest known-good release that is not current, or to release-id, with the rules of sudo ./deploy.sh rollback: a failed health check restores the serving release, and success drops newer entries from the good-releases watermark.
@@ -177,7 +174,7 @@ Absolute private directory for ephemeral per-room SQLite databases. All workers 
 Room lifetime in seconds before its ephemeral database is deleted.
 .TP
 .B BAD_DECISIONS_PEER_PRESSURE_HAND_SIZE
-Number of private responses held by each participant.
+Number of private answers held by each participant.
 .TP
 .B BAD_DECISIONS_PEER_PRESSURE_MINIMUM_PLAYERS
 Minimum connected participants required before the Responsible Adult may start.
@@ -200,9 +197,6 @@ Per-client limit, per worker, for room creation, joins, and feedback (default 30
 .B BAD_DECISIONS_CORS_ORIGINS
 Comma-separated exact origins (https://host[:port]) whose browser pages may call the API. Unset means no cross-origin access.
 .SH FILES
-.TP
-.I ~/.config/bad-decisions/config.env
-User configuration written by setup.
 .TP
 .I ~/.bad-decisions.env
 AWS settings and the protected management credential written by setup aws.

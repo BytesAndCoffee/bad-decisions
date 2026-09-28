@@ -1,0 +1,235 @@
+{
+  "inventory_version": 1,
+  "archives": [
+    {
+      "archive": "packs_coffee.carddeck",
+      "pack_id": "coffee",
+      "sha256": "b1f067ebde991281419fecb20dfc05d16da155aa4e0662970eb7d065e5345566"
+    },
+    {
+      "archive": "packs_furry.carddeck",
+      "pack_id": "furry",
+      "sha256": "943fdc4e493d58c149ca67aae21b4d002927e3f0171f7131101a3e1b0c7de69d"
+    },
+    {
+      "archive": "packs_maha.carddeck",
+      "pack_id": "maha",
+      "sha256": "0f1ac617cb27a42d27629799b7a59756561cca33a00cec5f745b4c9df593eb78"
+    },
+    {
+      "archive": "packs_pyx-103-base-game-canada.carddeck",
+      "pack_id": "pyx-103-base-game-canada",
+      "sha256": "b3055f17b7011f1e9ca27e6e2ed3787370d7565da3370d071b4e0a18b700e30a"
+    },
+    {
+      "archive": "packs_pyx-134-base-game-uk.carddeck",
+      "pack_id": "pyx-134-base-game-uk",
+      "sha256": "5929c62e088eae7cdf479c8de9de57a6eee07264d220c41f12476ecbd4d5d142"
+    },
+    {
+      "archive": "packs_pyx-166-base-game-australia.carddeck",
+      "pack_id": "pyx-166-base-game-australia",
+      "sha256": "415f21fcf245964a1eb0375bf4ece165bedb6e037718a9491fcd457976fc58b4"
+    },
+    {
+      "archive": "packs_pyx-191-base-game-international.carddeck",
+      "pack_id": "pyx-191-base-game-international",
+      "sha256": "f4cf108066fb15f0940437e78180075dc408996b2c488fc7a1664aebdb3baeea"
+    },
+    {
+      "archive": "packs_pyx-2-base-game-us.carddeck",
+      "pack_id": "pyx-2-base-game-us",
+      "sha256": "b278e246a95fd61b4de6df0c5590a0fe0dce5e1da9d577f2c38d9bc831603393"
+    },
+    {
+      "archive": "packs_pyx-2131-box-expansion-pack.carddeck",
+      "pack_id": "pyx-2131-box-expansion-pack",
+      "sha256": "ffca388faffead32e26b4415734edbbcd3102421218345c1a45d0fa918f06658"
+    },
+    {
+      "archive": "packs_pyx-2152-hidden-compartment-pack.carddeck",
+      "pack_id": "pyx-2152-hidden-compartment-pack",
+      "sha256": "f9455554d789bbb0a5201dc2756a42b8c725be99704b6e411e942c590e504983"
+    },
+    {
+      "archive": "packs_pyx-235-red-box-expansion.carddeck",
+      "pack_id": "pyx-235-red-box-expansion",
+      "sha256": "c02353e1e504025b2e783b9c2100acb250860d56ab891ca212290e6cf1111513"
+    },
+    {
+      "archive": "packs_pyx-2374-pax-prime-2014-pack.carddeck",
+      "pack_id": "pyx-2374-pax-prime-2014-pack",
+      "sha256": "718f17c8c9529b1aff58a6b9d2043a0db432ad3ae2242dc6d3bc6c9e5f638e4e"
+    },
+    {
+      "archive": "packs_pyx-271-blue-box-expansion.carddeck",
+      "pack_id": "pyx-271-blue-box-expansion",
+      "sha256": "62330cead4fa9007a3d581bbe0398a135b7296125b0c585192c068313c67004b"
+    },
+    {
+      "archive": "packs_pyx-342-green-box-expansion.carddeck",
+      "pack_id": "pyx-342-green-box-expansion",
+      "sha256": "e51798c9cd65377a3496dc9980de6d6b6e7b266dbcfb6c29e9f95da44903be5f"
+    },
+    {
+      "archive": "packs_pyx-398-90s-nostalgia-pack.carddeck",
+      "pack_id": "pyx-398-90s-nostalgia-pack",
+      "sha256": "b01babfe66c63bfbbc68e8d1f0c7030ab821fbdac0bbe09fca661ec2ac4334d6"
+    },
+    {
+      "archive": "packs_pyx-406-holiday-pack-2012.carddeck",
+      "pack_id": "pyx-406-holiday-pack-2012",
+      "sha256": "83cbbd6e06956191d002f8362ecf06d4d0b91457941a1963bce455c315a97414"
+    },
+    {
+      "archive": "packs_pyx-414-vote-for-hillary-pack.carddeck",
+      "pack_id": "pyx-414-vote-for-hillary-pack",
+      "sha256": "230ceb31a7ef3beb15bb7e31aa039f5fecb24d6ddc9bf4d0083a877c2dd60ca3"
+    },
+    {
+      "archive": "packs_pyx-417-vote-for-trump-pack.carddeck",
+      "pack_id": "pyx-417-vote-for-trump-pack",
+      "sha256": "8c6329561207ca561ff37becf74785594723f1ba094d2dd37869c336d7485f1c"
+    },
+    {
+      "archive": "packs_pyx-421-house-of-cards-pack.carddeck",
+      "pack_id": "pyx-421-house-of-cards-pack",
+      "sha256": "c6a9113e06984242251c795ae304e4d536680d892ca1f80dc62a00f7e4045622"
+    },
+    {
+      "archive": "packs_pyx-430-college-pack.carddeck",
+      "pack_id": "pyx-430-college-pack",
+      "sha256": "f58b6c9b337e3a83c40aa0ac7b4746926cc179e52a1807e93e90dfb48d376053"
+    },
+    {
+      "archive": "packs_pyx-437-holiday-pack-2013.carddeck",
+      "pack_id": "pyx-437-holiday-pack-2013",
+      "sha256": "9473315ee944f50e083c7051973676e24808889f5f93596aef487068fe6c1f38"
+    },
+    {
+      "archive": "packs_pyx-447-fantasy-pack.carddeck",
+      "pack_id": "pyx-447-fantasy-pack",
+      "sha256": "e535e3db05dd5fd0e870a1e557aad333d907783477dd8939e813a7dc45f3a473"
+    },
+    {
+      "archive": "packs_pyx-454-mass-effect-pack.carddeck",
+      "pack_id": "pyx-454-mass-effect-pack",
+      "sha256": "dfebd648716421945bc2b7d74e7fc0397753be24008ac75c5a431d955613f312"
+    },
+    {
+      "archive": "packs_pyx-459-holiday-pack-2014.carddeck",
+      "pack_id": "pyx-459-holiday-pack-2014",
+      "sha256": "0396a0d78a70aa4cc976430d4914fe2e1f694f77f4769e99b04cfc71bc395d63"
+    },
+    {
+      "archive": "packs_pyx-466-nasa-pack.carddeck",
+      "pack_id": "pyx-466-nasa-pack",
+      "sha256": "f8e24645f59663a44d5e76df664f45323fb874744d0550de2c4cdc982bffb2dd"
+    },
+    {
+      "archive": "packs_pyx-469-food-pack.carddeck",
+      "pack_id": "pyx-469-food-pack",
+      "sha256": "dfd269a02181eb03179adeb24a05286ca6ce8edeb5a99f6b979501f8ffb73408"
+    },
+    {
+      "archive": "packs_pyx-476-pax-east-2013-pack-a.carddeck",
+      "pack_id": "pyx-476-pax-east-2013-pack-a",
+      "sha256": "400c101a2d5b8fe815d6bbc5d8d0de0df120e6c0a33f3c92b99c962dc4de7ce6"
+    },
+    {
+      "archive": "packs_pyx-478-season-s-greetings-pack.carddeck",
+      "pack_id": "pyx-478-season-s-greetings-pack",
+      "sha256": "f278856dbd590497a42937582c03ee95f3a4313ca131e968b44f3f9a658a48e7"
+    },
+    {
+      "archive": "packs_pyx-482-pax-east-2013-pack-b.carddeck",
+      "pack_id": "pyx-482-pax-east-2013-pack-b",
+      "sha256": "7d716c5db41979cfe800e8920c3ab61f26bc13a103588ab7b91b6bb39a234a85"
+    },
+    {
+      "archive": "packs_pyx-485-pax-east-2013-pack-c.carddeck",
+      "pack_id": "pyx-485-pax-east-2013-pack-c",
+      "sha256": "638fb141f17edafca92c21ea90d05061ca01203b9c5a86e37bbe9b40d1981bc2"
+    },
+    {
+      "archive": "packs_pyx-487-geek-pack.carddeck",
+      "pack_id": "pyx-487-geek-pack",
+      "sha256": "0fa89aa9a7b0825983e630c165c0b3f779969d7ed29dc4b93877b14fed53e6ac"
+    },
+    {
+      "archive": "packs_pyx-494-pax-east-2014-pack.carddeck",
+      "pack_id": "pyx-494-pax-east-2014-pack",
+      "sha256": "e1e4205f07f06509e4248bf77610b6db73f36acba216182ed971ca9e8e9a8d27"
+    },
+    {
+      "archive": "packs_pyx-499-jew-pack.carddeck",
+      "pack_id": "pyx-499-jew-pack",
+      "sha256": "302a3c0b0c7ebebcf7901b1f8d2290fb9ed4ba513a88b1d14570b5d61d094162"
+    },
+    {
+      "archive": "packs_pyx-505-pax-prime-2013-pack.carddeck",
+      "pack_id": "pyx-505-pax-prime-2013-pack",
+      "sha256": "a5510d8a8bc2a322deca9dfe145e7fd9d433846119fbe8194ac0bad53eae8b72"
+    },
+    {
+      "archive": "packs_pyx-510-period-pack.carddeck",
+      "pack_id": "pyx-510-period-pack",
+      "sha256": "604803de5c3e0f127758d1fede7c8eef7c93acf6b779ff8a283c0139020c4308"
+    },
+    {
+      "archive": "packs_pyx-517-post-trump-pack.carddeck",
+      "pack_id": "pyx-517-post-trump-pack",
+      "sha256": "0cd75469594d41074949ca180dcfc5c10034d0729584764e436b496c8facd728"
+    },
+    {
+      "archive": "packs_pyx-521-reject-pack.carddeck",
+      "pack_id": "pyx-521-reject-pack",
+      "sha256": "cd4274813539d2a0f686b793572615c7faf07192b96e1400feea516f11060129"
+    },
+    {
+      "archive": "packs_pyx-530-retail-pack.carddeck",
+      "pack_id": "pyx-530-retail-pack",
+      "sha256": "ef143583bbcc05005394ee278fb90483052d5de5d7b73f9e95c8e594a30b6ec2"
+    },
+    {
+      "archive": "packs_pyx-533-sci-fi-pack.carddeck",
+      "pack_id": "pyx-533-sci-fi-pack",
+      "sha256": "aa17c0c753c1a5c294ae752a38a138eac41d45747b5e947604726b2475e90086"
+    },
+    {
+      "archive": "packs_pyx-541-reject-pack-2.carddeck",
+      "pack_id": "pyx-541-reject-pack-2",
+      "sha256": "2ca56ed9333d9b0b38fed79d0e39291ace1f359300050faf20adef1be7fb00e0"
+    },
+    {
+      "archive": "packs_pyx-552-science-pack.carddeck",
+      "pack_id": "pyx-552-science-pack",
+      "sha256": "81ce661e404e048bfc92eb53ab89b9b286469f469dccc588e1e5c187d7549722"
+    },
+    {
+      "archive": "packs_pyx-560-weed-pack.carddeck",
+      "pack_id": "pyx-560-weed-pack",
+      "sha256": "b4a72293f8367c8362dac9ef838aaf1c80fd2853d0adb6f046453e81f1be12af"
+    },
+    {
+      "archive": "packs_pyx-566-retail-product-pack.carddeck",
+      "pack_id": "pyx-566-retail-product-pack",
+      "sha256": "61e7d44ee078ff0e5399acd403bd0f9f93927e5b55db6b56c1013109182b4874"
+    },
+    {
+      "archive": "packs_pyx-568-tabletop-pack.carddeck",
+      "pack_id": "pyx-568-tabletop-pack",
+      "sha256": "78708ac1fb980fcf9b92d93d2ca5af387877cc52a594bbac7973f9c63ffd88e9"
+    },
+    {
+      "archive": "packs_pyx-572-world-wide-web-pack.carddeck",
+      "pack_id": "pyx-572-world-wide-web-pack",
+      "sha256": "1cda2a579aca261418e7033b0da1f6ee34a52913cdff59f19e3f6e449341e540"
+    },
+    {
+      "archive": "packs_xkcdb.carddeck",
+      "pack_id": "xkcdb",
+      "sha256": "5c074c177c500aa72f61d8605605886d28c4fb22b80e74a6dc0ac549709608f0"
+    }
+  ]
+}

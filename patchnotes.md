@@ -62,7 +62,7 @@ Rename (prompt/answer)
 - [x] Pack schema v2 (`prompts`/`answers`); read v1 and v2, write v2.
 - [x] Models, engine, pools, errors, CLIs (`--prompt-packs`/`--answer-packs`), PYX import output.
 - [x] Consequences hashes byte-identical to 1.x (golden test over bundled packs).
-- [x] Peer Pressure storage `prompt`/`answer` (room schema 3).
+- [x] Peer Pressure storage `prompt`/`answer` (room schema 4).
 - [x] Catalog `prompt_count`/`answer_count` (indexer and AWS archive); activator reads v1 and v2.
 - [x] Web UI: no "BLACK CARD" label or dark-prompt/light-answer pairing.
 
@@ -89,16 +89,26 @@ Cleanup
 - [x] A configured S3 pack bucket that yields nothing logs a warning instead of falling back silently (kept as a fallback: new AWS deployments start before `pack seed-aws`).
 - [x] Remaining "Should consider" and "Minor" items above.
 
+Review round 3 (full v2 review, 2026-09-27)
+- [x] Removed-v1 contract also covers `/v1` itself plus HEAD and OPTIONS.
+- [x] Peer Pressure rejects impossible draws before sampling instead of looping forever.
+- [x] Room schema versions must match exactly; idempotency keys are scoped per authenticated player.
+- [x] Exact CORS origins reject queries, fragments, credentials, wildcards, and malformed ports.
+- [x] Catalog validates manifest layout, format, checksum, and pack identity before publishing metadata.
+- [x] Catalog streaming bodies are closed; GET and HEAD share one response path.
+
 Object store (owner request 2026-09-27)
 - [x] Review deploy/object-archive: all 46 live archives validated with 2.0 (45 pass; xkcdb rebuilt to 1.2.1 for upload).
-- [ ] Indexer mirrors the importer's license-match and control-character checks (drift tests).
+- [x] Indexer mirrors the importer's license-match and control-character checks (drift tests).
 - [x] Indexer Dockerfile pins boto3 1.40.75.
-- [ ] Public archive nginx: GET/HEAD only, small body limit, per-IP rate limit.
-- [ ] Operator: upload rebuilt xkcdb; redeploy the indexer (catalog schema 2).
+- [x] Public archive nginx: GET/HEAD only, small body limit, per-IP rate limit.
+- [x] Operator: snapshot live objects, upload all 46 audited schema-2 archives,
+  redeploy the indexer, and verify the schema-2 catalog.
 
 Release
-- [ ] Docs, man pages, changelogs, and a 1.x to 2.0 migration guide.
-- [ ] Version 2.0.0; merge, tag, publish, deploy (activator re-bootstrap if it changed), Homebrew tap update.
+- [x] Docs, man pages, changelogs, and a 1.x to 2.0 migration guide.
+- [x] Prepare version 2.0.0 in package, web, and manual sources.
+- [ ] Merge, tag, publish, deploy (activator re-bootstrap if it changed), and update the Homebrew tap.
 
 ## Log
 <!-- date - item - what changed -->
@@ -212,3 +222,24 @@ Release
 2026-09-27 - client - Installers cannot run post-install code, so pyenv users could not get `man regret` working without being told how. Added `regret doctor` (read-only; detects the install method and prints the MANPATH fix or a better install) and a Homebrew formula, homebrew/regret.rb, built, tested, and audited (--strict --new) with Linuxbrew from the 1.8.5 sdist. The client README, which is the PyPI description, now suggests Homebrew. Tests: client/tests/test_doctor.py, tests/test_homebrew_formula.py.
 2026-09-27 - docs - Man page tags rendered glued ("--black-packsids", "deploylocal", "togetherroom"): alternating-font macros (.BI/.BR/.RI) join arguments without spaces. Rewrote 30 entries with explicit spacing or inline font escapes. Tests: tests/test_manpages.py rejects any alternating-macro line whose arguments would run together.
 2026-09-27 - 2.0 - Cleanup and backlog: removed remote_cli.py, infra/aws, the analytics alias, legacy_main, and plain `setup`; systemctl commands take --service; control characters rejected in card text and metadata; archives must carry LICENSE.txt/ATTRIBUTION.md matching their metadata; exports and registry initialization remove only their own files on failure; PYX validation errors are PackConfigurationError; SIGPIPE guarded and home paths via expanduser; pools resolve once per selector; regret's HTTP helper caps responses and reports non-JSON bodies and dropped connections; client is dependency-free on Python 3.10+. Tests: tests/test_archive.py, test_models_engine.py, test_pyx_import.py, test_api_v2.py, test_extras.py, client/tests/test_cli.py.
+
+2026-09-27 - Object store - Catalog indexing now enforces UTF-8 and exact metadata equality for license/attribution files plus importer-matched control-character rules; hostile schema-1/schema-2 coverage guards the boundary.
+2026-09-27 - Object store edge - Public archive nginx now permits only GET/HEAD, caps request bodies at 1 MiB, and applies a documented 10r/s per-IP limit with a 30-request burst.
+2026-09-27 - v2 review - Fixed complete /v1 retirement responses, impossible Peer Pressure draw hangs, cross-player idempotency-key collisions, future/older room schema acceptance, and permissive CORS-origin parsing; focused API and multiplayer regressions added.
+2026-09-27 - Object store review - Catalog now verifies manifest structure, format, checksum, pack identity and nonempty legal documents, closes object streams, serves HEAD, and runs read-only with all capabilities dropped; both public hosts enforce GET/HEAD and body/rate limits.
+2026-09-27 - xkcdb - Added scripts/rebuild_xkcdb.py and regression coverage; it reuses the hostile-tested CardDeck parser and reproduces the reviewed schema-2 xkcdb 1.2.1 archive byte-for-byte (sha256 f4cd71a43437bf9cebb460cecec8cc3efa34654ba7b45cba041c7be2463f82ba) without changing cards.
+- Added an atomic, validated bulk rebuild tool for converting the complete CardDeck collection to pack schema 2 while preserving archive names and legal metadata.
+2026-09-27 - object archive - Added a tracked 46-object source inventory and
+auditable schema-2 rebuild manifest with source/selected/output hashes;
+replacement archives must preserve pack identity, cards, and order.
+2026-09-27 - object archive migration - Added a dry-run-by-default Garage
+migration helper with preflight digest checks, per-object rollback copies,
+post-upload verification, and automatic restoration tests.
+2026-09-27 - object archive production - Migrated all 46 public archives to
+schema 2 with verified Garage rollback objects, redeployed the hardened
+catalog, verified schema 2 with zero rejections, downloaded/validated every
+public archive, and completed a remote index import smoke test.
+2026-09-27 - release docs - Synchronized CardDeck, API, Peer Pressure, deploy,
+manual, migration, and changelog documentation and prepared lockstep 2.0.0
+version metadata without publishing.
+2026-09-28 - review - Claude review of v2 (Codex's pass included): regret together no longer dead-ends on a stale saved session (invalid_session, room_expired, room_not_found fall back to one fresh join); both public nginx hosts send X-Content-Type-Options nosniff; the indexer's metadata type check no longer relies on assert; Garage runs with no-new-privileges; ATTRIBUTION.md and AGENTS.md use prompt/answer and /v2. Operator follow-ups (nginx templates not yet installed, public rollback copies) are in HANDOFF.md. Tests: client/tests/test_together.py, tests/test_catalog_indexer.py.

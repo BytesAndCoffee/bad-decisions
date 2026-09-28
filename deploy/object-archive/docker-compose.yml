@@ -1,6 +1,7 @@
 services:
   garage:
     image: dxflrs/garage:v2.2.0
+    security_opt: [no-new-privileges:true]
     command: ["/garage", "server"]
     restart: unless-stopped
     ports:

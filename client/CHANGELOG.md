@@ -2,10 +2,35 @@
 
 ## [Unreleased]
 
+## [2.0.0] - Bad Decisions 2.0: Terrible choices at terrifying speeds
+
 ### Added
 
-- `regret doctor` checks the installation and prints a fix for each problem without changing anything: install method, PATH, whether `man regret` finds the page (with the exact `MANPATH` line for pyenv and other shim setups), preference permissions, and the service.
-- Homebrew formula (`brew install bytesandcoffee/tap/regret`), now the suggested install on macOS and Linux; it links `regret(1)` with no shell changes.
+- Full support for the version-2 REST API and Peer Pressure protocol.
+- `regret doctor` verifies the install, manual-page discovery, local
+  preference permissions, and service compatibility without changing state.
+- Homebrew installation is the recommended macOS/Linux path; pipx remains
+  supported.
+
+### Changed
+
+- Pack selectors are now `--prompt-packs` and `--answer-packs`, and output
+  consistently uses prompt/answer terminology.
+- Peer Pressure rejoin uses its bearer session token alone, mutations carry
+  UUID request IDs and expected revisions, and heartbeats resynchronize from
+  the authoritative room projection.
+- Python 3.10 is now the minimum supported client runtime. The client remains
+  dependency-free.
+
+### Removed
+
+- Version-1 API support and the legacy black/white selector flags.
+
+### Fixed
+
+- Feedback URLs remain correct behind a reverse-proxy path prefix.
+- Peer Pressure refusals display their structured reason and useful recovery
+  hints instead of a bare HTTP status.
 
 ## [1.8.5]
 

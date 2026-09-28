@@ -8,11 +8,13 @@ import json
 import logging
 import math
 import os
+import re
 import stat
 import threading
 import time
 import zlib
 from collections.abc import Callable
+from contextlib import closing
 from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -28,6 +30,11 @@ MAX_ARCHIVE_BYTES = 5 * 1024 * 1024
 CATALOG_SCHEMA_VERSION = 2
 MAX_COMPRESSION_RATIO = 100
 REQUIRED_MEMBERS = frozenset({"ATTRIBUTION.md", "LICENSE.txt", "manifest.json", "pack.json"})
+MANIFEST_MEMBERS = frozenset({"format", "format_version", "pack_id", "pack_sha256"})
+PACK_ID = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
+PRINTED_METADATA_STRINGS = ("name", "description", "version", "language", "attribution", "license_id", "license_notice")
+PRINTED_METADATA_LISTS = ("authors", "modifications")
 DEFAULT_CACHE_TTL = 60.0
 STALE_RETRY_SECONDS = 10.0
 # Content-invalid objects are reported in rejected_archives and never fail the catalog.
@@ -68,7 +75,7 @@ def cache_ttl() -> float:
     return ttl
 
 
-def read_members(body: bytes) -> tuple[object, object]:
+def read_members(body: bytes) -> tuple[object, object, bytes, str, str]:
     """Validate the fixed CardDeck layout with the same limits as the client."""
 
     with ZipFile(io.BytesIO(body)) as archive:
@@ -93,14 +100,72 @@ def read_members(body: bytes) -> tuple[object, object]:
         if total > MAX_ARCHIVE_BYTES:
             raise ValueError("archive is too large")
         members: dict[str, bytes] = {}
-        for name in ("manifest.json", "pack.json"):
+        for name in REQUIRED_MEMBERS:
             # Header sizes can be forged, so bound the actual decompressed read.
             with archive.open(name) as member:
                 data = member.read(MAX_MEMBER_BYTES + 1)
             if len(data) > MAX_MEMBER_BYTES:
                 raise ValueError(f"archive member is too large: {name!r}")
             members[name] = data
-    return json.loads(members["manifest.json"]), json.loads(members["pack.json"])
+    license_text = members["LICENSE.txt"].decode("utf-8").strip()
+    attribution = members["ATTRIBUTION.md"].decode("utf-8").strip()
+    if not license_text or not attribution:
+        raise ValueError("license and attribution files must not be empty")
+    return json.loads(members["manifest.json"]), json.loads(members["pack.json"]), members["pack.json"], license_text, attribution
+
+
+def printable(value: object, label: str, *, nonempty: bool = True) -> None:
+    """Reject values that cannot be safely printed in catalog consumers."""
+
+    if not isinstance(value, str):
+        raise ValueError(f"{label} must be a string")
+    if nonempty and not value.strip():
+        raise ValueError(f"{label} must not be empty")
+    match = CONTROL.search(value)
+    if match:
+        raise ValueError(f"{label} contains forbidden control character U+{ord(match.group()):04X}")
+
+
+def validate_visible_text(pack: dict[str, object], prompts: list[object], answers: list[object], schema: int) -> None:
+    """Mirror the importer's control-character checks without importing the package."""
+
+    metadata = pack["metadata"]
+    if not isinstance(metadata, dict):  # not an assert: python -O strips those
+        raise ValueError("pack metadata must be a JSON object")
+    for field in PRINTED_METADATA_STRINGS:
+        printable(metadata.get(field), f"metadata.{field}")
+    for field in PRINTED_METADATA_LISTS:
+        values = metadata.get(field)
+        if not isinstance(values, list):
+            raise ValueError(f"metadata.{field} must be a JSON array")
+        for index, value in enumerate(values):
+            printable(value, f"metadata.{field}[{index}]", nonempty=False)
+    for index, prompt in enumerate(prompts):
+        if not isinstance(prompt, dict):
+            raise ValueError("pack prompt entries must be JSON objects")
+        for field in (("repr", "template") if schema == 1 else ("text", "template")):
+            printable(prompt.get(field), f"prompt[{index}].{field}")
+    for index, answer in enumerate(answers):
+        if not isinstance(answer, dict):
+            raise ValueError("pack answer entries must be JSON objects")
+        printable(answer.get("text"), f"answer[{index}].text")
+
+
+def validate_manifest(manifest: dict[str, object], pack: dict[str, object], payload: bytes) -> None:
+    """Validate the integrity and identity fields the catalog republishes."""
+
+    if set(manifest) != MANIFEST_MEMBERS:
+        raise ValueError("manifest.json has missing or unexpected fields")
+    if manifest.get("format") != "carddeck" or type(manifest.get("format_version")) is not int or manifest["format_version"] != 1:
+        raise ValueError("unsupported archive format or version")
+    pack_id = manifest.get("pack_id")
+    digest = manifest.get("pack_sha256")
+    if not isinstance(pack_id, str) or not PACK_ID.fullmatch(pack_id) or pack_id == "all":
+        raise ValueError("manifest pack_id is invalid")
+    if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+        raise ValueError("manifest pack_sha256 is invalid")
+    if digest != hashlib.sha256(payload).hexdigest():
+        raise ValueError("pack.json checksum does not match manifest")
 
 
 class PayloadCache:
@@ -161,12 +226,15 @@ class Catalog:
     def pack(self, bucket: str, key: str, listed: dict[str, object]) -> dict[str, object]:
         if int(listed["Size"]) > MAX_ARCHIVE_BYTES:
             raise ValueError(f"archive exceeds {MAX_ARCHIVE_BYTES} byte catalog limit")
-        body = self.client.get_object(Bucket=bucket, Key=key)["Body"].read(MAX_ARCHIVE_BYTES + 1)
+        stream = self.client.get_object(Bucket=bucket, Key=key)["Body"]
+        with closing(stream):
+            body = stream.read(MAX_ARCHIVE_BYTES + 1)
         if len(body) > MAX_ARCHIVE_BYTES:
             raise ValueError(f"archive exceeds {MAX_ARCHIVE_BYTES} byte catalog limit")
-        manifest, pack = read_members(body)
+        manifest, pack, payload, license_text, attribution = read_members(body)
         if not isinstance(manifest, dict) or not isinstance(pack, dict) or not isinstance(pack.get("metadata"), dict):
             raise ValueError("manifest.json, pack.json, and pack metadata must be JSON objects")
+        validate_manifest(manifest, pack, payload)
         # Pack schema 1 named prompts and answers "black" and "white"; both are catalogued.
         schema = pack.get("schema_version")
         if schema not in (1, 2) or isinstance(schema, bool):
@@ -174,6 +242,16 @@ class Catalog:
         prompts, answers = (pack.get("black", []), pack.get("white", [])) if schema == 1 else (pack.get("prompts", []), pack.get("answers", []))
         if not isinstance(prompts, list) or not isinstance(answers, list):
             raise ValueError("pack card lists must be JSON arrays")
+        metadata = pack["metadata"]
+        if metadata.get("id") != manifest["pack_id"]:
+            raise ValueError("manifest pack_id does not match pack metadata")
+        license_notice = metadata.get("license_notice")
+        declared_attribution = metadata.get("attribution")
+        if not isinstance(license_notice, str) or license_text != license_notice.strip():
+            raise ValueError("LICENSE.txt does not match metadata.license_notice")
+        if not isinstance(declared_attribution, str) or attribution != declared_attribution.strip():
+            raise ValueError("ATTRIBUTION.md does not match metadata.attribution")
+        validate_visible_text(pack, prompts, answers, schema)
         return {"bucket": bucket, "object_key": key, "url": f"https://{bucket}.{self.object_domain}/{quote(key)}", "sha256": hashlib.sha256(body).hexdigest(), "size_bytes": len(body), "last_modified": listed["LastModified"].isoformat(), "etag": str(listed["ETag"]).strip('"'), "archive": manifest, "metadata": pack["metadata"], "prompt_count": len(prompts), "answer_count": len(answers)}
 
     def payload(self) -> dict[str, object]:
@@ -195,7 +273,7 @@ class Catalog:
 class Handler(BaseHTTPRequestHandler):
     cache: PayloadCache  # set by main() after configuration has been validated
 
-    def do_GET(self) -> None:  # noqa: N802
+    def _serve(self, *, include_body: bool) -> None:
         if self.path != "/packs/index":
             self.send_error(HTTPStatus.NOT_FOUND)
             return
@@ -212,7 +290,14 @@ class Handler(BaseHTTPRequestHandler):
         # Stale fallbacks (and a nearly expired body) must not be cached downstream.
         self.send_header("Cache-Control", f"public, max-age={max_age}" if max_age > 0 else "no-cache")
         self.end_headers()
-        self.wfile.write(response)
+        if include_body:
+            self.wfile.write(response)
+
+    def do_GET(self) -> None:  # noqa: N802
+        self._serve(include_body=True)
+
+    def do_HEAD(self) -> None:  # noqa: N802
+        self._serve(include_body=False)
 
     def log_message(self, _format: str, *_args: object) -> None:
         return

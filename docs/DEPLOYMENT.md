@@ -50,6 +50,20 @@ then performed.
 | `PUBLIC_BASE_URL` | required when nginx is enabled | HTTPS URL corresponding to `ROOT_PATH`. |
 | `CONFIGURE_NGINX` | `1` | Set to `0` to install only the systemd service. |
 
+Runtime behavior is configured in the service environment:
+
+| Environment variable | Default | Purpose |
+| --- | --- | --- |
+| `BAD_DECISIONS_CORS_ORIGINS` | unset | Comma-separated exact `http(s)://host[:port]` browser origins. |
+| `BAD_DECISIONS_PEER_PRESSURE_MAX_ROOMS` | `200` | Maximum live ephemeral rooms per deployment. |
+| `BAD_DECISIONS_PEER_PRESSURE_MAX_PLAYERS` | `12` | Maximum participants in one room. |
+| `BAD_DECISIONS_PEER_PRESSURE_MIN_FREE_MB` | `256` | Required free room-storage space before creating a room. |
+| `BAD_DECISIONS_RATE_LIMIT_PER_MINUTE` | `30` | Per-client, per-worker room-create/join and feedback limit. |
+
+Origins are exact: wildcards, URL credentials, paths, queries, fragments, and
+malformed ports are rejected at startup. See `bad-decisions(1)` for the full
+environment reference.
+
 For an update, rerun the same command. The script builds a wheel, stages an
 immutable release, atomically switches `current`, restarts the service, and
 retains the prior healthy release for rollback. Inspect service logs with
@@ -112,7 +126,7 @@ validates it with the deployed release's schema as the service user, and
 requires `OLD_ID.json` to be a plain, singly linked file declaring `OLD_ID` and
 `NEW_ID` to be unused. It publishes `NEW_ID.json` with a no-overwrite link,
 retires the old file by atomic rename, restarts, and checks `/healthz` and
-`/v1/packs`; on failure it renames the old file back and removes only the file
+`/v2/packs`; on failure it renames the old file back and removes only the file
 it created. The registry directory itself stays owned by the service or root
 and is never made group-writable.
 

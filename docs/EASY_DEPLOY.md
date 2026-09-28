@@ -151,7 +151,7 @@ The command downloads the archive over HTTPS within the usual CardDeck limits,
 validates it fully, and requires it to declare `NEW_ID`. The activator then
 checks it again with the deployed release's own schema. It publishes
 `NEW_ID.json` (never overwriting an existing pack), retires `OLD_PACK_ID.json`,
-restarts the service, and requires `/healthz` and `/v1/packs` to show `NEW_ID`
+restarts the service, and requires `/healthz` and `/v2/packs` to show `NEW_ID`
 and no longer show `OLD_PACK_ID`. Any failure restores the exact previous files
 and restarts the service again. A copy of the replaced pack is kept under
 `APP_ROOT/backups/pack-<request id>/`. Nothing else in the registry can be

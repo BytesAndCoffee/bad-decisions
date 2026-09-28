@@ -1,4 +1,4 @@
-.TH REGRET 1 "2026-09-27" "Bad Decisions Client 1.8.5" "User Commands"
+.TH REGRET 1 "2026-09-27" "Bad Decisions Client 2.0.0" "User Commands"
 .SH NAME
 regret \- deal rounds from a Bad Decisions API
 .SH SYNOPSIS
@@ -44,11 +44,11 @@ Use a compatible API endpoint. The default is https://bytes.coffee/bad-decisions
 .BI "--packs " ids
 Comma-separated pack IDs for both colors.
 .TP
-.BI "--black-packs " ids
-Override the black-card selector.
+.BI "--prompt-packs " ids
+Override the prompt-pack selector.
 .TP
-.BI "--white-packs " ids
-Override the white-card selector.
+.BI "--answer-packs " ids
+Override the answer-pack selector.
 .TP
 .BR --list-packs
 List packs from the service.
@@ -91,9 +91,9 @@ Disable voting and vote telemetry entirely.
 Aliases for enjoy and regret.
 .TP
 .BI "together " room
-Join or reconnect to an ephemeral Peer Pressure multiplayer room. The first participant is the initial Responsible Adult. The client maintains authenticated heartbeats, submits private responses, and resynchronizes stale room state automatically. Use --name when no saved room session exists. --heartbeat sets the heartbeat interval in seconds (default 5).
+Join or reconnect to an ephemeral Peer Pressure multiplayer room. The first participant is the initial Responsible Adult. The client maintains authenticated heartbeats, submits private answers, and resynchronizes stale room state automatically. Use --name when no saved room session exists. --heartbeat sets the heartbeat interval in seconds (default 5).
 .PP
-The prompt follows the room: the Responsible Adult presses s to start, players choose responses by number (comma-separated when a question needs several), the Responsible Adult picks the consequence, and Enter refreshes or advances. q leaves the room. When the service refuses an action, regret prints its reason and message, with a hint when the display name is taken or the game has already started.
+The prompt follows the room: the Responsible Adult presses s to start, players choose answers by number (comma-separated when a prompt needs several), the Responsible Adult picks the consequence, and Enter refreshes or advances. q leaves the room. When the service refuses an action, regret prints its reason and message, with a hint when the display name is taken or the game has already started.
 .TP
 .BI doctor " [--api-url url]"
 Check this installation and print a fix for each problem, changing nothing: how regret was installed, whether it is on PATH, whether

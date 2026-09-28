@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import http.client
 import importlib.util
 import io
@@ -20,6 +21,7 @@ from pathlib import Path
 import pytest
 
 from bad_decisions import archive as client_limits
+from bad_decisions import models as client_models
 
 ARCHIVE_DIR = Path(__file__).resolve().parents[1] / "deploy" / "object-archive"
 
@@ -34,14 +36,44 @@ def _load_catalog():
 catalog = _load_catalog()
 
 
+def pack_document(schema: int = 2) -> dict[str, object]:
+    metadata = {
+        "id": "x",
+        "name": "Example",
+        "description": "Example pack",
+        "version": "1",
+        "language": "en",
+        "attribution": "attribution",
+        "license_id": "Example",
+        "license_notice": "license",
+        "authors": ["Example Author"],
+        "modifications": [],
+    }
+    if schema == 1:
+        return {"schema_version": 1, "metadata": metadata, "black": [{"repr": "Why?", "template": "Why?"}], "white": [{"text": "Because."}]}
+    return {
+        "schema_version": 2,
+        "metadata": metadata,
+        "prompts": [{"text": "Why?", "template": "Why?"}],
+        "answers": [{"text": "Because."}, {"text": "Regret."}],
+    }
+
+
 def build_archive(members: dict[str, bytes] | None = None, *, compression=zipfile.ZIP_DEFLATED, patch=None) -> bytes:
+    supplied = members or {}
     contents = {
-        "manifest.json": json.dumps({"format": "carddeck", "format_version": 1, "pack_id": "x", "pack_sha256": "0" * 64}).encode(),
-        "pack.json": json.dumps({"schema_version": 2, "metadata": {"id": "x"}, "prompts": [{}], "answers": [{}, {}]}).encode(),
+        "pack.json": json.dumps(pack_document()).encode(),
         "LICENSE.txt": b"license",
         "ATTRIBUTION.md": b"attribution",
     }
-    contents.update(members or {})
+    contents.update(supplied)
+    if "manifest.json" not in supplied:
+        contents["manifest.json"] = json.dumps({
+            "format": "carddeck",
+            "format_version": 1,
+            "pack_id": "x",
+            "pack_sha256": hashlib.sha256(contents["pack.json"]).hexdigest(),
+        }).encode()
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", compression) as archive:
         for name, data in contents.items():
@@ -87,6 +119,8 @@ def test_limits_match_the_importer():
     assert catalog.MAX_ARCHIVE_BYTES == client_limits.MAX_ARCHIVE_BYTES == 5 * 1024 * 1024
     assert catalog.MAX_COMPRESSION_RATIO == client_limits.MAX_COMPRESSION_RATIO
     assert catalog.REQUIRED_MEMBERS == client_limits.REQUIRED_MEMBERS
+    assert catalog.CONTROL.pattern == client_models._CONTROL.pattern
+    assert catalog.PACK_ID.pattern == client_models.ID_PATTERN
 
 
 def test_good_archive_is_listed():
@@ -98,10 +132,99 @@ def test_good_archive_is_listed():
 
 
 def test_schema_1_archives_are_still_catalogued():
-    v1 = json.dumps({"schema_version": 1, "metadata": {"id": "x"}, "black": [{}, {}], "white": [{}]}).encode()
-    payload = make_catalog({"old.carddeck": build_archive({"pack.json": v1})}).payload()
+    v1 = pack_document(1)
+    v1["black"].append({"repr": "What?", "template": "What?"})
+    payload = make_catalog({"old.carddeck": build_archive({"pack.json": json.dumps(v1).encode()})}).payload()
     assert payload["rejected_archives"] == []
     assert (payload["packs"][0]["prompt_count"], payload["packs"][0]["answer_count"]) == (2, 1)
+
+
+@pytest.mark.parametrize("member", ["LICENSE.txt", "ATTRIBUTION.md"])
+def test_license_documents_must_be_utf8(member):
+    payload = make_catalog({"bad.carddeck": build_archive({member: b"\xff"})}).payload()
+    assert payload["packs"] == []
+    assert payload["rejected_archives"][0]["object_key"] == "bad.carddeck"
+
+
+@pytest.mark.parametrize(
+    ("member", "replacement", "expected"),
+    [
+        ("LICENSE.txt", b"different", "LICENSE.txt"),
+        ("ATTRIBUTION.md", b"different", "ATTRIBUTION.md"),
+    ],
+)
+def test_license_documents_must_match_metadata_exactly(member, replacement, expected):
+    payload = make_catalog({"bad.carddeck": build_archive({member: replacement})}).payload()
+    assert payload["packs"] == []
+    assert expected in payload["rejected_archives"][0]["error"]
+
+
+@pytest.mark.parametrize(
+    ("schema", "target"),
+    [
+        (2, "prompt-text"),
+        (2, "prompt-template"),
+        (2, "answer-text"),
+        (1, "prompt-repr"),
+        (1, "prompt-template"),
+        (1, "answer-text"),
+        (2, "metadata-string"),
+        (2, "metadata-list"),
+    ],
+)
+def test_control_characters_are_rejected_in_printed_pack_text(schema, target):
+    pack = pack_document(schema)
+    prompts = pack["black"] if schema == 1 else pack["prompts"]
+    answers = pack["white"] if schema == 1 else pack["answers"]
+    if target == "prompt-text":
+        prompts[0]["text"] = "bad\x00text"
+    elif target == "prompt-repr":
+        prompts[0]["repr"] = "bad\x00text"
+    elif target == "prompt-template":
+        prompts[0]["template"] = "bad\x00text"
+    elif target == "answer-text":
+        answers[0]["text"] = "bad\x7ftext"
+    elif target == "metadata-string":
+        pack["metadata"]["name"] = "bad\x00name"
+    else:
+        pack["metadata"]["authors"] = ["bad\x00author"]
+    body = build_archive({"pack.json": json.dumps(pack).encode()})
+    payload = make_catalog({"bad.carddeck": body}).payload()
+    assert payload["packs"] == []
+    assert "forbidden control character" in payload["rejected_archives"][0]["error"]
+
+
+def test_tabs_and_newlines_remain_allowed_in_printed_pack_text():
+    pack = pack_document()
+    pack["metadata"]["description"] = "line one\nline two\tstill printable"
+    body = build_archive({"pack.json": json.dumps(pack).encode()})
+    assert make_catalog({"good.carddeck": body}).payload()["pack_count"] == 1
+
+
+@pytest.mark.parametrize(
+    ("manifest", "expected"),
+    [
+        ({"format": "carddeck", "format_version": 1, "pack_id": "x", "pack_sha256": "0" * 64}, "checksum"),
+        ({"format": "carddeck", "format_version": 1, "pack_id": "other", "pack_sha256": None}, "pack_id"),
+        ({"format": "carddeck", "format_version": 2, "pack_id": "x", "pack_sha256": None}, "format or version"),
+        ({"format": "carddeck", "format_version": 1, "pack_id": "x", "pack_sha256": None, "extra": True}, "unexpected"),
+    ],
+)
+def test_manifest_integrity_and_identity_are_validated(manifest, expected):
+    pack_bytes = json.dumps(pack_document()).encode()
+    manifest = dict(manifest)
+    if manifest.get("pack_sha256") is None:
+        manifest["pack_sha256"] = hashlib.sha256(pack_bytes).hexdigest()
+    body = build_archive({"pack.json": pack_bytes, "manifest.json": json.dumps(manifest).encode()})
+    payload = make_catalog({"bad.carddeck": body}).payload()
+    assert payload["packs"] == []
+    assert expected in payload["rejected_archives"][0]["error"]
+
+
+def test_empty_license_documents_are_rejected():
+    payload = make_catalog({"bad.carddeck": build_archive({"LICENSE.txt": b" \n"})}).payload()
+    assert payload["packs"] == []
+    assert "must not be empty" in payload["rejected_archives"][0]["error"]
 
 
 def corrupt_deflate() -> bytes:
@@ -416,10 +539,10 @@ def serve(cache):
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
 
-    def fetch(path="/packs/index"):
+    def fetch(path="/packs/index", method="GET"):
         connection = http.client.HTTPConnection("127.0.0.1", server.server_port, timeout=5)
         try:
-            connection.request("GET", path)
+            connection.request(method, path)
             response = connection.getresponse()
             return response.status, response.getheader("Cache-Control"), response.read()
         finally:
@@ -455,6 +578,8 @@ def test_cache_control_reflects_remaining_freshness_and_stale_is_no_cache():
         clock.now = 65  # still inside the stale hold-off window
         assert fetch()[1] == "no-cache"
         assert fetch("/other")[0] == 404
+        status, cache_control, body = fetch(method="HEAD")
+        assert (status, cache_control, body) == (200, "no-cache", b"")
 
 
 def test_zero_ttl_is_never_cached_downstream():
@@ -525,7 +650,7 @@ def test_module_imports_without_boto3_or_bad_decisions():
 
 def render(path: Path) -> str:
     text = path.read_text()
-    for name, value in {"OBJECT_ARCHIVE_DOMAIN": "example.test", "CATALOG_UPSTREAM": "127.0.0.1:8080", "CATALOG_CACHE_DIR": "/var/cache/nginx/catalog"}.items():
+    for name, value in {"OBJECT_ARCHIVE_DOMAIN": "example.test", "GARAGE_WEB_UPSTREAM": "100.64.0.2:3902", "CATALOG_UPSTREAM": "127.0.0.1:8080", "CATALOG_CACHE_DIR": "/var/cache/nginx/catalog"}.items():
         text = text.replace(f"@{name}@", value)
     assert "@" not in re.sub(r"#.*", "", text)
     return text
@@ -543,3 +668,48 @@ def test_nginx_templates_split_http_and_server_directives():
     assert "limit_req_status 429" in location
     assert f"proxy_cache {cache};" in location
     assert "proxy_cache_valid" in location and "proxy_cache_lock on" in location
+
+
+def test_public_archive_proxy_is_read_only_and_rate_limited():
+    http = render(ARCHIVE_DIR / "nginx-carddeck-catalog.http.conf.template")
+    server = render(ARCHIVE_DIR / "nginx-object-archive.conf.template")
+    assert "zone=carddeck_archive_rl:10m rate=10r/s" in http
+    assert "limit_req_zone" not in server
+    assert server.count("limit_except GET HEAD { deny all; }") == 2
+    assert server.count("limit_req zone=carddeck_archive_rl burst=30 nodelay;") == 2
+    assert server.count("limit_req_status 429;") == 2
+    assert server.count("client_max_body_size 1m;") == 2
+    assert "client_max_body_size 0;" not in server
+    assert "proxy_set_header Host $host;" in server
+    # Uploaded objects must not be content-sniffed into something executable.
+    assert server.count("add_header X-Content-Type-Options nosniff always;") == 1
+
+
+def test_public_catalog_proxy_is_read_only_and_body_limited():
+    server = render(ARCHIVE_DIR / "nginx-carddeck-catalog.conf.template")
+    assert server.count("limit_except GET HEAD { deny all; }") == 2
+    assert server.count("client_max_body_size 1m;") == 2
+    assert server.count("limit_req zone=carddeck_catalog_rl burst=5 nodelay;") == 2
+    assert server.count("limit_req_status 429;") == 2
+    assert server.count("add_header X-Content-Type-Options nosniff always;") == 1
+
+
+def test_catalog_container_is_read_only_and_drops_privileges():
+    compose = (ARCHIVE_DIR / "docker-compose.catalog-v3.yml").read_text()
+    assert "read_only: true" in compose
+    assert "cap_drop: [ALL]" in compose
+    assert "security_opt: [no-new-privileges:true]" in compose
+    assert 'PYTHONDONTWRITEBYTECODE: "1"' in compose
+    assert "network_mode: host" in compose and "CATALOG_BIND_HOST: ${GARAGE_TAILNET_IP}" in compose
+
+
+def test_non_object_metadata_is_rejected_without_assert():
+    # python -O strips asserts; the metadata type check must be a real error.
+    with pytest.raises(ValueError, match="metadata must be a JSON object"):
+        catalog.validate_visible_text({"metadata": []}, [], [], 2)
+
+
+def test_garage_cannot_gain_privileges():
+    compose = (ARCHIVE_DIR / "docker-compose.yml").read_text()
+    assert "security_opt: [no-new-privileges:true]" in compose
+    assert all(line.strip().startswith('- "${GARAGE_TAILNET_IP}:') for line in compose.splitlines() if line.strip().startswith('- "') and ":39" in line), "ports bind only to the Tailnet address"

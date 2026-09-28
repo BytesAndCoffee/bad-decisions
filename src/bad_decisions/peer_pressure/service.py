@@ -22,7 +22,7 @@ PLAYER_ID = re.compile(r"^player_[0-9a-f]{32}$")
 REQUEST_ID = re.compile(r"^req_[0-9a-f]{32}$")
 STATES = {"WAITING", "PLAYING", "JUDGING", "ROUND_RESULT", "ENDED"}
 ACTIVE_STATES = {"PLAYING", "JUDGING", "ROUND_RESULT"}
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 # Half-built rooms live under this name until they are linked into place.
 BUILDING_SUFFIX = ".building"
 
@@ -82,10 +82,11 @@ CREATE TABLE submission_cards(
   answer_text TEXT NOT NULL, PRIMARY KEY(submission_id, position)
 );
 CREATE TABLE processed_requests(
-  request_id TEXT PRIMARY KEY, player_id TEXT NOT NULL, request_type TEXT NOT NULL,
-  result_revision INTEGER NOT NULL, result_payload TEXT NOT NULL, created_at INTEGER NOT NULL
+  request_id TEXT NOT NULL, player_id TEXT NOT NULL, request_type TEXT NOT NULL,
+  result_revision INTEGER NOT NULL, result_payload TEXT NOT NULL, created_at INTEGER NOT NULL,
+  PRIMARY KEY(request_id, player_id)
 );
-PRAGMA user_version=3;
+PRAGMA user_version=4;
 """
 
 class PeerPressureService:
@@ -172,8 +173,8 @@ class PeerPressureService:
     @staticmethod
     def _upgrade(connection: sqlite3.Connection) -> None:
         """Rooms are disposable, so older room schemas are refused rather than migrated."""
-        if connection.execute("PRAGMA user_version").fetchone()[0] < SCHEMA_VERSION:
-            raise PeerPressureError("room_expired", "That room was created by an older server version; start a new room", status=410)
+        if connection.execute("PRAGMA user_version").fetchone()[0] != SCHEMA_VERSION:
+            raise PeerPressureError("room_expired", "That room was created by a different server version; start a new room", status=410)
 
     def cleanup_expired(self) -> int:
         removed = 0
@@ -311,7 +312,7 @@ class PeerPressureService:
         self._path(room).unlink(missing_ok=True)
         return result
 
-    def _mutation(self, room: str, player_id: str, token: str, request_id: str, revision: int, action: str, operation: Callable[[sqlite3.Connection, sqlite3.Row], None]) -> dict[str, Any]:
+    def _mutation(self, room: str, player_id: str | None, token: str, request_id: str, revision: int, action: str, operation: Callable[[sqlite3.Connection, sqlite3.Row], None]) -> dict[str, Any]:
         if not REQUEST_ID.fullmatch(request_id):
             raise PeerPressureError("invalid_request_id", "request_id must be req_ followed by 32 hexadecimal characters")
         connection = self._connect(room)
@@ -502,6 +503,8 @@ class PeerPressureService:
             return []
         pool = self._pools[kind]
         drawn = {row[0] for row in connection.execute("SELECT card_key FROM drawn_cards WHERE kind=?", (kind,))}
+        if len(pool) - len(drawn) < count:
+            raise PeerPressureError(f"{kind}_deck_exhausted", f"There are not enough unused {kind}s left", status=409)
         if len(drawn) * 2 < len(pool):
             # Mostly undrawn: sample and skip repeats, without scanning the whole pool.
             picks: dict[str, Any] = {}
@@ -512,8 +515,6 @@ class PeerPressureService:
             chosen = list(picks.items())
         else:
             remaining = [entry for entry in pool if entry[0] not in drawn]
-            if len(remaining) < count:
-                raise PeerPressureError(f"{kind}_deck_exhausted", f"There are not enough unused {kind}s left", status=409)
             chosen = self.rng.sample(remaining, count)
         connection.executemany("INSERT INTO drawn_cards VALUES(?,?)", [(kind, key) for key, _card in chosen])
         return chosen

@@ -54,7 +54,7 @@ def _pack_payload(pack: Pack) -> bytes:
     return _canonical_json(pack.model_dump(mode="json"))
 
 
-def _read_archive(path: Path) -> tuple[ArchiveManifest, Pack, bytes, str, str]:
+def _read_archive(path: Path, *, require_document_match: bool = True) -> tuple[ArchiveManifest, Pack, bytes, str, str]:
     expected_format = _format_for_path(path)
     try:
         with zipfile.ZipFile(path) as archive:
@@ -104,9 +104,11 @@ def _read_archive(path: Path) -> tuple[ArchiveManifest, Pack, bytes, str, str]:
     if not license_text or not attribution:
         raise _error("license and attribution files must not be empty")
     # The files are what people read; they must say exactly what the metadata declares.
-    if license_text != pack.metadata.license_notice.strip():
+    # The false branch exists only for explicit one-time legacy rebuild tools,
+    # which must validate their exported archive normally before distribution.
+    if require_document_match and license_text != pack.metadata.license_notice.strip():
         raise _error("LICENSE.txt does not match the pack's license_notice")
-    if attribution != pack.metadata.attribution.strip():
+    if require_document_match and attribution != pack.metadata.attribution.strip():
         raise _error("ATTRIBUTION.md does not match the pack's attribution")
     return manifest, pack, payload, license_text, attribution
 

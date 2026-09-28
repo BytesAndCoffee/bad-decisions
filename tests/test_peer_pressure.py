@@ -377,6 +377,9 @@ def test_streamed_draws_never_repeat_and_report_exhaustion(tmp_path):
         with pytest.raises(PeerPressureError) as exhausted:
             service._draw(connection, "answer", 1)
         assert exhausted.value.reason == "answer_deck_exhausted"
+        with pytest.raises(PeerPressureError) as oversized:
+            service._draw(connection, "answer", 41)
+        assert oversized.value.reason == "answer_deck_exhausted"
         prompts = [key for _ in range(4) for key, _card in service._draw(connection, "prompt", 1)]
         assert len(set(prompts)) == 4
         with pytest.raises(PeerPressureError) as no_prompts:
@@ -399,8 +402,8 @@ def test_room_creation_cost_does_not_grow_with_the_registry(tmp_path):
     assert (tmp_path / "huge.sqlite3").stat().st_size < 128 * 1024
 
 
-@pytest.mark.parametrize("version", [0, 2])
-def test_rooms_from_older_servers_are_refused_not_migrated(tmp_path, version):
+@pytest.mark.parametrize("version", [0, 2, service_module.SCHEMA_VERSION - 1, service_module.SCHEMA_VERSION + 1])
+def test_rooms_from_other_server_versions_are_refused_not_migrated(tmp_path, version):
     """Rooms are disposable: a 1.x room gets a clear 410 and expires on schedule."""
     service = PeerPressureService(tmp_path, multiplayer_registry(), hand_size=3)
     alice = service.join("legacy", "Alice", create=True)
@@ -410,6 +413,18 @@ def test_rooms_from_older_servers_are_refused_not_migrated(tmp_path, version):
         service.sync("legacy", *credentials(alice))
     assert (refused.value.reason, refused.value.status) == ("room_expired", 410)
     assert "start a new room" in refused.value.message
+
+
+def test_idempotency_keys_are_scoped_to_the_authenticated_player(tmp_path):
+    service = PeerPressureService(tmp_path, multiplayer_registry(), hand_size=3)
+    alice, bob, _carol = join_table(service)
+    current = service.sync("ohno", *credentials(alice))["revision"]
+    shared = request(777)
+    started = service.start("ohno", *credentials(alice), shared, current)
+    bob_state = service.sync("ohno", *credentials(bob))["state"]
+    card = bob_state["you"]["hand"][0]["card_instance_id"]
+    submitted = service.submit("ohno", *credentials(bob), shared, started["revision"], [card])
+    assert submitted["revision"] == started["revision"] + 1
 
 
 def test_room_creation_is_atomic_and_cleans_up(tmp_path, monkeypatch):
