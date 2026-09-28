@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
+  <title id="title">Bad Decisions social preview</title>
+  <desc id="desc">Bad Decisions, an absurdly overengineered party game engine, with a regret deal terminal prompt.</desc>
+  <rect width="1280" height="640" fill="#f4efe4"/>
+  <rect x="54" y="50" width="1172" height="540" rx="28" fill="#171511"/>
+  <rect x="80" y="76" width="1120" height="488" rx="18" fill="#fffbf2"/>
+  <rect x="80" y="76" width="26" height="488" rx="13" fill="#bc552f"/>
+  <text x="150" y="224" fill="#171511" font-family="Georgia,serif" font-size="94" font-weight="700" letter-spacing="-4">BAD DECISIONS</text>
+  <text x="154" y="286" fill="#78341f" font-family="ui-monospace,monospace" font-size="28" letter-spacing="2">AN ABSURDLY OVERENGINEERED PARTY GAME ENGINE</text>
+  <rect x="150" y="344" width="700" height="104" rx="12" fill="#171511"/>
+  <text x="184" y="410" fill="#f2d8cb" font-family="ui-monospace,monospace" font-size="38">$ regret deal</text>
+  <rect x="1014" y="354" width="116" height="116" rx="16" fill="#bc552f"/>
+  <text x="1072" y="438" fill="#fffbf2" font-family="Georgia,serif" font-size="78" font-weight="700" text-anchor="middle">B</text>
+  <text x="154" y="510" fill="#706b62" font-family="ui-monospace,monospace" font-size="24">REST API · REGRET CLI · PEER PRESSURE · CARDDECK</text>
+</svg>

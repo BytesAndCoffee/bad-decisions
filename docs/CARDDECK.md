@@ -141,6 +141,9 @@ readers MUST NOT silently accept unknown archive members or manifest fields.
 
 ## Reference commands
 
+For a small, editable pack and a build script that exercises these commands,
+start with [`examples/minimal-pack`](../examples/minimal-pack/).
+
 ```bash
 bad-decisions pack validate example.carddeck
 bad-decisions pack export example ./example.carddeck

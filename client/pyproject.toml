@@ -4,22 +4,39 @@ build-backend = "hatchling.build"
 
 [project]
 name = "bad-decisions-client"
-version = "2.0.2"
-description = "Cross-platform terminal client for Bad Decisions services"
+version = "2.0.3"
+description = "Dependency-free terminal client called Regret for Bad Decisions services"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []
 license = { text = "MIT" }
 authors = [{ name = "Bad Decisions contributors" }]
 maintainers = [{ name = "BytesAndCoffee" }]
-classifiers = ["Development Status :: 5 - Production/Stable", "Environment :: Console", "License :: OSI Approved :: MIT License", "Programming Language :: Python :: 3", "Programming Language :: Python :: 3 :: Only"]
+keywords = ["party-game", "cli", "terminal", "multiplayer", "openapi", "homebrew"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Console",
+  "Intended Audience :: End Users/Desktop",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Games/Entertainment :: Board Games",
+]
 
 [project.scripts]
 regret = "bad_decisions_client.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/BytesAndCoffee/bad-decisions"
-Documentation = "https://github.com/BytesAndCoffee/bad-decisions#readme"
+Documentation = "https://github.com/BytesAndCoffee/bad-decisions/blob/main/docs/GETTING_STARTED.md"
+Source = "https://github.com/BytesAndCoffee/bad-decisions"
+Issues = "https://github.com/BytesAndCoffee/bad-decisions/issues"
+Changelog = "https://github.com/BytesAndCoffee/bad-decisions/blob/main/client/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/bad_decisions_client"]

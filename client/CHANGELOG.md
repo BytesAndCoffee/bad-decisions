@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [2.0.3]
+
+### Changed
+
+- Reworked the PyPI README around Regret's joke-first quick start, documented
+  the hosted service and privacy controls more clearly, and added complete
+  project discovery metadata.
+- Lockstep release with the server's public-launch documentation, creator
+  example, community-health, and warmer browser palette work.
+
 ## [2.0.2]
 
 ### Changed

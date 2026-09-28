@@ -1,0 +1,47 @@
+name: Bug report
+description: Report reproducible broken behavior without posting secrets.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for documenting the consequences. Never paste tokens, dotenv files, or private card data."
+  - type: input
+    id: version
+    attributes:
+      label: Version and installation method
+      placeholder: "2.0.2 via Homebrew, pipx, source, or container"
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      placeholder: "macOS 15, Ubuntu 24.04, Windows 11"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Include the exact sanitized command and the smallest reproducible sequence.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Sanitized output
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed credentials, bearer/session tokens, private messages, and personal data.
+          required: true

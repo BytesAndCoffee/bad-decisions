@@ -1,0 +1,29 @@
+name: Feature request
+description: Propose one focused improvement or questionable integration.
+title: "[Idea]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Explain the user-facing result, not only the implementation.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [Regret, API, Peer Pressure, CardDeck, Consequences, Deployment, Documentation, Other]
+    validations:
+      required: true
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: Security, privacy, licensing, or compatibility considerations

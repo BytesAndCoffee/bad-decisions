@@ -4,13 +4,24 @@ build-backend = "hatchling.build"
 
 [project]
 name = "bad-decisions"
-version = "2.0.2"
-description = "Reusable engine and service for fill-in-the-blank party card games"
+version = "2.0.3"
+description = "Absurdly overengineered open-source party game engine and REST service"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { file = "LICENSE" }
 maintainers = [{ name = "BytesAndCoffee" }]
-classifiers = ["License :: OSI Approved :: MIT License"]
+keywords = ["party-game", "game-engine", "fastapi", "openapi", "multiplayer", "carddeck", "self-hosted"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Web Environment",
+  "Framework :: FastAPI",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Games/Entertainment :: Board Games",
+]
 dependencies = [
   "fastapi==0.116.1",
   "pydantic==2.11.7",
@@ -30,6 +41,14 @@ dev = [
 
 [project.scripts]
 bad-decisions = "bad_decisions.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/BytesAndCoffee/bad-decisions"
+Documentation = "https://github.com/BytesAndCoffee/bad-decisions/tree/main/docs"
+Source = "https://github.com/BytesAndCoffee/bad-decisions"
+Issues = "https://github.com/BytesAndCoffee/bad-decisions/issues"
+Changelog = "https://github.com/BytesAndCoffee/bad-decisions/blob/main/CHANGELOG.md"
+Demo = "https://bytes.coffee/bad-decisions/web/"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/bad_decisions"]

@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+## [2.0.3]
+
+### Added
+
+- A joke-first project front door, canonical 60-second Regret guide, dedicated
+  Consequences documentation, release-note template, community-health files,
+  polished social-preview artwork, and a real-output terminal-demo workflow.
+- A tested five-minute CardDeck creator example with original CC0 cards and
+  exact license, attribution, export, validation, and import instructions.
+
+### Changed
+
+- Improved PyPI discovery metadata and documentation navigation for the server
+  and client while preserving the MIT software and per-pack licensing boundary.
+- Warmed the browser's burnt-sienna accent to a more orange `#bc552f` and
+  retained the darker AA-contrast companion for small text.
+
 ## [2.0.2]
 
 ### Changed
