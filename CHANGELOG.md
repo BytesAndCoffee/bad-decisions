@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [2.0.1]
+
+### Fixed
+
+- Lockstep release for the client fix: `regret feedback clear` no longer reports a 204 No Content response as an error. The server is unchanged apart from its version.
+
 ## [2.0.0] - Bad Decisions 2.0: Terrible choices at terrifying speeds
 
 ### Added

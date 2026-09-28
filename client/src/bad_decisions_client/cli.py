@@ -169,6 +169,7 @@ def _request_json(url: str, *, timeout: float, method: str="GET", payload: dict[
         with urlopen(request,timeout=timeout) as response:
             raw=response.read(MAX_RESPONSE_BYTES+1)
             if len(raw)>MAX_RESPONSE_BYTES: raise RuntimeError("API response is too large")
+            if not raw.strip(): return {}, getattr(response, "headers", {})  # 204 No Content, e.g. feedback clear
             try: return json.loads(raw.decode("utf-8")), getattr(response, "headers", {})
             except (UnicodeDecodeError,json.JSONDecodeError) as exc: raise RuntimeError("API returned something other than JSON; check --api-url") from exc
     except HTTPError as exc:

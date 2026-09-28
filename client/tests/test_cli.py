@@ -192,3 +192,9 @@ def test_request_json_reports_bad_responses_clearly(monkeypatch):
         _serve_raw(monkeypatch, **kwargs)
         with pytest.raises(RuntimeError, match=message):
             cli._request_json("https://example.invalid/v2/round", timeout=1)
+
+
+def test_an_empty_success_body_is_not_an_error(monkeypatch):
+    # DELETE feedback answers 204 No Content; regret 2.0.0 called that "not JSON".
+    _serve_raw(monkeypatch, body=b"")
+    assert cli._request_json("https://example.invalid/v2/rounds/r/feedback", timeout=1, method="DELETE")[0] == {}

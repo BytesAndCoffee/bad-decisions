@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [2.0.1]
+
+### Fixed
+
+- `regret feedback clear` reported "API returned something other than JSON" although the server had cleared the vote: an empty success response (204 No Content) is now treated as success.
+
 ## [2.0.0] - Bad Decisions 2.0: Terrible choices at terrifying speeds
 
 ### Added
