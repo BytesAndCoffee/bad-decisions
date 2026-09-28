@@ -24,17 +24,25 @@ def _pypi(files):
 def test_formula_installs_the_client_sdist_with_its_manpage_and_tests_it():
     assert re.search(r'^  url "https://files\.pythonhosted\.org/\S+/bad_decisions_client-\d+\.\d+\.\d+\.tar\.gz"$', FORMULA, re.M)
     assert "virtualenv_install_with_resources" in FORMULA  # links share/man/man1/regret.1
-    assert 'license "MIT"' in FORMULA and 'resource "packaging"' in FORMULA
+    assert 'license "MIT"' in FORMULA
+    assert "resource " not in FORMULA, "the client is dependency-free since 2.0"
+    assert "regret doctor" in FORMULA, "the formula test exercises doctor's Homebrew detection"
     assert "regret --version" in FORMULA and 'man1/"regret.1"' in FORMULA
     assert "Cards Against" not in FORMULA, "unofficial fan project: no trade names in the description"
 
 
 def test_rewrite_changes_only_the_formula_url_and_digest():
     updated = updater.rewrite(FORMULA, NEW_URL, NEW_SHA)
-    head, resources = updated.split("\n  resource ", 1)
-    assert f'url "{NEW_URL}"' in head and f'sha256 "{NEW_SHA}"' in head
-    assert resources == FORMULA.split("\n  resource ", 1)[1], "resources must be untouched"
+    assert f'url "{NEW_URL}"' in updated and f'sha256 "{NEW_SHA}"' in updated
+    changed = [(old, new) for old, new in zip(FORMULA.splitlines(), updated.splitlines()) if old != new]
+    assert len(changed) == 2 and all(old.startswith(("  url ", "  sha256 ")) for old, _new in changed)
     assert updated.count("\n") == FORMULA.count("\n")
+
+
+def test_rewrite_leaves_resource_blocks_alone():
+    with_resource = FORMULA.replace('  license "MIT"\n', '  license "MIT"\n\n  resource "x" do\n    url "https://files.pythonhosted.org/x.tar.gz"\n    sha256 "' + "b" * 64 + '"\n  end\n')
+    updated = updater.rewrite(with_resource, NEW_URL, NEW_SHA)
+    assert updated.split("\n  resource ", 1)[1] == with_resource.split("\n  resource ", 1)[1]
 
 
 def test_published_sdist_picks_the_exact_sdist():

@@ -6,16 +6,11 @@ class Regret < Formula
 
   desc "Terminal client for Bad Decisions, an unofficial fan-made party card game"
   homepage "https://github.com/BytesAndCoffee/bad-decisions"
-  url "https://files.pythonhosted.org/packages/a1/69/ce43017f271cd6051ba2640d2782555fa526c5363cf487960db841268b47/bad_decisions_client-1.8.5.tar.gz"
-  sha256 "5789eae1d778dd5b58c6037a1d477568e3130e967d229c83548f064b9c94be47"
+  url "https://files.pythonhosted.org/packages/75/c0/78f0cecc2e14b5424692d9937754187920edbd3d173177b538503414d25c/bad_decisions_client-2.0.1.tar.gz"
+  sha256 "046d65ec2b78cbc646b9cd4a133ec4b30636f87b43057c9908e1086786214ba0"
   license "MIT"
 
   depends_on "python@3.13"
-
-  resource "packaging" do
-    url "https://files.pythonhosted.org/packages/7d/fa/3944b40b07da9ce895c0e6303a5ab7d53da063554f534556b134a54d6093/packaging-26.3.tar.gz"
-    sha256 "94edc256424af38762eb31306eed28beb9f0efc50a8837492c9d6fd6004aed79"
-  end
 
   def install
     # Also links the wheel's share/man/man1/regret.1 into Homebrew's man path.
@@ -25,5 +20,6 @@ class Regret < Formula
   test do
     assert_match "regret #{version}", shell_output("#{bin}/regret --version")
     assert_path_exists man1/"regret.1"
+    assert_match "installed with homebrew", shell_output("#{bin}/regret doctor --api-url http://127.0.0.1:9 2>&1", 1)
   end
 end

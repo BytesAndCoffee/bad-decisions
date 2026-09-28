@@ -3,7 +3,7 @@
 Usage: python scripts/update_homebrew_formula.py 1.8.6
 
 Run it after the release is on PyPI. It rewrites only the formula's own url and
-sha256 (resources such as packaging are pinned separately; `brew
+sha256 (resource blocks, if the client ever needs one again, are left alone; `brew
 update-python-resources` refreshes them). Then test the formula and copy it to
 the tap, as docs/RELEASING.md describes.
 """
