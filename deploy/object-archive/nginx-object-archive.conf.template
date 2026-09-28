@@ -26,6 +26,12 @@ server {
     client_max_body_size 1m;
     add_header X-Content-Type-Options nosniff always;
 
+    # Migration rollback copies live under rollback/ in these public buckets;
+    # they are for operators (S3 API over the Tailnet), never for the public.
+    location ^~ /rollback/ {
+        return 404;
+    }
+
     location / {
         limit_except GET HEAD { deny all; }
         limit_req zone=carddeck_archive_rl burst=30 nodelay;

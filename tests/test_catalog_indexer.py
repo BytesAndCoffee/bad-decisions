@@ -683,6 +683,8 @@ def test_public_archive_proxy_is_read_only_and_rate_limited():
     assert "proxy_set_header Host $host;" in server
     # Uploaded objects must not be content-sniffed into something executable.
     assert server.count("add_header X-Content-Type-Options nosniff always;") == 1
+    # Rollback copies (including an archive with an unspecified license) must not be public.
+    assert "location ^~ /rollback/ {\n        return 404;\n    }" in server
 
 
 def test_public_catalog_proxy_is_read_only_and_body_limited():
