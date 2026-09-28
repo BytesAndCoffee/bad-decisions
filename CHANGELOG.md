@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [2.0.2]
+
+### Changed
+
+- Reworked the web client’s complete orange accent system around a darker burnt-sienna palette, including the prompt and empty-state cards.
+
 ## [2.0.1]
 
 ### Fixed

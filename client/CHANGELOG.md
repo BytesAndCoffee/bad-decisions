@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [2.0.2]
+
+### Changed
+
+- Lockstep release with the server’s burnt-sienna web palette; the terminal client is otherwise unchanged.
+
 ## [2.0.1]
 
 ### Fixed
