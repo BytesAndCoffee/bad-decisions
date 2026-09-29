@@ -52,7 +52,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Client tests (the client is dependency-free apart from pytest)
         run: |
-          python -m pip install pytest==8.4.1
+          python -m pip install pytest==9.1.1
           PYTHONPATH=client/src python -m pytest client/tests
       - name: Client TUI tests (the optional [tui] extra, pinned by the extras lock)
         run: |

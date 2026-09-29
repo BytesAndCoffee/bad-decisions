@@ -51,6 +51,44 @@ overengineering is part of the joke.
 - **[Rootless updates](docs/DEPLOYMENT.md#rootless-application-updates)** — deploy and roll back application releases without recurring sudo.
 - **[AWS-native mode](docs/DEPLOYMENT.md#aws-native-deployment)** — a complete managed-cloud alternative optimized for low cost.
 
+## How the bad decisions travel
+
+```mermaid
+flowchart LR
+    archive[(Garage<br/>CardDeck archive)]
+    catalog[Public CardDeck catalog]
+    operator[Operator import]
+    registry[Loaded pack registry]
+    server[Bad Decisions server]
+    clients[Regret / Web / other clients]
+    rooms[(Peer Pressure<br/>room databases)]
+    consequences[(Consequences<br/>analytics database)]
+
+    archive -->|catalog scan| catalog
+    archive -->|.carddeck archives| operator
+    catalog -->|remote index| operator
+    operator -->|validated packs| registry
+    registry -->|immutable startup load| server
+    server -->|pack list, rounds, room state| clients
+    clients -->|deals, commands, mutations| server
+    server <--> rooms
+    server --> consequences
+
+    classDef service fill:#00451f,stroke:#17663b,color:#8ee4ae,stroke-width:2px;
+    classDef store fill:#003b1c,stroke:#17663b,color:#8ee4ae,stroke-width:2px;
+    classDef action fill:#102018,stroke:#39714f,color:#b9efcd,stroke-width:1px;
+    class archive,rooms,consequences store;
+    class catalog,registry,server,clients service;
+    class operator action;
+```
+
+Public `.carddeck` archives and their generated catalog are distribution
+inputs, not a writable runtime API. An operator explicitly imports and
+validates packs into the registry; the server loads that registry at startup
+and then treats it as immutable. Clients consume rounds and pack metadata—or
+participate in Peer Pressure—while room state and opt-in Consequences data stay
+in separate SQLite boundaries.
+
 ## Sixty-second quick start
 
 ```bash

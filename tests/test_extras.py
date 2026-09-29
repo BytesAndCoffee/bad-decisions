@@ -89,3 +89,43 @@ def test_empty_s3_bucket_falls_back_loudly(monkeypatch, caplog):
         registry = load_registry()
     assert registry.packs, "bundled packs keep a fresh deployment serving"
     assert "no packs found in s3://empty-bucket/packs/" in caplog.text and "pack seed-aws" in caplog.text
+
+
+def _pins(path: Path) -> dict[str, str]:
+    pins = {}
+    for line in path.read_text().splitlines():
+        if "==" in line and not line.startswith(("#", "-")):
+            name, version = line.split("==", 1)
+            pins[name.strip().lower().replace("_", "-")] = version.strip()
+    return pins
+
+
+def test_pyproject_pins_match_the_locks_that_deploys_and_ci_install():
+    # CI and `deploy local` install the locks, so a pyproject-only bump (e.g. a
+    # Dependabot PR) would ship versions nothing ever tested.
+    locked = {}
+    for lock in ("requirements.lock", "requirements-extras.lock", "requirements-dev.lock"):
+        locked.update(_pins(ROOT / lock))
+    for pyproject in ("pyproject.toml", "client/pyproject.toml"):
+        project = tomllib.loads((ROOT / pyproject).read_text())["project"]
+        requirements = list(project.get("dependencies", []))
+        for extra in project.get("optional-dependencies", {}).values():
+            requirements.extend(extra)
+        for requirement in requirements:
+            if "==" not in requirement:
+                continue
+            name, version = (part.strip() for part in requirement.split("==", 1))
+            name = name.lower().replace("_", "-")
+            assert locked.get(name) == version, f"{pyproject} pins {name}=={version}; the locks have {locked.get(name)}"
+
+
+def test_dockerfile_copies_every_file_the_wheel_build_needs():
+    hatch = tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["hatch"]["build"]["targets"]["wheel"]
+    sources = [*hatch.get("force-include", {}), *hatch.get("shared-data", {}), *hatch["packages"]]
+    copied = [
+        word.rstrip("/")
+        for line in (ROOT / "Dockerfile").read_text().splitlines() if line.startswith("COPY ")
+        for word in line.split()[1:-1]
+    ]
+    for source in sources:
+        assert any(source == item or source.startswith(f"{item}/") for item in copied), f"Dockerfile must COPY {source}"
