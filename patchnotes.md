@@ -250,3 +250,4 @@ version metadata without publishing.
 2026-09-28 - packaging - Pointed the repository Homebrew formula at the immutable 2.0.2 client sdist and added current Ruby typing/frozen-string headers.
 2026-09-28 - release - Prepared lockstep 2.0.3 for the public-launch polish, CardDeck creator path, package metadata, community health, and warmer browser palette.
 2026-09-28 - launch polish - Finalized the warmer accessible orange palette, deterministic social-preview rendering, concise star CTA, Discussions guidance, maturity rationale, link/version cleanup, and Homebrew readiness notes; retained the explicit LICENSE content boundary over SPDX badge detection. Tests: tests/test_public_polish.py, tests/test_cli_api.py.
+2026-09-29 - docs - Embedded the recorded Regret terminal demo on the repository front page instead of leaving the GIF discoverable only under docs/assets. Tests: tests/test_public_polish.py.

@@ -15,6 +15,8 @@ $ regret deal --packs coffee
 I started by talking about workplace accommodations. Somehow the channel is now discussing one hell of a robustly deployed pastebin.
 ```
 
+[![Regret terminal demo](docs/assets/regret-demo.gif)](docs/DEMO.md)
+
 ```bash
 brew install bytesandcoffee/tap/regret
 regret deal
