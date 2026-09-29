@@ -32,6 +32,11 @@ Plain pip also works: `python -m pip install bad-decisions-client`.
 `regret doctor` checks the installation, manual-page discovery, configuration,
 and service compatibility without changing anything.
 
+Native Windows ZIPs are attached to each GitHub release. They contain a
+self-contained `regret.exe`, including the Peer Pressure TUI, and do not
+require Python. WinGet and Chocolatey metadata are built from the same checked
+release artifact; public package-manager listings are planned.
+
 ## Use
 
 ```bash

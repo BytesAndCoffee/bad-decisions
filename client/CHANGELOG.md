@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.1.1]
+
+### Added
+
+- Added the native Windows Regret distribution: a self-contained
+  `regret.exe` with the Peer Pressure TUI and no Python prerequisite, plus
+  generated WinGet and Chocolatey metadata. The server receives the matching
+  lockstep version.
+
 ## [2.1.0]
 
 ### Added

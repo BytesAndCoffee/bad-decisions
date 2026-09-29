@@ -7,6 +7,12 @@ validates, and publishes them to PyPI using Trusted Publishing (OIDC), so no
 PyPI token is stored anywhere. Deploying the server to a host is a separate,
 manual step (see [DEPLOYMENT.md](DEPLOYMENT.md)).
 
+The same tag builds a self-contained x86-64 Windows `regret.exe` on GitHub's
+native Windows runner. The workflow smoke-tests it and attaches a ZIP, SHA-256
+file, and Chocolatey package to the GitHub release. It also generates WinGet
+manifests from that ZIP, so every Windows channel refers to the same immutable
+binary and checksum.
+
 ## One-time setup (repository owner)
 
 1. **PyPI trusted publishers.** For each project (`bad-decisions` and
@@ -41,7 +47,13 @@ Workflows run in the repository the package metadata links to
 
 5. Approve the `pypi` environment when the **Release** workflow pauses.
 6. Confirm the new version on PyPI and deploy the server if needed.
-7. Update the Homebrew formula for the client in the
+7. Confirm the GitHub release contains the Windows ZIP, checksum, and `.nupkg`.
+   Validate the generated WinGet manifests from the `windows-dist` workflow
+   artifact on a Windows machine before submitting them to
+   `microsoft/winget-pkgs`. Publishing the Chocolatey package remains a
+   separately approved operation; building a tag does not push it to the
+   Chocolatey community repository.
+8. Update the Homebrew formula for the client in the
    [BytesAndCoffee/homebrew-tap](https://github.com/BytesAndCoffee/homebrew-tap)
    tap:
 
@@ -65,6 +77,9 @@ Workflows run in the repository the package metadata links to
 - Server tests, client tests, and `bash -n` on the deploy scripts pass.
 - Both packages build once and pass `twine check`; the same built files are
   published, never rebuilt.
+- The native Windows client starts, reports the tagged version, and can access
+  its local Consequences preference command before its ZIP and package-manager
+  metadata are retained as workflow artifacts.
 - Those exact wheels are installed into a clean virtualenv with
   `requirements.lock`, and `scripts/check_installed.py` checks the console
   scripts and `--version`, the bundled packs, the packaged lock, the manual

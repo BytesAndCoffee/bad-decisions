@@ -25,6 +25,9 @@ regret deal
 Prefer pipx? `pipx install bad-decisions-client` gets you the same dependency-free
 client on Linux, macOS, or Windows. Regret uses the free BytesAndCoffee-hosted
 service by default; no account is required.
+On Windows, each GitHub release also includes a self-contained `regret.exe`
+ZIP with the Peer Pressure TUI and no Python prerequisite.
+
 
 [Play in the browser](https://bytes.coffee/bad-decisions/web/) ·
 [Explore the API](https://bytes.coffee/bad-decisions/docs/) ·

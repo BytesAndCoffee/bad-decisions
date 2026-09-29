@@ -78,6 +78,51 @@ jobs:
           path: client/dist/
           if-no-files-found: error
 
+  windows:
+    needs: verify
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Build the self-contained Regret executable
+        shell: pwsh
+        run: |
+          python -m pip install "./client[tui]" pyinstaller==6.16.0
+          pyinstaller --clean --noconfirm --onefile --console --name regret `
+            --collect-all textual --collect-all rich client/windows/regret.py
+          $expected = (python -c "from bad_decisions_client import __version__; print(__version__)").Trim()
+          $actual = (& ./dist/regret.exe --version).Trim()
+          if ($actual -ne "regret $expected") { throw "unexpected version output: $actual" }
+          & ./dist/regret.exe consequences status
+          New-Item -ItemType Directory -Force windows-release | Out-Null
+          Copy-Item dist/regret.exe windows-release/regret.exe
+          Copy-Item LICENSE windows-release/LICENSE.txt
+          Copy-Item client/README.md windows-release/README.md
+          Compress-Archive -Path windows-release/* `
+            -DestinationPath "regret-windows-x86_64-v$expected.zip"
+          python scripts/build_windows_metadata.py $expected `
+            "regret-windows-x86_64-v$expected.zip" windows-packages
+          Push-Location windows-packages/chocolatey
+          choco pack regret.nuspec --output-directory ..
+          Pop-Location
+          Get-FileHash "regret-windows-x86_64-v$expected.zip" -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLower())  regret-windows-x86_64-v$expected.zip" } |
+            Set-Content -Encoding ascii "regret-windows-x86_64-v$expected.zip.sha256"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-dist
+          path: |
+            regret-windows-x86_64-v*.zip
+            regret-windows-x86_64-v*.zip.sha256
+            windows-packages/winget/
+            windows-packages/*.nupkg
+          if-no-files-found: error
+
   publish:
     needs: build
     runs-on: ubuntu-24.04
@@ -107,3 +152,26 @@ jobs:
         with:
           packages-dir: client-dist/
           skip-existing: true
+
+  github-release:
+    needs: [build, windows]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: windows-dist
+          path: windows-dist
+      - name: Publish the native Windows assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes --title "$GITHUB_REF_NAME"
+          gh release upload "$GITHUB_REF_NAME" --clobber \
+            windows-dist/regret-windows-x86_64-v*.zip \
+            windows-dist/regret-windows-x86_64-v*.zip.sha256 \
+            windows-dist/windows-packages/*.nupkg

@@ -71,12 +71,31 @@ def test_release_verifies_before_building_and_builds_before_publishing():
     assert "twine check dist/* client/dist/*" in build
 
 
+def test_release_builds_and_smoke_tests_native_windows_client():
+    windows = _job(RELEASE, "windows")
+    assert "runs-on: windows-2025" in windows
+    assert "pyinstaller==" in windows
+    assert "./dist/regret.exe --version" in windows
+    assert "scripts/build_windows_metadata.py" in windows
+    assert "choco pack" in windows
+    assert "name: windows-dist" in windows
+
+
+def test_github_release_uses_the_windows_job_artifacts():
+    release = _job(RELEASE, "github-release")
+    assert "needs: [build, windows]" in release
+    assert "contents: write" in release
+    assert "name: windows-dist" in release
+    assert "gh release upload" in release
+    assert "regret-windows-x86_64-v*.zip" in release
+
+
 def test_only_the_publish_job_can_mint_an_oidc_token_and_it_needs_approval():
     assert RELEASE.count("id-token: write") == 1
     publish = _job(RELEASE, "publish")
     assert "id-token: write" in publish
     assert re.search(r"environment:\n\s+name: pypi", publish)
-    for job in ("verify", "build"):
+    for job in ("verify", "build", "windows", "github-release"):
         assert "id-token" not in _job(RELEASE, job)
     assert publish.count("gh-action-pypi-publish@") == 2
     assert "server-dist/" in publish and "client-dist/" in publish

@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.1]
+
+### Added
+
+- GitHub's native Windows runner now builds and smoke-tests a self-contained
+  Regret executable. Each release carries a checksummed ZIP, generated WinGet
+  manifests, and a Chocolatey package built around the same immutable binary.
+
 ## [2.1.0]
 
 ### Added
