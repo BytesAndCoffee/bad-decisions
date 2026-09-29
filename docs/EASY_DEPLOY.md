@@ -157,6 +157,15 @@ and restarts the service again. A copy of the replaced pack is kept under
 `APP_ROOT/backups/pack-<request id>/`. Nothing else in the registry can be
 changed this way, and the API itself still never modifies packs.
 
+To update a pack in place instead (a content fix with the same id), pass the
+same id twice. The archive must declare a new version, and the service must
+report that version afterward:
+
+```bash
+bad-decisions pack replace-local PACK_ID \
+  https://objects.example.com/packs/pack-id.carddeck --new-id PACK_ID
+```
+
 ### If something goes wrong
 
 - **"PyPI has bad-decisions X, but this command is Y":** the upgrade saw a

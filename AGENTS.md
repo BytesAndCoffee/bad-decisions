@@ -42,8 +42,10 @@ validation, licenses, backups, and ZIP-bomb defenses are not.
   not add API endpoints that import, upload, edit, or otherwise mutate packs.
 - On a rootless host, registry changes go only through `bad-decisions pack
   replace-local` and the root activator's `replace_pack` action: one explicitly
-  named pack, no-overwrite publish, and exact restore on failure. Never make the
-  registry group-writable or add another path into it.
+  named pack, no-overwrite publish, and exact restore on failure. Passing the
+  same id updates a pack in place only when its version changes, and the
+  service must then report that version. Never make the registry group-writable
+  or add another path into it.
 - `BAD_DECISIONS_PACK_DIR` replaces the bundled registry. Use `bad-decisions pack init-registry`
   before importing a portable pack when bundled packs should remain available.
 - An omitted `packs` selector means every pack in the loaded registry (API

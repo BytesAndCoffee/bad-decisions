@@ -1,5 +1,24 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- Pretend You're Xyzzy imports now produce plain card text: HTML character
+  references such as `&reg;` and `&trade;` are decoded, `<br>` becomes a line
+  break, and `<i>` italics are removed. Unexpected tags and invalid references
+  fail the import. `scripts/clean_pyx_markup.py` applies the same cleaning to
+  already-imported archives, changing only card text and recording the change
+  in each pack's version and modifications.
+
+### Changed
+
+- `bad-decisions pack replace-local ID URL --new-id ID` now updates a pack in
+  place. The archive must declare a new version; the root activator retires
+  the old file before linking the new one into its name, requires the service
+  to report the new version, and restores the exact previous file on failure.
+  Hosts need `sudo ./deploy.sh bootstrap-rootless` rerun to get this.
+
 ## [2.1.2]
 
 ### Fixed

@@ -543,11 +543,12 @@ def pack_replace_local(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
         prog="bad-decisions pack replace-local",
         description="Replace OLD_PACK_ID in a rootless local install with the HTTPS CardDeck archive at URL, "
-        "which must declare --new-id. The activator restores the old pack if the service does not come back healthy with it.",
+        "which must declare --new-id. Pass the same id to update a pack in place; the new version must differ. "
+        "The activator restores the old pack if the service does not come back healthy with it.",
     )
     parser.add_argument("old_pack_id", help="the pack to remove; <registry>/<OLD_PACK_ID>.json must exist")
     parser.add_argument("url", help="HTTPS .carddeck archive of the replacement pack")
-    parser.add_argument("--new-id", required=True, help="pack id the archive must declare; must not exist yet")
+    parser.add_argument("--new-id", required=True, help="pack id the archive must declare; unused, or OLD_PACK_ID to update in place")
     parser.add_argument("--app-root", type=Path, default=Path("/opt/bad-decisions"))
     parser.add_argument("--timeout", type=float, default=180.0)
     args = parser.parse_args(argv)
@@ -555,8 +556,6 @@ def pack_replace_local(argv: list[str]) -> int:
     for label, value in (("OLD_PACK_ID", args.old_pack_id), ("--new-id", args.new_id)):
         if not pattern.fullmatch(value) or len(value) > 128:
             parser.error(f"{label} must be a pack id ({ID_PATTERN})")
-    if args.old_pack_id == args.new_id:
-        parser.error("the new pack id must differ from the old one")
     incoming, activation = _local_inbox(parser, args.app_root, args.timeout)
 
     with tempfile.TemporaryDirectory(prefix="bad-decisions-pack-") as downloads:
@@ -590,7 +589,10 @@ def pack_replace_local(argv: list[str]) -> int:
 
     result = _await_local_result(activation, request_id, args.timeout)
     if result is not None and result.get("status") == "ok":
-        print(f"Replaced pack {args.old_pack_id} with {args.new_id} ({request_id})")
+        if args.old_pack_id == args.new_id:
+            print(f"Updated pack {args.new_id} ({request_id})")
+        else:
+            print(f"Replaced pack {args.old_pack_id} with {args.new_id} ({request_id})")
         return 0
     if result is not None:
         print(f"Pack replacement failed: {result.get('message', 'activation failed')}", file=sys.stderr)

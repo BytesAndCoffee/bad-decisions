@@ -127,7 +127,10 @@ requires `OLD_ID.json` to be a plain, singly linked file declaring `OLD_ID` and
 `NEW_ID` to be unused. It publishes `NEW_ID.json` with a no-overwrite link,
 retires the old file by atomic rename, restarts, and checks `/healthz` and
 `/v2/packs`; on failure it renames the old file back and removes only the file
-it created. The registry directory itself stays owned by the service or root
+it created. To update a pack in place (for example a content fix), pass the
+same id as `--new-id`: the new pack must declare a different version, the old
+file is retired before the new one is linked into the freed name, and the
+service must report the new version at `/v2/packs/ID`. The registry directory itself stays owned by the service or root
 and is never made group-writable.
 
 Run the management command from its own install (`pipx install bad-decisions`),

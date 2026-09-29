@@ -42,8 +42,11 @@ def pack(pack_id: str, *, cards: int = 3) -> Pack:
     )
 
 
-def payload(pack_id: str = NEW) -> bytes:
-    return _pack_payload(pack(pack_id))
+def payload(pack_id: str = NEW, *, version: str | None = None) -> bytes:
+    value = pack(pack_id)
+    if version is not None:
+        value = value.model_copy(update={"metadata": value.metadata.model_copy(update={"version": version})})
+    return _pack_payload(value)
 
 
 class Host:
@@ -67,12 +70,14 @@ class Host:
         self.healthy = healthy
         self.restart_error: BaseException | None = None
         self.runtime_override: set[str] | None = None
+        self.version_override: str | None = None
         monkeypatch.setattr(activator, "ROOT_UID", os.getuid())
         monkeypatch.setattr(activator.time, "sleep", lambda _seconds: None)
         monkeypatch.setattr(activator, "_run", self._run)
         monkeypatch.setattr(activator, "_healthy", lambda _url, _version, _attempts: self.healthy() if callable(self.healthy) else self.healthy)
         monkeypatch.setattr(activator, "_validate_with_release", self._validate)
         monkeypatch.setattr(activator, "_runtime_pack_ids", self._runtime)
+        monkeypatch.setattr(activator, "_runtime_pack_version", self._runtime_version)
 
     def _run(self, command):
         assert command[:2] == ["systemctl", "restart"]
@@ -92,6 +97,12 @@ class Host:
     def _runtime(self, _args) -> set[str]:
         # A restart reloads the registry from disk, exactly as the service does.
         return self.runtime_override if self.runtime_override is not None else set(load_registry(self.registry).ids)
+
+    def _runtime_version(self, _args, pack_id: str) -> str | None:
+        if self.version_override is not None:
+            return self.version_override
+        registry = load_registry(self.registry)
+        return registry.packs[pack_id].metadata.version if pack_id in registry.packs else None
 
     def stage(self, data: bytes | None = None, **request) -> dict:
         data = payload() if data is None else data
@@ -367,6 +378,86 @@ def test_restore_restarts_even_when_the_service_stays_unhealthy(host, capsys):
     assert (host.registry / f"{OLD}.json").exists() and not (host.registry / f"{NEW}.json").exists()
 
 
+# --- updating a pack in place (same id, new version) ---------------------------
+
+UPDATED = "2.0.0+plaintext"
+
+
+def test_update_in_place_publishes_the_new_version_under_the_same_name(host):
+    old = host.snapshot()[f"{OLD}.json"]
+    new_bytes = payload(OLD, version=UPDATED)
+    host.stage(new_bytes, new_pack_id=OLD)
+    assert host.run() == 0
+    assert host.result() == {"release_id": REQUEST_ID, "status": "ok", "action": "replace_pack", "old_pack_id": OLD, "new_pack_id": OLD}
+    assert sorted(path.name for path in host.registry.iterdir()) == ["base.json", f"{OLD}.json"]
+    updated = host.registry / f"{OLD}.json"
+    assert updated.read_bytes() == new_bytes
+    assert updated.stat().st_ino != old[1]  # a new file, never the old one rewritten
+    assert stat.S_IMODE(updated.stat().st_mode) == old[2] and updated.stat().st_uid == old[3]
+    assert load_registry(host.registry).packs[OLD].metadata.version == UPDATED
+    assert (host.app / "backups" / f"pack-{REQUEST_ID}" / f"{OLD}.json").read_bytes() == old[0]
+    assert host.restarts == ["svc"]
+    host.assert_cleaned()
+
+
+def test_an_update_must_change_the_version(host):
+    before = host.snapshot()
+    host.stage(payload(OLD), new_pack_id=OLD)  # same id, same "1.0.0" version
+    assert host.run() == 1
+    assert "must change its version" in host.result()["message"]
+    assert host.snapshot() == before
+    assert host.restarts == []
+
+
+def test_an_update_still_refuses_another_file_declaring_the_id(host):
+    (host.registry / "copy.json").write_bytes(payload(OLD))
+    before = host.snapshot()
+    host.stage(payload(OLD, version=UPDATED), new_pack_id=OLD)
+    assert host.run() == 1
+    assert "already declared" in host.result()["message"]
+    assert host.snapshot() == before
+
+
+@pytest.mark.parametrize("failure", ["restart fails", "terminated during restart", "health check fails", "old version still served", "pack missing"])
+def test_failed_updates_restore_the_exact_registry(host, failure):
+    before = host.snapshot()
+    if failure == "restart fails":
+        host.restart_error = activator.ActivationError("command failed (1): systemctl restart svc")
+    elif failure == "terminated during restart":
+        host.restart_error = SystemExit(143)
+    elif failure == "health check fails":
+        host.healthy = False
+    elif failure == "old version still served":
+        host.version_override = "1.0.0"
+    else:
+        host.version_override = ""  # the service no longer reports the pack at all
+    host.stage(payload(OLD, version=UPDATED), new_pack_id=OLD)
+    assert host.run() == 1
+    assert host.snapshot() == before  # the original inode is back; the new file is gone
+    assert host.restarts == ["svc", "svc"]
+    assert host.result()["status"] == "error"
+    host.assert_cleaned()
+
+
+def test_client_updates_a_pack_in_place_end_to_end(host, tmp_path, monkeypatch, capsys):
+    updated = pack(OLD)
+    updated = updated.model_copy(update={"metadata": updated.metadata.model_copy(update={"version": UPDATED})})
+    archive = export_pack(updated, tmp_path / f"{OLD}.carddeck")
+    monkeypatch.setattr(remote_module, "_read_url", lambda url, *, limit, carddeck=False: archive.read_bytes())
+    _fixed_request_id(monkeypatch)
+    ran = []
+
+    def activator_runs_while_client_waits(_seconds):
+        if not ran:
+            ran.append(host.run())
+
+    monkeypatch.setattr(operations.time, "sleep", activator_runs_while_client_waits)
+    assert operations.pack_replace_local([OLD, URL, "--new-id", OLD, "--app-root", str(host.app)]) == 0
+    assert ran == [0]
+    assert f"Updated pack {OLD}" in capsys.readouterr().out
+    assert load_registry(host.registry).packs[OLD].metadata.version == UPDATED
+
+
 # --- client --------------------------------------------------------------------
 
 def _fixed_request_id(monkeypatch):
@@ -436,7 +527,7 @@ def test_client_requires_an_https_carddeck_url(client_app, capsys, url):
     assert list((client_app / "incoming").iterdir()) == []
 
 
-@pytest.mark.parametrize("argv", [["../base", URL, "--new-id", NEW], [OLD, URL, "--new-id", "../furry"], [OLD, URL, "--new-id", OLD], [OLD, URL]])
+@pytest.mark.parametrize("argv", [["../base", URL, "--new-id", NEW], [OLD, URL, "--new-id", "../furry"], [OLD, URL]])
 def test_client_rejects_bad_ids_before_downloading(client_app, monkeypatch, argv):
     monkeypatch.setattr(remote_module, "_read_url", lambda *_a, **_k: pytest.fail("must not download"))
     with pytest.raises(SystemExit):
@@ -473,3 +564,22 @@ def test_bootstrap_makes_pack_replacement_opt_in():
     assert "@PACK_DIR_ARG@" in service
     assert 'PACK_DIR=${PACK_DIR:-}' in bootstrap and "! -L ${PACK_DIR}" in bootstrap
     assert "PACK_DIR" in (ROOT / "deploy.sh").read_text()
+
+
+def test_runtime_pack_version_reads_the_served_pack(monkeypatch):
+    import io
+    import urllib.error
+
+    seen = []
+
+    def urlopen(url, timeout):
+        seen.append(url)
+        if url.endswith("/gone"):
+            raise urllib.error.HTTPError(url, 404, "not found", {}, None)
+        return io.BytesIO(json.dumps({"id": "p", "version": "2+plaintext"}).encode())
+
+    monkeypatch.setattr(activator.urllib.request, "urlopen", urlopen)
+    args = type("Args", (), {"bind_host": "127.0.0.1", "port": 8000})()
+    assert activator._runtime_pack_version(args, "p") == "2+plaintext"
+    assert activator._runtime_pack_version(args, "gone") is None
+    assert seen == ["http://127.0.0.1:8000/v2/packs/p", "http://127.0.0.1:8000/v2/packs/gone"]

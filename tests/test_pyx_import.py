@@ -169,3 +169,53 @@ def test_only_one_trailing_carriage_return_is_stripped():
     doubled = SQL.replace(b"20\tA response\\twith a tab.\tTST\n", b"20\tA response\\twith a tab.\tTST\r\r\n")
     pack = convert(doubled, source_url=URL)[0]
     assert pack.answers[0].source_ref == "pyx-card:20;watermark:TST\r"
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("Viagra&reg;.", "Viagra®."),
+        ("A Super Soaker&trade; full of cat pee.", "A Super Soaker™ full of cat pee."),
+        ("&#x2605;&#x2606; Do NOT go here!", "★☆ Do NOT go here!"),
+        ("Pok&eacute;mon &amp; M&amp;Ms", "Pokémon & M&Ms"),
+        ("<i>The Bachelorette</i> season finale.", "The Bachelorette season finale."),
+        ("Dear Sir or Madam, <br>We regret", "Dear Sir or Madam,\nWe regret"),
+        ('"Madness!"<BR/><br>"<i>No.</i> THIS"', '"Madness!"\n\n"No. THIS"'),
+        # Tags are removed before references are decoded, so &lt; stays text.
+        ("( <i>p&lt;.05).</i>", "( p<.05)."),
+        ("&lt;i&gt;literal&lt;/i&gt;", "<i>literal</i>"),
+        # Only semicolon-terminated references decode; unknown names stay literal.
+        ("Q&A; AT&T &notice &copy M&Ms <3", "Q&A; AT&T &notice &copy M&Ms <3"),
+    ],
+)
+def test_pyx_html_card_text_becomes_plain_text(raw, expected):
+    assert pyx_import.clean_pyx_text(raw) == expected
+
+
+@pytest.mark.parametrize("raw", ["<span>styled</span>", "<a href='x'>link</a>", "<script>x</script>", "<img src=x>"])
+def test_unexpected_pyx_markup_is_rejected(raw):
+    with pytest.raises(PackConfigurationError, match="unsupported HTML markup"):
+        pyx_import.clean_pyx_text(raw)
+
+
+@pytest.mark.parametrize("raw", ["&#123;&#125;", "&lbrace;", "&#x7D;"])
+def test_references_cannot_smuggle_template_braces(raw):
+    with pytest.raises(PackConfigurationError, match="template brace"):
+        pyx_import.clean_pyx_text(raw)
+
+
+@pytest.mark.parametrize("raw", ["Bell&#7;", "Null&#0;", "Bad&#xD800;", "Huge&#x110000;"])
+def test_invalid_character_references_are_rejected_not_dropped(raw):
+    with pytest.raises(PackConfigurationError, match="not a valid character"):
+        pyx_import.clean_pyx_text(raw)
+
+
+def test_convert_imports_plain_text_and_records_the_change():
+    sql = SQL.replace(b"Prompt with ____ and {braces}.", b"<i>Maury</i>: ____&reg;<br>Next").replace(
+        b"A response\\twith a tab.", b"Pi&ntilde;ata"
+    )
+    pack = convert(sql, source_url=URL)[0]
+    assert pack.prompts[0].text == "Maury: ____®\nNext"
+    assert pack.prompts[0].template == "Maury: {}®\nNext"
+    assert pack.answers[0].text == "Piñata"
+    assert pyx_import.PYX_MARKUP_NOTE in pack.metadata.modifications

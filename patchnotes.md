@@ -3,6 +3,7 @@
 - [x] Reduced AWS fixed costs with one task, scale-to-two, one-AZ endpoints, and private compute retained.
 - [x] Build and smoke-test a self-contained Windows Regret executable in GitHub Actions, with one checksummed release ZIP feeding generated WinGet and Chocolatey packages.
 - [x] Replaced the legacy CDK stack with a compatibility shim so the missing-`curl` ECS health-check failure cannot recur.
+- [x] Validate the native v2.1.2 client and package manifests through WSL Win32 interop; add the schema headers requested by WinGet.
 
 ## 1.5.0
 
@@ -259,3 +260,5 @@ version metadata without publishing.
 2026-09-29 - docs - Added an editable Mermaid system diagram to the README covering CardDeck distribution/import, the immutable loaded registry, clients, Peer Pressure room state, and Consequences storage.
 2026-09-29 - build - Dockerfile now copies requirements.lock (a wheel force-include; the image build had failed since 1.8.1), pytest is pinned to 9.1.1 in requirements-dev.lock and CI to match PR #7, and tests fail when pyproject pins drift from the locks or the Dockerfile omits a wheel build input. Tests: tests/test_extras.py.
 2026-09-29 - packaging - Homebrew now installs Regret's complete Peer Pressure TUI with exact pinned Textual resources; formula tests keep those resources synchronized with the extras lock and verify Textual imports in the installed environment.
+2026-09-29 - content - PYX card text is now plain text: the importer decodes HTML character references, turns <br> into line breaks, strips <i>-style formatting, and rejects other tags, invalid references, and references that decode to template braces; scripts/clean_pyx_markup.py rewrites existing PYX archives (31 of the 46 live archives, 151 cards) with a +plaintext version and a recorded modification. Tests: tests/test_pyx_import.py, tests/test_clean_pyx_markup.py.
+2026-09-29 - deploy - pack replace-local accepts --new-id equal to the old id as an in-place update: the version must change, the activator retires the old file before linking the new one (never overwriting), requires /v2/packs/ID to report the new version, and restores the exact old inode on failure. Tests: tests/test_rootless_packs.py.

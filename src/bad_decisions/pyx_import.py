@@ -7,6 +7,7 @@ does not make its card data part of the Bad Decisions distribution.
 from __future__ import annotations
 
 import hashlib
+import html
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -28,6 +29,17 @@ LICENSE_NOTICE = (
 COPY_START = re.compile(r"^COPY (?P<table>[a-z_]+) \((?P<columns>[a-z_, ]+)\) FROM stdin;$")
 OCTAL_ESCAPE = re.compile(r"[0-7]{1,3}", re.ASCII)
 HEX_ESCAPE = re.compile(r"x(?P<digits>[0-9A-Fa-f]{1,2})", re.ASCII)
+# PYX stores card text as HTML fragments. Only these forms occur in it; any
+# other tag is an error rather than something to guess at.
+PYX_LINE_BREAK = re.compile(r"[ \t]*<br\s*/?>[ \t]*", re.IGNORECASE)
+PYX_FORMATTING = re.compile(r"</?(?:i|b|em|strong|u)\s*>", re.IGNORECASE)
+HTML_TAG = re.compile(r"</?[A-Za-z][^<>]*>")
+CHARACTER_REFERENCE = re.compile(r"&(?:#[0-9]+|#[xX][0-9A-Fa-f]+|[A-Za-z][A-Za-z0-9]*);")
+PYX_MARKUP_NOTE = (
+    "Converted PYX HTML card text to plain text: decoded character references "
+    "(for example &reg; to \u00ae), turned <br> into line breaks, and removed <i> "
+    "and similar formatting tags. No words were changed."
+)
 REQUIRED_TABLES = frozenset(
     {"black_cards", "white_cards", "card_set", "card_set_black_card", "card_set_white_card"}
 )
@@ -164,6 +176,29 @@ def _boolean(row: dict[str, str | None], column: str, *, table: str) -> bool:
     raise _error(f"{table}: invalid boolean {column}={value!r}")
 
 
+def _decode_reference(match: re.Match[str]) -> str:
+    reference = match.group()
+    value = html.unescape(reference)
+    if not value or "\ufffd" in value:
+        # html.unescape drops or replaces invalid code points (&#7;, &#0;) instead of failing.
+        raise _error(f"character reference {reference} is not a valid character")
+    if "{" in value or "}" in value:
+        # A decoded brace would silently become a template placeholder.
+        raise _error(f"character reference {reference} decodes to a template brace")
+    return value  # unknown names stay as literal text
+
+
+def clean_pyx_text(text: str) -> str:
+    """Return PYX's HTML card text as the plain text players should see."""
+
+    text = PYX_FORMATTING.sub("", PYX_LINE_BREAK.sub("\n", text))
+    unsupported = HTML_TAG.search(text)
+    if unsupported:
+        raise _error(f"unsupported HTML markup in card text: {unsupported.group()}")
+    # Tags go first, so a decoded &lt; can never be mistaken for markup.
+    return CHARACTER_REFERENCE.sub(_decode_reference, text)
+
+
 def _slug(value: str) -> str:
     result = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
     return result or "unnamed"
@@ -230,7 +265,7 @@ def convert(payload: bytes, *, source_url: str, retrieved: str | None = None, in
             row = black.get(card_id)
             if row is None:
                 raise _error(f"card set {card_set.id}: missing prompt {card_id} (black_cards)")
-            text = _text(row, "text", table="black_cards")
+            text = clean_pyx_text(_text(row, "text", table="black_cards"))
             pick = _integer(row, "pick", table="black_cards")
             if pick < 1 or (text.count("____") and text.count("____") != pick):
                 raise _error(f"prompt {card_id} (black_cards): unsupported pick/blank combination")
@@ -248,7 +283,7 @@ def convert(payload: bytes, *, source_url: str, retrieved: str | None = None, in
                 raise _error(f"card set {card_set.id}: missing answer {card_id} (white_cards)")
             answers.append(
                 {
-                    "id": f"pyx-answer-{card_id}", "text": _text(row, "text", table="white_cards"), "pack": pack_id,
+                    "id": f"pyx-answer-{card_id}", "text": clean_pyx_text(_text(row, "text", table="white_cards")), "pack": pack_id,
                     "source_ref": _source_ref(card_id=card_id, watermark=row.get("watermark")),
                 }
             )
@@ -265,7 +300,7 @@ def convert(payload: bytes, *, source_url: str, retrieved: str | None = None, in
                 "attribution": "Pretend You're Xyzzy cards by Andy Janata, based on Cards Against Humanity materials. Imported by Bad Decisions; no endorsement implied.",
                 "license_id": LICENSE_ID, "license_url": LICENSE_URL, "license_notice": LICENSE_NOTICE,
                 "sources": [{"origin": source_url, "edition": f"Pretend You're Xyzzy SQL card set {card_set.id}: {card_set.name}", "sha256": digest, "retrieved": retrieved, "license_evidence": "cah_cards.sql header: ‘Pretend You're Xyzzy cards by Andy Janata’ under CC BY-NC-SA 3.0; it states the cards are based on Cards Against Humanity materials."}],
-                "modifications": ["Converted PostgreSQL COPY rows to CardDeck fields while preserving card text, order, card-set membership, watermarks, and source identifiers.", "Prompts with no blank receive newline-appended answer placeholders, matching Bad Decisions' existing prompt representation. Prompt draw counts are retained in source_ref; the runtime does not implement draw mechanics."],
+                "modifications": ["Converted PostgreSQL COPY rows to CardDeck fields while preserving card wording, order, card-set membership, watermarks, and source identifiers.", "Prompts with no blank receive newline-appended answer placeholders, matching Bad Decisions' existing prompt representation. Prompt draw counts are retained in source_ref; the runtime does not implement draw mechanics.", PYX_MARKUP_NOTE],
             },
             "prompts": prompts, "answers": answers,
             })

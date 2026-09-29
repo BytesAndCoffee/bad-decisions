@@ -139,8 +139,6 @@ def parse_request(raw: bytes, state: dict[str, str] | None = None) -> dict[str, 
         for key in ("old_pack_id", "new_pack_id"):
             if not valid_pack_id(value[key]):
                 raise ActivationError(f"invalid {key.replace('_', ' ')}")
-        if value["old_pack_id"] == value["new_pack_id"]:
-            raise ActivationError("old and new pack ids must differ")
         if not SHA256_RE.fullmatch(value["pack_sha256"]):
             raise ActivationError("invalid digest")
         return value
@@ -545,6 +543,14 @@ def _declared_pack_id(payload: bytes) -> str | None:
     return pack_id
 
 
+def _declared_version(payload: bytes) -> str | None:
+    try:
+        version = json.loads(payload.decode("utf-8"))["metadata"]["version"]
+    except (UnicodeError, ValueError, KeyError, TypeError):
+        return None
+    return version if isinstance(version, str) and version else None
+
+
 def _open_registry(pack_dir: Path, service_uid: int) -> int:
     """Open the configured registry: root- or service-owned, not a symlink, not group/other writable."""
     try:
@@ -578,10 +584,13 @@ def _registry_pack(pack_fd: int, name: str) -> tuple[os.stat_result, bytes]:
 
 
 def _refuse_collisions(pack_fd: int, new_id: str, old_name: str) -> None:
-    """The new id must be unused: no ``<new>.json`` and no other pack declaring it."""
+    """The new id must be unused: no ``<new>.json`` and no other pack declaring it.
+
+    An update (new id == old id) may reuse only the old pack's own file.
+    """
     new_name = f"{new_id}.json"
     for name in os.listdir(pack_fd):
-        if name == new_name:
+        if name == new_name and name != old_name:
             raise ActivationError(f"pack {new_id} already exists in the registry")
         if name.endswith(".json") and name != old_name:
             _info, data = _registry_pack(pack_fd, name)
@@ -661,6 +670,18 @@ def _runtime_pack_ids(args: argparse.Namespace) -> set[str]:
     raise ActivationError("the service exposes neither /v2/packs nor /v1/packs")
 
 
+def _runtime_pack_version(args: argparse.Namespace, pack_id: str) -> str | None:
+    """The version the running service reports for pack_id (2.x releases only)."""
+    try:
+        with urllib.request.urlopen(f"http://{args.bind_host}:{args.port}/v2/packs/{pack_id}", timeout=5) as response:
+            version = json.loads(response.read(8 * 1024 * 1024)).get("version")
+    except urllib.error.HTTPError as exc:
+        if exc.code in (404, 410):
+            return None
+        raise
+    return version if isinstance(version, str) else None
+
+
 def _backup_pack(app_root: Path, request_id: str, name: str, data: bytes) -> None:
     """Keep a root-only copy of the replaced pack under APP_ROOT/backups."""
     app_fd = _open_directory(app_root)
@@ -693,9 +714,12 @@ def replace_pack(args: argparse.Namespace, value: dict[str, str], state: dict[st
 
     Publish ``<new>.json`` (never overwriting), retire ``<old>.json`` by an atomic
     rename, restart, and require /healthz plus /v2/packs (or 1.x /v1/packs) to show the new id and not
-    the old one. Any failure renames the old file back (same inode, so content,
-    mode, owner, and mtime are exact), removes the new file only if it is ours,
-    and restarts the service again if it had been restarted.
+    the old one. An update (the same id) must change the pack version: the old file
+    is retired first, the new one is published under the freed name (still never
+    overwriting), and the service must report the new version. Any failure renames
+    the old file back (same inode, so content, mode, owner, and mtime are exact),
+    removes the new file only if it is ours, and restarts the service again if it
+    had been restarted.
     """
     import grp
     import pwd
@@ -704,6 +728,7 @@ def replace_pack(args: argparse.Namespace, value: dict[str, str], state: dict[st
         raise ActivationError("pack management is not enabled; rerun bootstrap-rootless with PACK_DIR set")
     old_id, new_id, request_id = value["old_pack_id"], value["new_pack_id"], value["request_id"]
     old_name, new_name = f"{old_id}.json", f"{new_id}.json"
+    update = old_id == new_id
     payload = load_staged_pack(args.app_root, value)
     service = pwd.getpwnam(args.service_user)
     deploy_gid = grp.getgrnam(args.deploy_group).gr_gid
@@ -716,23 +741,39 @@ def replace_pack(args: argparse.Namespace, value: dict[str, str], state: dict[st
         old_info, old_data = _registry_pack(pack_fd, old_name)
         if _declared_pack_id(old_data) != old_id:
             raise ActivationError(f"{old_name} does not declare pack id {old_id}")
+        new_version = _declared_version(payload)
+        if update and (new_version is None or new_version == _declared_version(old_data)):
+            raise ActivationError(f"an update to {old_id} must change its version")
         _refuse_collisions(pack_fd, new_id, old_name)
         _backup_pack(args.app_root, request_id, old_name, old_data)
+
+        def retire() -> None:
+            nonlocal moved
+            os.rename(old_name, retired, src_dir_fd=pack_fd, dst_dir_fd=pack_fd)
+            moved = True
+            if not _same_file(pack_fd, retired, (old_info.st_dev, old_info.st_ino)):
+                raise ActivationError(f"{old_name} changed during replacement")
+            os.fsync(pack_fd)
+            print(f"retired {old_name}", file=sys.stderr)
+
+        if update:
+            retire()  # frees the name, so publishing below still never overwrites
         published = _publish_pack(pack_fd, new_name, payload, old_info)
         print(f"published {new_name}", file=sys.stderr)
-        os.rename(old_name, retired, src_dir_fd=pack_fd, dst_dir_fd=pack_fd)
-        moved = True
-        if not _same_file(pack_fd, retired, (old_info.st_dev, old_info.st_ino)):
-            raise ActivationError(f"{old_name} changed during replacement")
-        os.fsync(pack_fd)
-        print(f"retired {old_name}", file=sys.stderr)
+        if not update:
+            retire()
         restarted = True
         _run(["systemctl", "restart", args.service_name])
         if not _healthy(f"http://{args.bind_host}:{args.port}/healthz", None, args.health_attempts):
             raise ActivationError("health check failed after the replacement")
-        runtime = _runtime_pack_ids(args)
-        if new_id not in runtime or old_id in runtime:
-            raise ActivationError(f"the service does not expose {new_id} without {old_id}")
+        if update:
+            served = _runtime_pack_version(args, new_id)
+            if served != new_version:
+                raise ActivationError(f"the service reports {new_id} version {served}, not {new_version}")
+        else:
+            runtime = _runtime_pack_ids(args)
+            if new_id not in runtime or old_id in runtime:
+                raise ActivationError(f"the service does not expose {new_id} without {old_id}")
         os.unlink(retired, dir_fd=pack_fd)
         os.fsync(pack_fd)
         result = {"release_id": request_id, "status": "ok", "action": "replace_pack", "old_pack_id": old_id, "new_pack_id": new_id}
