@@ -234,3 +234,108 @@ def test_other_join_errors_are_not_retried(monkeypatch, capsys):
     monkeypatch.setattr(cli, "_request_json", request_json)
     assert cli.run(["together", "ohno"]) == 1
     assert len(calls) == 1
+
+
+def _judging_state(*, round_=3, decisions=("sub_1", "sub_2"), adult="player_1"):
+    return {
+        "room": {"code": "ohno", "round": round_, "state": "JUDGING", "revision": 9},
+        "players": [], "result": None, "prompt": {"text": "P _", "slots": 1},
+        "responsible_adult": {"id": adult, "name": "Alice"},
+        "you": {"id": "player_1", "room_owner": True, "submitted": False, "hand": []},
+        "judging": {"decisions": [{"submission_id": value, "answers": [value]} for value in decisions]},
+    }
+
+
+def _stale_then(outcomes, fresh_state):
+    """request_json that answers /judge from ``outcomes`` and /sync with ``fresh_state``."""
+    sent = []
+
+    def request_json(url, **kwargs):
+        if url.endswith("/sync"):
+            return {"revision": fresh_state["room"]["revision"], "state": fresh_state}, {}
+        sent.append(kwargs["payload"].copy())
+        outcome = outcomes.pop(0)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome, {}
+
+    return request_json, sent
+
+
+STALE = RuntimeError("stale_revision: Room state changed; synchronize and try again")
+
+
+def test_a_stale_judgment_is_retried_while_it_still_makes_sense():
+    from bad_decisions_client.together import can_judge
+
+    request_json, sent = _stale_then([STALE, {"revision": 10}], _judging_state())
+    client = TogetherClient("https://example.invalid", "ohno", 4, request_json)
+    client.player_id, client.session_token, client.revision = "player_1", "token", 8
+    client.mutate("judge", still_valid=can_judge(3, "sub_2"), submission_id="sub_2")
+    assert [body["revision"] for body in sent] == [8, 9]  # retried against the fresh revision
+    assert sent[0]["request_id"] != sent[1]["request_id"]  # a refused request is not reused
+    assert all(body["submission_id"] == "sub_2" for body in sent)
+
+
+@pytest.mark.parametrize("fresh", [
+    _judging_state(decisions=("sub_1",)),   # the chosen submission left with its player
+    _judging_state(round_=4),               # a different round is being judged
+    _judging_state(adult="player_2"),       # no longer the Responsible Adult
+    {"room": {"state": "ENDED", "revision": 9}},  # malformed for the check: treated as invalid
+])
+def test_a_stale_judgment_is_not_retried_once_it_no_longer_applies(fresh):
+    from bad_decisions_client.together import can_judge
+
+    request_json, sent = _stale_then([STALE, {"revision": 10}], fresh)
+    client = TogetherClient("https://example.invalid", "ohno", 4, request_json)
+    client.player_id, client.session_token, client.revision = "player_1", "token", 8
+    with pytest.raises(RuntimeError, match="stale_revision"):
+        client.mutate("judge", still_valid=can_judge(3, "sub_2"), submission_id="sub_2")
+    assert len(sent) == 1
+
+
+def test_stale_retries_are_bounded():
+    from bad_decisions_client.together import STALE_RETRIES, always
+
+    request_json, sent = _stale_then([STALE] * 10, _judging_state())
+    client = TogetherClient("https://example.invalid", "ohno", 4, request_json)
+    client.player_id, client.session_token, client.revision = "player_1", "token", 8
+    with pytest.raises(RuntimeError, match="stale_revision"):
+        client.mutate("leave", still_valid=always)
+    assert len(sent) == STALE_RETRIES
+
+
+class _ScriptedClient:
+    def __init__(self, state):
+        self.state = state
+        self.revision = 9
+        self.mutations = []
+
+    def sync(self):
+        return self.state
+
+    def heartbeat(self):
+        return False
+
+    def mutate(self, action, *, still_valid=None, **payload):
+        self.mutations.append((action, payload))
+
+
+def test_the_responsible_adult_can_leave_while_judging(capsys):
+    from bad_decisions_client.together import run_together
+
+    client = _ScriptedClient(_judging_state())
+    assert run_together(client, input_=lambda prompt: "q", heartbeat_interval=3600) == 0
+    assert client.mutations == [("leave", {})]
+    assert "Regret alone." in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("raw", ["0", "-1", "3", "two"])
+def test_out_of_range_judgments_are_refused(raw, capsys):
+    from bad_decisions_client.together import run_together
+
+    client = _ScriptedClient(_judging_state())
+    answers = iter([raw, "q"])
+    assert run_together(client, input_=lambda prompt: next(answers), heartbeat_interval=3600) == 0
+    assert client.mutations == [("leave", {})]  # nothing was judged, then the adult left
+    assert "responsible selection" in capsys.readouterr().err

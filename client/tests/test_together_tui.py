@@ -50,6 +50,7 @@ class FakeClient:
     def __init__(self, current):
         self.state = current
         self.mutations = []
+        self.checks = []
         self.syncs = 0
 
     def sync(self):
@@ -59,8 +60,9 @@ class FakeClient:
     def heartbeat(self):
         return False
 
-    def mutate(self, action, **payload):
+    def mutate(self, action, *, still_valid=None, **payload):
         self.mutations.append((action, payload))
+        self.checks.append((action, still_valid))
 
 
 async def settle(app, pilot):
@@ -294,5 +296,26 @@ def test_an_ended_room_exits_without_another_request():
             await pilot.pause()
         assert client.mutations == []
         assert app.leave_error is None
+
+    asyncio.run(exercise())
+
+
+def test_tui_actions_carry_their_stale_revision_checks():
+    async def exercise():
+        client = FakeClient(state())
+        app = PeerPressureApp(client, heartbeat_interval=3600)
+        async with app.run_test(size=(120, 40)) as pilot:
+            await settle(app, pilot)
+            app.selected_cards[:] = ["card_1", "card_2"]
+            app._configure_buttons()
+            app.on_button_pressed(Button.Pressed(app.query_one("#submit", Button)))
+            await settle(app, pilot)
+        action, check = client.checks[0]
+        assert action == "submit"
+        assert check(state()) is True
+        assert check(state(submitted=True)) is False  # already submitted: do not resend
+        moved_on = state()
+        moved_on["room"]["round"] = 4
+        assert check(moved_on) is False  # a new round: the old selection is meaningless
 
     asyncio.run(exercise())

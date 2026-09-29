@@ -14,17 +14,15 @@ except ImportError as exc:
         "the Peer Pressure TUI requires Textual; install bad-decisions-client[tui]"
     ) from exc
 
-from .together import TogetherClient
-
-
-def is_responsible_adult(state: dict[str, Any]) -> bool:
-    """Return whether this projection gives the current player table control."""
-    you = state.get("you") or {}
-    adult = state.get("responsible_adult")
-    return bool(
-        (adult and adult.get("id") == you.get("id"))
-        or (not adult and you.get("room_owner"))
-    )
+from .together import (
+    TogetherClient,
+    always,
+    can_advance,
+    can_judge,
+    can_start,
+    can_submit,
+    is_responsible_adult,
+)
 
 
 def instruction_for(state: dict[str, Any]) -> str:
@@ -298,6 +296,9 @@ class PeerPressureApp(App[None]):
         self._rebuild_choices()
         self._configure_buttons()
 
+    def _round(self) -> Any:
+        return (self.state.get("room") or {}).get("round")
+
     def _mutate(self, action: str, message: str, **payload: Any) -> None:
         def operation() -> dict[str, Any]:
             self.client.mutate(action, **payload)
@@ -308,13 +309,13 @@ class PeerPressureApp(App[None]):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         button_id = event.button.id
         if button_id == "start":
-            self._mutate("start", "Starting a regrettable round…")
+            self._mutate("start", "Starting a regrettable round…", still_valid=can_start)
         elif button_id == "submit":
-            self._mutate("submit", "Submitting your decision privately…", card_instance_ids=list(self.selected_cards))
+            self._mutate("submit", "Submitting your decision privately…", still_valid=can_submit(self._round(), list(self.selected_cards)), card_instance_ids=list(self.selected_cards))
         elif button_id == "judge" and self.selected_submission:
-            self._mutate("judge", "Applying consequences…", submission_id=self.selected_submission)
+            self._mutate("judge", "Applying consequences…", still_valid=can_judge(self._round(), self.selected_submission), submission_id=self.selected_submission)
         elif button_id == "advance":
-            self._mutate("advance", "Making another bad decision…")
+            self._mutate("advance", "Making another bad decision…", still_valid=can_advance(self._round()))
         elif button_id == "refresh":
             self._sync()
         elif button_id == "leave":
@@ -326,7 +327,7 @@ class PeerPressureApp(App[None]):
     def action_start(self) -> None:
         button = self.query_one("#start", Button)
         if not button.disabled:
-            self._mutate("start", "Starting a regrettable round…")
+            self._mutate("start", "Starting a regrettable round…", still_valid=can_start)
 
     def action_primary(self) -> None:
         table = self.query_one("#choices", DataTable)
@@ -345,7 +346,7 @@ class PeerPressureApp(App[None]):
             return
 
         def operation() -> None:
-            self.client.mutate("leave")
+            self.client.mutate("leave", still_valid=always)
             return None
 
         self._run_network(operation, "Leaving this terrible influence…", exit_after=True)

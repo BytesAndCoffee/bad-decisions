@@ -11,6 +11,69 @@ from typing import Any, Callable
 from urllib.parse import quote
 
 SESSION_PATH = Path(os.path.expanduser("~")) / ".regret-peer-pressure.json"
+# Total sends of one action when the server keeps answering stale_revision.
+STALE_RETRIES = 3
+
+StillValid = Callable[[dict[str, Any]], bool]
+
+
+def is_responsible_adult(state: dict[str, Any]) -> bool:
+    """Return whether this projection gives the current player table control."""
+    you = state.get("you") or {}
+    adult = state.get("responsible_adult")
+    return bool(
+        (adult and adult.get("id") == you.get("id"))
+        or (not adult and you.get("room_owner"))
+    )
+
+
+def _checked(check: Callable[[dict[str, Any]], bool]) -> StillValid:
+    # A projection too malformed to check is treated as "no longer applies".
+    def still_valid(state: dict[str, Any]) -> bool:
+        try:
+            return bool(check(state))
+        except (KeyError, TypeError, AttributeError):
+            return False
+    return still_valid
+
+
+def always(_state: dict[str, Any]) -> bool:
+    return True
+
+
+@_checked
+def can_start(state: dict[str, Any]) -> bool:
+    return state["room"]["state"] == "WAITING" and is_responsible_adult(state)
+
+
+def can_submit(round_: Any, card_instance_ids: list[str]) -> StillValid:
+    @_checked
+    def check(state: dict[str, Any]) -> bool:
+        hand = {card["card_instance_id"] for card in state["you"]["hand"]}
+        return (
+            state["room"]["state"] == "PLAYING" and state["room"]["round"] == round_
+            and not is_responsible_adult(state) and not state["you"]["submitted"]
+            and set(card_instance_ids) <= hand
+        )
+    return check
+
+
+def can_judge(round_: Any, submission_id: str) -> StillValid:
+    @_checked
+    def check(state: dict[str, Any]) -> bool:
+        return (
+            state["room"]["state"] == "JUDGING" and state["room"]["round"] == round_
+            and is_responsible_adult(state)
+            and any(decision["submission_id"] == submission_id for decision in state["judging"]["decisions"])
+        )
+    return check
+
+
+def can_advance(round_: Any) -> StillValid:
+    @_checked
+    def check(state: dict[str, Any]) -> bool:
+        return state["room"]["state"] == "ROUND_RESULT" and state["room"]["round"] == round_ and is_responsible_adult(state)
+    return check
 
 
 def _session_key(api_url: str, room: str) -> str:
@@ -97,7 +160,29 @@ class TogetherClient:
             return True
         return False
 
-    def mutate(self, action: str, **payload: Any) -> dict[str, Any]:
+    def mutate(self, action: str, *, still_valid: StillValid | None = None, **payload: Any) -> dict[str, Any]:
+        """Send one action.
+
+        A stale_revision refusal resynchronizes. The action is resent against the
+        fresh revision (with a new request id) only while ``still_valid`` accepts
+        the fresh state, and at most ``STALE_RETRIES`` sends in total.
+        """
+        for attempt in range(1, STALE_RETRIES + 1):
+            try:
+                response = self._send(action, payload)
+                break
+            except RuntimeError as exc:
+                if "stale_revision" not in str(exc):
+                    raise
+                fresh = self.sync()
+                if still_valid is None or attempt == STALE_RETRIES or not still_valid(fresh):
+                    raise
+        with self._lock:
+            self.revision = int(response["revision"])
+        self.sync()
+        return response
+
+    def _send(self, action: str, payload: dict[str, Any]) -> dict[str, Any]:
         request_id = f"req_{uuid.uuid4().hex}"
         with self._lock:
             revision = self.revision
@@ -105,15 +190,10 @@ class TogetherClient:
         try:
             response, _ = self.request_json(f"{self.endpoint}/{action}", timeout=self.timeout, method="POST", payload=body, headers=self._headers())
         except RuntimeError as exc:
-            if "stale_revision" in str(exc):
-                self.sync()
-                raise
             if "Cannot reach API" not in str(exc):
                 raise
+            # A lost acknowledgement: resend the same request id so it applies once.
             response, _ = self.request_json(f"{self.endpoint}/{action}", timeout=self.timeout, method="POST", payload=body, headers=self._headers())
-        with self._lock:
-            self.revision = int(response["revision"])
-        self.sync()
         return response
 
 
@@ -182,47 +262,54 @@ def run_together(client: TogetherClient, input_: Callable[[str], str] = input, h
             render(state)
             room_state = state["room"]["state"]
             you = state["you"]
-            adult = state.get("responsible_adult", {}).get("id") == you["id"] if state.get("responsible_adult") else you["room_owner"]
+            adult = is_responsible_adult(state)
+            round_ = state["room"]["round"]
             try:
                 if room_state == "WAITING":
                     command = input_("[s] Start" + ("" if adult else " (Responsible Adult only)") + " · [Enter] Refresh · [q] Regret alone: ").strip().lower()
                     if command == "s" and adult:
-                        client.mutate("start")
+                        client.mutate("start", still_valid=can_start)
                     elif command == "q":
-                        client.mutate("leave")
+                        client.mutate("leave", still_valid=always)
                         break
                 elif room_state == "PLAYING" and adult:
                     if input_("Waiting for everyone else to decide. [Enter] Refresh · [q] Regret alone: ").strip().lower() == "q":
-                        client.mutate("leave"); break
+                        client.mutate("leave", still_valid=always); break
                 elif room_state == "PLAYING" and not you["submitted"]:
                     cards = choose_answers(state, input_)
                     if cards is None:
-                        client.mutate("leave"); break
+                        client.mutate("leave", still_valid=always); break
                     if cards:
-                        client.mutate("submit", card_instance_ids=cards)
+                        client.mutate("submit", still_valid=can_submit(round_, cards), card_instance_ids=cards)
                 elif room_state == "PLAYING":
                     if input_("Decision submitted. [Enter] Refresh · [q] Regret alone: ").strip().lower() == "q":
-                        client.mutate("leave"); break
+                        client.mutate("leave", still_valid=always); break
                 elif room_state == "JUDGING" and adult:
                     decisions = state["judging"]["decisions"]
                     for index, decision in enumerate(decisions, 1):
                         print(f"  {index:2}. " + " / ".join(decision["answers"]))
-                    raw = input_("Choose the consequence (number): ").strip()
+                    raw = input_("Choose the consequence (number, or q): ").strip()
+                    if raw.lower() == "q":
+                        client.mutate("leave", still_valid=always); break
                     try:
                         choice = int(raw)
-                        client.mutate("judge", submission_id=decisions[choice - 1]["submission_id"])
-                    except (ValueError, IndexError):
+                    except ValueError:
+                        choice = 0
+                    if 1 <= choice <= len(decisions):
+                        submission_id = decisions[choice - 1]["submission_id"]
+                        client.mutate("judge", still_valid=can_judge(round_, submission_id), submission_id=submission_id)
+                    else:
                         print("The Responsible Adult must make a responsible selection.", file=sys.stderr)
                 elif room_state == "JUDGING":
                     if input_("The Responsible Adult is deciding. [Enter] Refresh · [q] Regret alone: ").strip().lower() == "q":
-                        client.mutate("leave"); break
+                        client.mutate("leave", still_valid=always); break
                 elif room_state == "ROUND_RESULT" and adult:
                     if input_("[Enter] Make another bad decision · [q] Regret alone: ").strip().lower() == "q":
-                        client.mutate("leave"); break
-                    client.mutate("advance")
+                        client.mutate("leave", still_valid=always); break
+                    client.mutate("advance", still_valid=can_advance(round_))
                 elif room_state == "ROUND_RESULT":
                     if input_("[Enter] Await further pressure · [q] Regret alone: ").strip().lower() == "q":
-                        client.mutate("leave"); break
+                        client.mutate("leave", still_valid=always); break
                 else:
                     break
             except RuntimeError as exc:
