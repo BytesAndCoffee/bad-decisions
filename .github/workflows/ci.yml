@@ -54,3 +54,7 @@ jobs:
         run: |
           python -m pip install pytest==8.4.1
           PYTHONPATH=client/src python -m pytest client/tests
+      - name: Client TUI tests (the optional [tui] extra, pinned by the extras lock)
+        run: |
+          python -m pip install textual -c requirements-extras.lock -c requirements.lock
+          PYTHONPATH=client/src python -m pytest client/tests/test_together_tui.py client/tests/test_together.py

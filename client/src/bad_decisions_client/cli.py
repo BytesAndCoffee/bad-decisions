@@ -273,9 +273,15 @@ def _together(argv: Sequence[str]) -> int:
     command=argparse.ArgumentParser(prog="regret together",description="Give in to Peer Pressure.")
     command.add_argument("room"); command.add_argument("--name"); command.add_argument("--api-url",default=DEFAULT_API_URL)
     command.add_argument("--timeout",type=float,default=10.0); command.add_argument("--heartbeat",type=float,default=5.0)
+    command.add_argument("--tui",action="store_true",help="use the optional full-screen Textual interface")
     args=command.parse_args(argv)
     if args.timeout<=0: command.error("--timeout must be greater than zero")
     if args.heartbeat<=0: command.error("--heartbeat must be greater than zero")
+    run_client=run_together
+    if args.tui:
+        # Check the optional dependency before taking a seat at the table.
+        try: from .together_tui import run_together_tui as run_client
+        except (ImportError,RuntimeError) as exc: print(f"regret: {exc}",file=sys.stderr); return 1
     try: base=_base_url(args.api_url)
     except ValueError as exc: print(f"regret: {exc}",file=sys.stderr); return 1
     saved=load_session(base,args.room)
@@ -295,7 +301,7 @@ def _together(argv: Sequence[str]) -> int:
             print("regret: the saved seat for this room is gone; joining as a new player",file=sys.stderr)
             joined=client.join(name,None)
         save_session(base,args.room,{"player_id":joined["player_id"],"session_token":joined["session_token"],"display_name":name},_atomic_json)
-        return run_together(client,heartbeat_interval=args.heartbeat)
+        return run_client(client,heartbeat_interval=args.heartbeat)
     except (RuntimeError,OSError,KeyError,TypeError,ValueError) as exc:
         print(f"regret: Peer Pressure unavailable: {exc}",file=sys.stderr)
         hint=next((text for reason,text in TOGETHER_HINTS.items() if str(exc).startswith(f"{reason}:")),None)

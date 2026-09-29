@@ -7,6 +7,23 @@ Decisions. Start or rejoin a room from the terminal client:
 regret together ohno --name Michael
 ```
 
+For a full-screen Textual table, install the optional client extra and add
+`--tui`:
+
+```bash
+pipx install 'bad-decisions-client[tui]'
+regret together ohno --name Michael --tui
+```
+
+The TUI follows the same authenticated revision protocol as the line-oriented
+client. It keeps the prompt, private hand, anonymous judging choices, players,
+scores, presence, Responsible Adult, and result visible together. Use Enter to
+select the highlighted choice, the action buttons to move the round forward,
+`r` to synchronize immediately, and `q` to leave. If the table cannot be
+reached, `q` still closes the TUI and your seat expires with the room. The
+default interface still has no third-party dependencies, and the Homebrew
+formula installs only that default.
+
 The first participant opens the room and hosts it: once at least three people
 are present, the host starts the game and becomes the first **Responsible
 Adult**. If the host leaves the lobby, the next connected player in seat order
@@ -69,7 +86,7 @@ returns `{revision, resync}` and also keeps the player marked present. Regret
 runs the heartbeat in the background while `regret together` is open and
 resynchronizes whenever `resync` is true or a change is refused as
 `stale_revision`. Refusals use the API's standard error envelope, not a
-separate message format. Server-sent events are planned for 2.1 and will use
+separate message format. Server-sent events remain a future option and will use
 the revision as the event ID.
 
 The versioned HTTP surface is under `/v2/peer-pressure/rooms`. A bearer

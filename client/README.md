@@ -1,7 +1,8 @@
 # Regret — the Bad Decisions terminal client
 
-Regret is a dependency-free terminal client for Bad Decisions services. It
-contains no card corpus, runs on Linux, macOS, and Windows, and uses the free
+Regret is a dependency-free terminal client for Bad Decisions services. Its
+optional full-screen Peer Pressure interface uses Textual. The client contains
+no card corpus, runs on Linux, macOS, and Windows, and uses the free
 BytesAndCoffee-hosted service by default.
 
 ```console
@@ -46,6 +47,18 @@ Join an ephemeral multiplayer room with Peer Pressure:
 ```bash
 regret together ohno --name Michael
 ```
+
+For the full-screen table, install the optional interface and add `--tui`:
+
+```bash
+pipx install 'bad-decisions-client[tui]'
+regret together ohno --name Michael --tui
+```
+
+The TUI shows the table, scores, Responsible Adult, prompt, private hand,
+anonymous decisions, and round result in one continuously synchronized view.
+The ordinary line-oriented interface remains the dependency-free default. The
+Homebrew formula installs only that default; use pipx for the TUI.
 
 The default endpoint is `https://bytes.coffee/bad-decisions`. Use `--api-url`
 for another compatible deployment. Connection and API

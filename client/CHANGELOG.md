@@ -1,6 +1,12 @@
 # Changelog
 
-## [Unreleased]
+## [2.1.0]
+
+### Added
+
+- Added an optional Textual Peer Pressure table with live players and scores,
+  private multi-card hand selection, anonymous judging, results, and the full
+  room lifecycle via `regret together ROOM --tui`.
 
 ## [2.0.3]
 

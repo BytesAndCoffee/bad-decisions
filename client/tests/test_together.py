@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import stat
+import sys
 
 import pytest
 
@@ -186,6 +187,38 @@ def test_a_stale_saved_session_falls_back_to_a_fresh_join(tmp_path, monkeypatch,
     assert calls == [{"Authorization": "Bearer stale"}, None]
     assert stored == [{"player_id": "player_new", "session_token": "fresh", "display_name": "Alice"}]
     assert "joining as a new player" in capsys.readouterr().err
+
+def test_together_tui_routes_to_the_optional_interface(monkeypatch):
+    monkeypatch.setattr(cli, "load_session", lambda *_args: None)
+    monkeypatch.setattr(cli, "save_session", lambda *_args: None)
+    called = []
+
+    def request_json(url, **kwargs):
+        assert url.endswith("/join")
+        return {
+            "player_id": "player_1",
+            "session_token": "secret",
+            "revision": 1,
+            "state": {"room": {"code": "ohno", "revision": 1}},
+        }, {}
+
+    monkeypatch.setattr(cli, "_request_json", request_json)
+    monkeypatch.setattr(
+        "bad_decisions_client.together_tui.run_together_tui",
+        lambda client, heartbeat_interval: called.append((client.room, heartbeat_interval)) or 0,
+    )
+
+    assert cli.run(["together", "ohno", "--name", "Alice", "--tui", "--heartbeat", "7"]) == 0
+    assert called == [("ohno", 7.0)]
+
+
+def test_together_tui_without_textual_fails_before_joining(monkeypatch, capsys):
+    monkeypatch.setitem(sys.modules, "bad_decisions_client.together_tui", None)
+    monkeypatch.setattr(cli, "load_session", lambda *_args: pytest.fail("must not touch the session"))
+    monkeypatch.setattr(cli, "_request_json", lambda *_args, **_kwargs: pytest.fail("must not join the room"))
+
+    assert cli.run(["together", "ohno", "--name", "Alice", "--tui"]) == 1
+    assert "regret:" in capsys.readouterr().err
 
 
 def test_other_join_errors_are_not_retried(monkeypatch, capsys):

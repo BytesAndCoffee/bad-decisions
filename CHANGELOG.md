@@ -1,6 +1,11 @@
 # Changelog
 
-## [Unreleased]
+## [2.1.0]
+
+### Added
+
+- Added an optional full-screen Textual interface to Regret's Peer Pressure
+  client while preserving its dependency-free line-oriented default.
 
 ## [2.0.3]
 

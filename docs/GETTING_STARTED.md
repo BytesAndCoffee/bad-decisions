@@ -53,6 +53,11 @@ Pick a room ID and share it with the other players:
 regret together ohno --name Michael
 ```
 
+Prefer a full-screen table? Install `pipx install
+'bad-decisions-client[tui]'`, then run `regret together ohno --name Michael
+--tui`. The standard client remains dependency-free (the Homebrew formula
+installs only the standard client).
+
 Peer Pressure rooms are ephemeral. Each player receives a room-local bearer
 session, and no persistent account is created. See [Peer Pressure](PEER_PRESSURE.md).
 

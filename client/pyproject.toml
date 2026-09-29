@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "bad-decisions-client"
-version = "2.0.3"
+version = "2.1.0"
 description = "Dependency-free terminal client called Regret for Bad Decisions services"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -30,6 +30,9 @@ classifiers = [
 
 [project.scripts]
 regret = "bad_decisions_client.cli:main"
+
+[project.optional-dependencies]
+tui = ["textual==8.2.8"]
 
 [project.urls]
 Homepage = "https://github.com/BytesAndCoffee/bad-decisions"

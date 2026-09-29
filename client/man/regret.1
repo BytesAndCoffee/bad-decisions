@@ -1,4 +1,4 @@
-.TH REGRET 1 "2026-09-28" "Bad Decisions Client 2.0.3" "User Commands"
+.TH REGRET 1 "2026-09-29" "Bad Decisions Client 2.1.0" "User Commands"
 .SH NAME
 regret \- deal rounds from a Bad Decisions API
 .SH SYNOPSIS
@@ -24,7 +24,7 @@ regret \- deal rounds from a Bad Decisions API
 .RI {status|enjoy|regret|enable|disable}
 .br
 .B regret together
-.RI room " [--name display-name] [--api-url url] [--timeout seconds] [--heartbeat seconds]"
+.RI room " [--name display-name] [--api-url url] [--timeout seconds] [--heartbeat seconds] [--tui]"
 .br
 .B regret doctor
 .RI [ --api-url " url]"
@@ -93,6 +93,12 @@ Aliases for enjoy and regret.
 .BI "together " room
 Join or reconnect to an ephemeral Peer Pressure multiplayer room. The first participant is the initial Responsible Adult. The client maintains authenticated heartbeats, submits private answers, and resynchronizes stale room state automatically. Use --name when no saved room session exists. --heartbeat sets the heartbeat interval in seconds (default 5).
 .PP
+Add
+.B --tui
+to use the optional full-screen Textual table. It displays players, scores, presence, the Responsible Adult, prompt, private hand, anonymous judging choices, and result together. Install it with
+.BR "pipx install 'bad-decisions-client[tui]'" .
+The line-oriented interface remains the dependency-free default. In the TUI, q closes the table even when the service cannot be told you left.
+.PP
 The prompt follows the room: the Responsible Adult presses s to start, players choose answers by number (comma-separated when a prompt needs several), the Responsible Adult picks the consequence, and Enter refreshes or advances. q leaves the room. When the service refuses an action, regret prints its reason and message, with a hint when the display name is taken or the game has already started.
 .TP
 .BI doctor " [--api-url url]"
@@ -103,6 +109,10 @@ finds this page (behind pyenv or asdf shims it cannot, and doctor prints the MAN
 Homebrew is the suggested install on macOS and Linux:
 .B brew install bytesandcoffee/tap/regret
 also links this page into Homebrew's manual path. pipx install bad-decisions-client and pip install bad-decisions-client also work; installers cannot run setup code, so use regret doctor to check shell integration.
+.PP
+The optional Peer Pressure TUI is available from Python package installers as
+.BR "bad-decisions-client[tui]" ;
+the Homebrew formula installs only the line-oriented client.
 .SH CONSENT
 On the first interactive deal, an unset or stale consent preference prompts once. Choose Enjoy Consequences or Regret Consequences. The choice and consent schema version are stored locally and survive upgrades. Pressing Enter chooses regret. Non-interactive invocations never block for consent.
 .SH FILES
