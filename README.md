@@ -54,32 +54,45 @@ overengineering is part of the joke.
 ## How the bad decisions travel
 
 ```mermaid
-flowchart LR
-    archive[(Garage<br/>CardDeck archive)]
-    catalog[Public CardDeck catalog]
-    operator[Operator import]
-    registry[Loaded pack registry]
-    server[Bad Decisions server]
-    clients[Regret / Web / other clients]
-    rooms[(Peer Pressure<br/>room databases)]
-    consequences[(Consequences<br/>analytics database)]
+flowchart TB
+    subgraph distribution["1 · PACK DISTRIBUTION"]
+        direction LR
+        archive[(Garage archive)] -->|scan| catalog[Public CardDeck catalog]
+    end
 
-    archive -->|catalog scan| catalog
-    archive -->|.carddeck archives| operator
-    catalog -->|remote index| operator
-    operator -->|validated packs| registry
-    registry -->|immutable startup load| server
-    server -->|pack list, rounds, room state| clients
-    clients -->|deals, commands, mutations| server
-    server <--> rooms
-    server --> consequences
+    subgraph activation["2 · OPERATOR ACTIVATION"]
+        direction LR
+        importer[Validate + import] --> registry[(Loaded pack registry)]
+    end
 
-    classDef service fill:#00451f,stroke:#17663b,color:#8ee4ae,stroke-width:2px;
-    classDef store fill:#003b1c,stroke:#17663b,color:#8ee4ae,stroke-width:2px;
-    classDef action fill:#102018,stroke:#39714f,color:#b9efcd,stroke-width:1px;
-    class archive,rooms,consequences store;
-    class catalog,registry,server,clients service;
-    class operator action;
+    subgraph runtime["3 · IMMUTABLE RUNTIME"]
+        direction LR
+        clients[Regret · Web · Other clients]
+        server[Bad Decisions API]
+        rooms[(Peer Pressure rooms)]
+        consequences[(Consequences)]
+
+        clients <-->|rounds + game actions| server
+        server <--> rooms
+        server --> consequences
+    end
+
+    archive -->|individual .carddeck| importer
+    catalog -->|remote index| importer
+    registry -->|load once at startup| server
+
+    classDef core fill:#171511,stroke:#bc552f,color:#fff8ed,stroke-width:3px;
+    classDef action fill:#bc552f,stroke:#7d321b,color:#ffffff,stroke-width:2px;
+    classDef store fill:#fff4e5,stroke:#bc552f,color:#171511,stroke-width:2px;
+    classDef edge fill:#4b2317,stroke:#bc552f,color:#fff8ed,stroke-width:2px;
+    class server core;
+    class importer action;
+    class archive,registry,rooms,consequences store;
+    class catalog,clients edge;
+
+    style distribution fill:transparent,stroke:#bc552f,stroke-width:1px
+    style activation fill:transparent,stroke:#bc552f,stroke-width:1px
+    style runtime fill:transparent,stroke:#bc552f,stroke-width:1px
 ```
 
 Public `.carddeck` archives and their generated catalog are distribution
