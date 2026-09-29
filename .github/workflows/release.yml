@@ -169,9 +169,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
-            || gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes --title "$GITHUB_REF_NAME"
-          gh release upload "$GITHUB_REF_NAME" --clobber \
+          ! gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
+            || { echo "::error::release already exists and may be immutable"; exit 1; }
+          gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes --title "$GITHUB_REF_NAME" \
             windows-dist/regret-windows-x86_64-v*.zip \
             windows-dist/regret-windows-x86_64-v*.zip.sha256 \
             windows-dist/windows-packages/*.nupkg

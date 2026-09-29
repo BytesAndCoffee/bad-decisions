@@ -86,7 +86,8 @@ def test_github_release_uses_the_windows_job_artifacts():
     assert "needs: [build, windows]" in release
     assert "contents: write" in release
     assert "name: windows-dist" in release
-    assert "gh release upload" in release
+    assert "gh release create" in release
+    assert "gh release upload" not in release
     assert "regret-windows-x86_64-v*.zip" in release
 
 

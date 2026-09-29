@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.2]
+
+### Fixed
+
+- Create GitHub releases and attach their Windows assets in one operation so
+  repositories with immutable releases enabled do not lock an empty release.
+
 ## [2.1.1]
 
 ### Added

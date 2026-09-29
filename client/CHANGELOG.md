@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.2]
+
+### Fixed
+
+- Publish the native Windows archive, checksum, and Chocolatey package before
+  GitHub makes the release immutable.
+
 ## [2.1.1]
 
 ### Added
