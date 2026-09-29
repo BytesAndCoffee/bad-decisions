@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import stat
 import sys
+import types
 
 import pytest
 
@@ -203,10 +204,11 @@ def test_together_tui_routes_to_the_optional_interface(monkeypatch):
         }, {}
 
     monkeypatch.setattr(cli, "_request_json", request_json)
-    monkeypatch.setattr(
-        "bad_decisions_client.together_tui.run_together_tui",
-        lambda client, heartbeat_interval: called.append((client.room, heartbeat_interval)) or 0,
+    fake_tui = types.ModuleType("bad_decisions_client.together_tui")
+    fake_tui.run_together_tui = (
+        lambda client, heartbeat_interval: called.append((client.room, heartbeat_interval)) or 0
     )
+    monkeypatch.setitem(sys.modules, "bad_decisions_client.together_tui", fake_tui)
 
     assert cli.run(["together", "ohno", "--name", "Alice", "--tui", "--heartbeat", "7"]) == 0
     assert called == [("ohno", 7.0)]
