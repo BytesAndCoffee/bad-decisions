@@ -57,8 +57,8 @@ regret together ohno --name Michael --tui
 
 The TUI shows the table, scores, Responsible Adult, prompt, private hand,
 anonymous decisions, and round result in one continuously synchronized view.
-The ordinary line-oriented interface remains the dependency-free default. The
-Homebrew formula installs only that default; use pipx for the TUI.
+The ordinary line-oriented interface remains the dependency-free default.
+Homebrew installs the complete client, including the TUI.
 
 The default endpoint is `https://bytes.coffee/bad-decisions`. Use `--api-url`
 for another compatible deployment. Connection and API

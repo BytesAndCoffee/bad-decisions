@@ -106,13 +106,11 @@ Check this installation and print a fix for each problem, changing nothing: how 
 .B man regret
 finds this page (behind pyenv or asdf shims it cannot, and doctor prints the MANPATH line to add), preference file permissions, and whether the service answers. Exits 1 if a check fails.
 .SH INSTALLATION
-Homebrew is the suggested install on macOS and Linux:
+Homebrew is the suggested install on macOS and Linux and includes the Peer Pressure TUI:
 .B brew install bytesandcoffee/tap/regret
 also links this page into Homebrew's manual path. pipx install bad-decisions-client and pip install bad-decisions-client also work; installers cannot run setup code, so use regret doctor to check shell integration.
 .PP
-The optional Peer Pressure TUI is available from Python package installers as
-.BR "bad-decisions-client[tui]" ;
-the Homebrew formula installs only the line-oriented client.
+Python package installers provide the TUI through the optional Bbad-decisions-client[tui]R extra; the base Python package remains dependency-free.
 .SH CONSENT
 On the first interactive deal, an unset or stale consent preference prompts once. Choose Enjoy Consequences or Regret Consequences. The choice and consent schema version are stored locally and survive upgrades. Pressing Enter chooses regret. Non-interactive invocations never block for consent.
 .SH FILES

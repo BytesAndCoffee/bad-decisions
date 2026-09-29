@@ -59,8 +59,8 @@ regret health
 man regret
 ```
 
-The formula has a stable tagged sdist, immutable checksum, minimal Python-only
-dependency chain, a useful offline test, installed manual page, and canonical
+The formula has a stable tagged sdist, immutable checksums, a pinned Python-only
+TUI dependency chain, a useful offline test, installed manual page, and canonical
 project URLs. Shell completion is the principal remaining nicety for eventual
 core readiness; it is not a launch blocker.
 

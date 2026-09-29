@@ -21,8 +21,8 @@ scores, presence, Responsible Adult, and result visible together. Use Enter to
 select the highlighted choice, the action buttons to move the round forward,
 `r` to synchronize immediately, and `q` to leave. If the table cannot be
 reached, `q` still closes the TUI and your seat expires with the room. The
-default interface still has no third-party dependencies, and the Homebrew
-formula installs only that default.
+default interface still has no third-party dependencies; Homebrew installs the
+complete client, including the TUI.
 
 The first participant opens the room and hosts it: once at least three people
 are present, the host starts the game and becomes the first **Responsible

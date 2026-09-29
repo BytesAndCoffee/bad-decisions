@@ -55,8 +55,8 @@ regret together ohno --name Michael
 
 Prefer a full-screen table? Install `pipx install
 'bad-decisions-client[tui]'`, then run `regret together ohno --name Michael
---tui`. The standard client remains dependency-free (the Homebrew formula
-installs only the standard client).
+--tui`. Homebrew already includes the TUI; the standard Python package remains
+dependency-free unless the optional extra is selected.
 
 Peer Pressure rooms are ephemeral. Each player receives a room-local bearer
 session, and no persistent account is created. See [Peer Pressure](PEER_PRESSURE.md).

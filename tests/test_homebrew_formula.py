@@ -25,7 +25,11 @@ def test_formula_installs_the_client_sdist_with_its_manpage_and_tests_it():
     assert re.search(r'^  url "https://files\.pythonhosted\.org/\S+/bad_decisions_client-\d+\.\d+\.\d+\.tar\.gz"$', FORMULA, re.M)
     assert "virtualenv_install_with_resources" in FORMULA  # links share/man/man1/regret.1
     assert 'license "MIT"' in FORMULA
-    assert "resource " not in FORMULA, "the client is dependency-free since 2.0"
+    assert "revision 1" in FORMULA, "2.1.0 users must receive the newly bundled TUI on upgrade"
+    for dependency in ("linkify-it-py", "markdown-it-py", "mdit-py-plugins", "mdurl", "platformdirs", "pygments", "rich", "textual", "typing-extensions"):
+        assert f'resource "{dependency}"' in FORMULA
+    assert FORMULA.count('  resource "') == 9
+    assert '"import textual"' in FORMULA, "the formula test proves the TUI dependency is installed"
     assert "regret doctor" in FORMULA, "the formula test exercises doctor's Homebrew detection"
     assert "regret --version" in FORMULA and 'man1/"regret.1"' in FORMULA
     assert "Cards Against" not in FORMULA, "unofficial fan project: no trade names in the description"
@@ -37,6 +41,16 @@ def test_rewrite_changes_only_the_formula_url_and_digest():
     changed = [(old, new) for old, new in zip(FORMULA.splitlines(), updated.splitlines()) if old != new]
     assert len(changed) == 2 and all(old.startswith(("  url ", "  sha256 ")) for old, _new in changed)
     assert updated.count("\n") == FORMULA.count("\n")
+
+
+def test_formula_tui_resource_versions_match_the_extras_lock():
+    lock = "\n".join((ROOT / name).read_text(encoding="utf-8") for name in ("requirements.lock", "requirements-extras.lock"))
+    pins = dict((name.replace("_", "-"), version) for name, version in (line.strip().lower().split("==", 1) for line in lock.splitlines() if "==" in line))
+    for name in ("linkify-it-py", "markdown-it-py", "mdit-py-plugins", "mdurl", "platformdirs", "pygments", "rich", "textual", "typing-extensions"):
+        block = FORMULA.split(f'resource "{name}" do', 1)[1].split("  end", 1)[0]
+        normalized = name.replace("-", "[_-]")
+        match = re.search(rf"{normalized}-([0-9][^/]+)\.tar\.gz", block, re.I)
+        assert match and match.group(1) == pins[name]
 
 
 def test_rewrite_leaves_resource_blocks_alone():
