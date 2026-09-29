@@ -5,7 +5,7 @@
 [![CI](https://github.com/BytesAndCoffee/bad-decisions/actions/workflows/ci.yml/badge.svg)](https://github.com/BytesAndCoffee/bad-decisions/actions/workflows/ci.yml)
 [![Bad Decisions on PyPI](https://img.shields.io/pypi/v/bad-decisions?label=server)](https://pypi.org/project/bad-decisions/)
 [![Regret on PyPI](https://img.shields.io/pypi/v/bad-decisions-client?label=regret)](https://pypi.org/project/bad-decisions-client/)
-[![MIT licensed](https://img.shields.io/badge/software%20license-MIT-bc552f)](LICENSE)
+[![MIT licensed](https://img.shields.io/badge/software%20license-MIT-b85618)](LICENSE)
 
 Bad Decisions serves fill-in-the-blank party games through a REST API, browser
 client, and terminal client. Its terminal client is called **Regret**.
@@ -65,12 +65,8 @@ regret health
 regret deal
 ```
 
-Both pipx packages install manual pages. If pyenv's shims hide them, retain the
-system manual path while adding that interpreter's pages:
-
-```bash
-export MANPATH=":$(pyenv prefix)/share/man"
-```
+Both pipx packages install manual pages; `regret doctor` diagnoses PATH,
+manual-page, preference, and service issues without changing anything.
 
 Invite friends into an ephemeral Peer Pressure room:
 
@@ -165,6 +161,8 @@ between you and the stew.
 - [Deployment](docs/DEPLOYMENT.md) and [release process](docs/RELEASING.md)
 - [Contributing](CONTRIBUTING.md), [security](SECURITY.md), and [changelog](CHANGELOG.md)
 - Manual pages: [bad-decisions(1)](man/bad-decisions.1) and [regret(1)](client/man/regret.1)
+
+If this terrible decision amused you, consider starring the repository.
 
 This is an unofficial, unaffiliated fan project. No endorsement by any
 third-party game publisher is claimed or implied.

@@ -8,18 +8,22 @@ GitHub after reviewing them.
 - **Description:** An absurdly overengineered open-source party game engine, with a terminal client called Regret.
 - **Homepage:** `https://bytes.coffee/bad-decisions/web/`
 - **Topics:** `party-game`, `cli`, `terminal`, `python`, `openapi`, `self-hosted`, `multiplayer`, `homebrew`, `rest-api`, `game-engine`
-- Keep Issues enabled. Enable Discussions only if the maintainer wants a place
-  for pack showcases and third-party client experiments that are not bug reports.
+- Keep Issues enabled. Discussions are enabled; use Issues for reproducible bugs
+  and concrete feature requests, and keep Discussions lightweight with
+  **General**, **Show and tell**, and **Packs / integrations** categories.
 
-GitHub currently identifies the repository license as “Other” because the MIT
-software license contains an explicit card-content boundary. That boundary is
-intentional; do not simplify it in a way that places packs under MIT.
+GitHub identifies the repository license as “Other” because the MIT software
+license contains an explicit card-content boundary. Moving that footer could
+improve SPDX detection, but the repository's established policy requires the
+license text to remain unchanged. Preserve the clearer legal boundary rather
+than optimizing the badge.
 
 ## Social preview
 
-Upload [`assets/social-preview.svg`](assets/social-preview.svg) after exporting
-it to a 1280×640 PNG. The design deliberately uses Bad Decisions' cream,
-charcoal, and warm burnt-sienna identity without borrowing third-party card-game
+Upload [`assets/social-preview.png`](assets/social-preview.png). The editable
+source is [`assets/social-preview.svg`](assets/social-preview.svg). The design
+deliberately uses Bad Decisions' cream,
+charcoal, and warm-orange identity without borrowing third-party card-game
 logos or trade dress.
 
 Recommended alt text:
@@ -55,5 +59,16 @@ regret health
 man regret
 ```
 
-Shell completion is the principal remaining nicety for eventual core readiness;
-it is not a launch blocker.
+The formula has a stable tagged sdist, immutable checksum, minimal Python-only
+dependency chain, a useful offline test, installed manual page, and canonical
+project URLs. Shell completion is the principal remaining nicety for eventual
+core readiness; it is not a launch blocker.
+
+## Package maturity
+
+The server and client intentionally retain `Development Status :: 5 -
+Production/Stable`: the public API and CardDeck formats are versioned, migration
+boundaries are documented, releases are lockstep and CI-published, installation
+is smoke-tested from exact wheels, and the hosted service uses guarded rollback.
+The project's age alone is not a reason to advertise weaker compatibility
+expectations.

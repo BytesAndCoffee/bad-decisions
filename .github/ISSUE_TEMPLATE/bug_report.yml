@@ -10,7 +10,7 @@ body:
     id: version
     attributes:
       label: Version and installation method
-      placeholder: "2.0.2 via Homebrew, pipx, source, or container"
+      placeholder: "Output of --version; installed via Homebrew, pipx, source, or container"
     validations:
       required: true
   - type: input

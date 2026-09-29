@@ -75,7 +75,9 @@ def test_regret_manpage_documents_every_command():
 
 def test_readmes_explain_finding_manpages_behind_version_manager_shims():
     readme = _page("README.md")
-    assert "MANPATH=\":$(pyenv prefix)/share/man\"" in readme and "pipx" in readme
+    getting_started = _page("docs/GETTING_STARTED.md")
+    assert "pipx" in readme and "regret doctor" in readme
+    assert "MANPATH=\":$(pyenv prefix)/share/man\"" in getting_started
     assert "MANPATH" in _page("client/README.md")
 
 

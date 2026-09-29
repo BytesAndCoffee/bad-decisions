@@ -56,7 +56,7 @@ def test_api_success_metadata_and_cache():
         assert "backdrop-filter" not in style.text
         assert "overscroll-behavior: contain" in style.text
         assert "contain: layout paint" in style.text
-        assert "--orange: #bc552f; --orange-dark: #78341f" in style.text
+        assert "--orange: #b85618; --orange-dark: #78341f" in style.text
         assert ".prompt-card" in style.text and "background: var(--orange)" in style.text
         favicon = client.get("/web/favicon.svg")
         assert favicon.headers["content-type"].startswith("image/svg+xml")

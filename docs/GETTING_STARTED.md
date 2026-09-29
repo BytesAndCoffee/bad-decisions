@@ -25,6 +25,14 @@ regret deal
 `regret doctor` checks the installation, manual page, configuration, and
 service compatibility without changing anything.
 
+pipx links the manual page into `~/.local/share/man`. If a version manager such
+as pyenv hides it behind shims, retain the system manual path while adding that
+interpreter's pages:
+
+```bash
+export MANPATH=":$(pyenv prefix)/share/man"
+```
+
 ## Choose packs
 
 ```bash

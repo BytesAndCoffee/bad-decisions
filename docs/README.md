@@ -38,6 +38,7 @@
 - [Contributing](../CONTRIBUTING.md)
 - [Changelog](../CHANGELOG.md)
 - [GitHub launch settings and social preview](GITHUB-POLISH.md)
+- [Small brand palette](BRAND.md)
 - [Terminal-demo capture](DEMO.md)
 - Manual: [regret(1)](../client/man/regret.1)
 

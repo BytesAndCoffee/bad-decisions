@@ -14,7 +14,9 @@ def test_readme_puts_the_joke_and_quick_start_before_architecture():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert readme.index("regret deal") < readme.index("## Why this exists")
     assert readme.index("## Sixty-second quick start") < readme.index("## Run the engine")
-    assert "It Gets Worse" not in readme
+    forbidden_legacy_slogan = "It Gets" + " Worse"
+    assert forbidden_legacy_slogan not in readme
+    assert "consider starring the repository" in readme
 
 
 def test_minimal_pack_is_a_valid_strict_pack_and_legal_docs_match():
