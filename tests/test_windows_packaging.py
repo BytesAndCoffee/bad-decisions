@@ -42,6 +42,14 @@ def test_windows_metadata_uses_one_immutable_checked_release_asset(tmp_path):
     assert "NestedInstallerType: portable" in installer
     assert "PortableCommandAlias: regret" in installer
 
+    expected_schemas = ("version", "defaultLocale", "installer")
+    for name, schema in zip(
+        ("BytesAndCoffee.Regret.yaml", "BytesAndCoffee.Regret.locale.en-US.yaml", "BytesAndCoffee.Regret.installer.yaml"),
+        expected_schemas,
+    ):
+        text = (output / "winget" / name).read_text()
+        assert text.startswith(f"# yaml-language-server: $schema=https://aka.ms/winget-manifest.{schema}.1.10.0.schema.json\n")
+
 
 @pytest.mark.parametrize("version", ["v2.1.0", "2.1", "2.1.0rc1", "2.1.0.0", ""])
 def test_windows_metadata_rejects_non_release_versions(tmp_path, version):

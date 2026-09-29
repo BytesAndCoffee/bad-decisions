@@ -38,7 +38,8 @@ def generate(version: str, archive: Path, output: Path) -> None:
     tools.mkdir(parents=True, exist_ok=True)
 
     (winget / f"{PACKAGE_ID}.yaml").write_text(
-        f"""PackageIdentifier: {PACKAGE_ID}
+        f"""# yaml-language-server: $schema=https://aka.ms/winget-manifest.version.1.10.0.schema.json
+PackageIdentifier: {PACKAGE_ID}
 PackageVersion: {version}
 DefaultLocale: en-US
 ManifestType: version
@@ -47,7 +48,8 @@ ManifestVersion: 1.10.0
         encoding="utf-8",
     )
     (winget / f"{PACKAGE_ID}.locale.en-US.yaml").write_text(
-        f"""PackageIdentifier: {PACKAGE_ID}
+        f"""# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.10.0.schema.json
+PackageIdentifier: {PACKAGE_ID}
 PackageVersion: {version}
 PackageLocale: en-US
 Publisher: BytesAndCoffee
@@ -68,7 +70,8 @@ ManifestVersion: 1.10.0
         encoding="utf-8",
     )
     (winget / f"{PACKAGE_ID}.installer.yaml").write_text(
-        f"""PackageIdentifier: {PACKAGE_ID}
+        f"""# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.10.0.schema.json
+PackageIdentifier: {PACKAGE_ID}
 PackageVersion: {version}
 InstallerType: zip
 NestedInstallerType: portable
