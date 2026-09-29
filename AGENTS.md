@@ -26,6 +26,11 @@ validation, licenses, backups, and ZIP-bomb defenses are not.
   one-line note for every notable change.
 - `.github/workflows/`: CI (`ci.yml`) and PyPI release (`release.yml`);
   `docs/RELEASING.md` documents them and `scripts/check_release_tag.py` gates tags.
+- `.github/dependabot.yml`: weekly update PRs for every pinned dependency.
+  Keep it current: when you add, move, or remove a `pyproject.toml`, a
+  Dockerfile, a compose file that pulls an `image:`, or the workflows
+  directory, add or change the matching `updates` entry in the same change.
+  `tests/test_dependabot.py` fails if a manifest is not covered.
 - Agent adapters (`CLAUDE.md`, `GEMINI.md`, `.cursor/rules/agents.mdc`,
   `.github/copilot-instructions.md`): thin pointers to this file; no rules.
 

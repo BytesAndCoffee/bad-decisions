@@ -1,0 +1,49 @@
+# Dependabot version updates. Every dependency here is pinned exactly (actions
+# to full commit SHAs, Python packages with ==), so these PRs are the only way
+# pins move; CI must pass before any of them merges.
+# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  # Workflow actions stay pinned to SHAs; Dependabot updates the SHA and the
+  # version comment together.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # Server: pyproject.toml and the requirements*.lock pins.
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      python-minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  # Regret client: dependency-free apart from the optional [tui] extra.
+  - package-ecosystem: "pip"
+    directory: "/client"
+    schedule:
+      interval: "weekly"
+
+  # Server image base.
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # Standalone catalog indexer image base.
+  - package-ecosystem: "docker"
+    directory: "/deploy/object-archive/indexer"
+    schedule:
+      interval: "weekly"
+
+  # Garage object store image.
+  - package-ecosystem: "docker-compose"
+    directory: "/deploy/object-archive"
+    schedule:
+      interval: "weekly"
