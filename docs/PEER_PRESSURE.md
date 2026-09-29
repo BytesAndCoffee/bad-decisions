@@ -50,21 +50,31 @@ store only SHA-256 token verifiers. Regret saves the token in
 optional Consequences analytics identity. Raw tokens and private hands are not
 written to normal request logs.
 
-Every mutation includes a UUID request ID and expected room revision. SQLite
-`BEGIN IMMEDIATE` transactions serialize writers. Repeated request IDs return
-their original ACK, while stale revisions return a resynchronization NACK.
-Regret performs full state synchronization rather than replaying missed events.
+Every mutation includes a request ID (`req_` followed by 32 lowercase
+hexadecimal digits, unique per player) and the room revision it expects. SQLite
+`BEGIN IMMEDIATE` transactions serialize writers. Repeating a request ID
+returns the original result, so retries after a lost response are safe. A stale
+revision is refused with HTTP 409 `stale_revision`, whose error details carry
+`resync: true` and the current `revision`. Regret performs full state
+synchronization rather than replaying missed events.
 
 ## Synchronization
 
-The application protocol uses `SYNACK`, `ACK`, `HEARTBEAT`, and `NACK`
-messages. These names describe JSON messages, not raw TCP behavior. Regret runs
-a background heartbeat while the interactive command is open. A revision
-mismatch causes a full synchronization with the authoritative projection.
+Each room has one revision number that only increases. Clients never merge
+changes: they send the revision they last saw, and on any mismatch they fetch
+the full state again rather than replaying missed events. Joining or syncing
+returns `{room, revision, state}` (joining also returns the `player_id` and
+`session_token`); a change returns `{request_id, revision}`; a heartbeat
+returns `{revision, resync}` and also keeps the player marked present. Regret
+runs the heartbeat in the background while `regret together` is open and
+resynchronizes whenever `resync` is true or a change is refused as
+`stale_revision`. Refusals use the API's standard error envelope, not a
+separate message format. Server-sent events are planned for 2.1 and will use
+the revision as the event ID.
 
 The versioned HTTP surface is under `/v2/peer-pressure/rooms`. A bearer
 session token alone identifies its player. Joining with the saved token
-rejoins that player; mutations carry a UUID request ID and expected revision.
+rejoins that player; mutations carry a request ID and expected revision.
 Heartbeats return the authoritative revision and a `resync` signal. The
 surface provides room creation/join, synchronization, heartbeat, leave,
 start, submit, judge, advance, end, and state operations. OpenAPI at `/docs`

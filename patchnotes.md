@@ -251,3 +251,4 @@ version metadata without publishing.
 2026-09-28 - release - Prepared lockstep 2.0.3 for the public-launch polish, CardDeck creator path, package metadata, community health, and warmer browser palette.
 2026-09-28 - launch polish - Finalized the warmer accessible orange palette, deterministic social-preview rendering, concise star CTA, Discussions guidance, maturity rationale, link/version cleanup, and Homebrew readiness notes; retained the explicit LICENSE content boundary over SPDX badge detection. Tests: tests/test_public_polish.py, tests/test_cli_api.py.
 2026-09-29 - docs - Embedded the recorded Regret terminal demo on the repository front page instead of leaving the GIF discoverable only under docs/assets. Tests: tests/test_public_polish.py.
+2026-09-29 - docs - Replaced stale pre-2.0 Peer Pressure message-type terminology with the shipped revision, retry, heartbeat, and resynchronization behavior. Tests: tests/test_manpages.py, tests/test_agent_guides.py.
