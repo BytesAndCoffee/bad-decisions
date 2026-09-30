@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.2]
+
+### Changed
+
+- Lockstep release with the server's one-shot browser client moving to the
+  service root. Regret's terminal behavior is unchanged.
+
 ## [2.2.1]
 
 ### Changed

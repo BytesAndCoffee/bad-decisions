@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "bad-decisions"
-version = "2.2.1"
+version = "2.2.2"
 description = "Absurdly overengineered open-source party game engine and REST service"
 readme = "README.md"
 requires-python = ">=3.12"

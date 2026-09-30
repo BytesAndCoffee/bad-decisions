@@ -80,7 +80,7 @@ Read [Consequences](CONSEQUENCES.md) for the exact data boundary.
 
 ## Next steps
 
-- [Use the browser client](https://bytes.coffee/bad-decisions/web/)
+- [Use the browser client](https://bytes.coffee/bad-decisions/)
 - [Play Peer Pressure in the browser](https://bytes.coffee/bad-decisions/peerpressure)
 - [Build a client from OpenAPI](https://bytes.coffee/bad-decisions/docs/)
 - [Make a CardDeck](../examples/minimal-pack/)

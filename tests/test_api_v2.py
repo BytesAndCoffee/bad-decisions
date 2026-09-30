@@ -89,12 +89,12 @@ def test_pack_responses_revalidate_with_etags(api):
 
 def test_versioned_web_assets_are_immutable_and_the_page_is_not(api):
     with api() as client:
-        page = client.get("/web/")
+        page = client.get("/")
         assert page.headers["Cache-Control"] == "no-cache"
         digest = re.search(r'app\.js\?v=([0-9a-f]{16})', page.text).group(1)
-        assert "immutable" in client.get(f"/web/app.js?v={digest}").headers["Cache-Control"]
-        assert client.get(f"/web/app.js?v={__version__}").headers["Cache-Control"] == "no-cache"
-        assert client.get("/web/app.js?v=0.0.1").headers["Cache-Control"] == "no-cache"
+        assert "immutable" in client.get(f"/assets/app.js?v={digest}").headers["Cache-Control"]
+        assert client.get(f"/assets/app.js?v={__version__}").headers["Cache-Control"] == "no-cache"
+        assert client.get("/assets/app.js?v=0.0.1").headers["Cache-Control"] == "no-cache"
 
 
 def test_cors_is_off_unless_origins_are_configured(api):

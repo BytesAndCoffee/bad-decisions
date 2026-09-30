@@ -104,7 +104,7 @@ export MANPATH=":$(python3 -c 'import sys; print(sys.prefix)')/share/man"
 ## Project links
 
 - [Bad Decisions repository](https://github.com/BytesAndCoffee/bad-decisions)
-- [Hosted browser client](https://bytes.coffee/bad-decisions/web/)
+- [Hosted browser client](https://bytes.coffee/bad-decisions/)
 - [Hosted Peer Pressure table](https://bytes.coffee/bad-decisions/peerpressure)
 - [OpenAPI](https://bytes.coffee/bad-decisions/docs/)
 - [Client changelog](https://github.com/BytesAndCoffee/bad-decisions/blob/main/client/CHANGELOG.md)

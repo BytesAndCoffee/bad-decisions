@@ -60,12 +60,12 @@ def test_pages_load_the_theme_before_first_paint_and_offer_a_toggle():
 def test_theme_assets_are_served_and_versioned(monkeypatch, tmp_path):
     monkeypatch.setenv("BAD_DECISIONS_PEER_PRESSURE_DIR", str(tmp_path))
     with TestClient(create_app()) as client:
-        page = client.get("/web/")
+        page = client.get("/")
         digest = re.search(r'theme\.css\?v=([0-9a-f]{16})', page.text).group(1)
-        css = client.get(f"/web/theme.css?v={digest}")
+        css = client.get(f"/assets/theme.css?v={digest}")
         assert css.headers["content-type"].startswith("text/css")
         assert "immutable" in css.headers["Cache-Control"]
-        script = client.get(f"/web/theme.js?v={digest}")
+        script = client.get(f"/assets/theme.js?v={digest}")
         assert script.headers["content-type"].startswith("application/javascript")
         assert "bad-decisions-theme" in script.text
         assert f"theme.js?v={digest}" in client.get("/peerpressure").text

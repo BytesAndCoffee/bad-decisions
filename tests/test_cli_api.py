@@ -33,20 +33,21 @@ def test_cli_errors_and_non_tty():
 
 def test_api_success_metadata_and_cache():
     with TestClient(create_app()) as client:
-        howto = client.get("/")
-        assert howto.status_code == 200
-        assert howto.headers["content-type"].startswith("text/plain")
-        assert "/v2/round" in howto.text
-        assert "/peerpressure" in howto.text
-        assert "CARDDECK.md" in howto.text
         assert client.get("/healthz").json() == {"status": "ok", "version": __version__, "pack_count": 3}
-        web = client.get("/web/")
+        web = client.get("/")
         assert web.status_code == 200 and "Bad Decisions" in web.text
-        assert '<base href="/web/">' in web.text
-        assert client.get("/web", follow_redirects=False).status_code == 200
-        app_js = client.get("/web/app.js")
+        assert '<base href="/assets/">' in web.text
+        removed_web = client.get("/web", follow_redirects=False)
+        assert removed_web.status_code == 410
+        assert removed_web.json()["error"] == {
+            "code": "path_removed", "message": "The web client moved to the service root",
+            "details": {"current_path": "/"}, "request_id": removed_web.headers["x-request-id"],
+        }
+        assert client.get("/web/", follow_redirects=False).status_code == 410
+        assert client.get("/assets/index.html", follow_redirects=False).status_code == 404
+        app_js = client.get("/assets/app.js")
         assert app_js.status_code == 200
-        style = client.get("/web/style.css")
+        style = client.get("/assets/style.css")
         assert style.status_code == 200
         assert 'id="indexed-packs-modal"' in web.text
         assert 'id="indexed-pack-options"' in web.text
@@ -66,22 +67,22 @@ def test_api_success_metadata_and_cache():
         assert "backdrop-filter" not in style.text
         assert "overscroll-behavior: contain" in style.text
         assert "contain: layout paint" in style.text
-        assert "--orange: #b85618; --orange-dark: #78341f" in client.get("/web/theme.css").text  # the light palette
+        assert "--orange: #b85618; --orange-dark: #78341f" in client.get("/assets/theme.css").text  # the light palette
         assert ".prompt-card" in style.text and "background: var(--orange)" in style.text
         assert ".peer-pressure-teaser" not in style.text
         peer_pressure = client.get("/peerpressure")
         assert peer_pressure.status_code == 200
-        assert '<base href="/web/">' in peer_pressure.text
+        assert '<base href="/assets/">' in peer_pressure.text
         assert 'id="join-form"' in peer_pressure.text
         assert 'id="table-view"' in peer_pressure.text
         assert 'id="core-packs"' in peer_pressure.text
         assert 'id="pack-modal"' in peer_pressure.text
         assert 'id="indexed-options"' in peer_pressure.text
         assert client.get("/peerpressure/").status_code == 200
-        old_peer_pressure = client.get("/web/together", follow_redirects=False)
-        assert old_peer_pressure.status_code == 307
-        assert old_peer_pressure.headers["location"] == "/peerpressure"
-        together_js = client.get("/web/together.js")
+        removed_together = client.get("/web/together", follow_redirects=False)
+        assert removed_together.status_code == 410
+        assert removed_together.json()["error"]["details"] == {"current_path": "/peerpressure"}
+        together_js = client.get("/assets/together.js")
         assert together_js.status_code == 200
         assert 'replace(/\\/peerpressure\\/?$/, "/v2")' in together_js.text
         assert "/peer-pressure/rooms/" in together_js.text
@@ -93,10 +94,10 @@ def test_api_success_metadata_and_cache():
         assert "packs:[...selectedPacks]" in together_js.text
         assert "pack.custom===false" in together_js.text
         assert "availablePacks.filter(isIndexedPack)" in together_js.text
-        together_style = client.get("/web/together.css")
+        together_style = client.get("/assets/together.css")
         assert together_style.status_code == 200
         assert ".game-grid" in together_style.text
-        favicon = client.get("/web/favicon.svg")
+        favicon = client.get("/assets/favicon.svg")
         assert favicon.headers["content-type"].startswith("image/svg+xml")
         packs = client.get("/v2/packs").json()
         assert [p["id"] for p in packs] == ["base", "coffee", "maha"]
@@ -114,16 +115,19 @@ def test_api_success_metadata_and_cache():
 def test_web_client_works_with_proxy_root_path(monkeypatch):
     monkeypatch.setenv("BAD_DECISIONS_ROOT_PATH", "/bad-decisions")
     with TestClient(create_app()) as client:
-        assert client.get("/web/").status_code == 200
-        assert '<base href="/bad-decisions/web/">' in client.get("/web").text
+        assert client.get("/").status_code == 200
+        assert '<base href="/bad-decisions/assets/">' in client.get("/").text
         peer_pressure = client.get("/peerpressure")
         assert peer_pressure.status_code == 200
-        assert '<base href="/bad-decisions/web/">' in peer_pressure.text
-        old_peer_pressure = client.get("/web/together", follow_redirects=False)
-        assert old_peer_pressure.status_code == 307
-        assert old_peer_pressure.headers["location"] == "/bad-decisions/peerpressure"
-        assert client.get("/web/style.css").status_code == 200
-        assert client.get("/web/../api.py").status_code == 404
+        assert '<base href="/bad-decisions/assets/">' in peer_pressure.text
+        removed_together = client.get("/web/together", follow_redirects=False)
+        assert removed_together.status_code == 410
+        assert removed_together.json()["error"]["details"] == {"current_path": "/bad-decisions/peerpressure"}
+        removed_web = client.get("/web", follow_redirects=False)
+        assert removed_web.status_code == 410
+        assert removed_web.json()["error"]["details"] == {"current_path": "/bad-decisions/"}
+        assert client.get("/assets/style.css").status_code == 200
+        assert client.get("/assets/../api.py").status_code == 404
 
 
 @pytest.mark.parametrize("root_path,prefix", [("/bad-decisions", "/bad-decisions"), ("", "")])

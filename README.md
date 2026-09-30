@@ -29,7 +29,7 @@ On Windows, each GitHub release also includes a self-contained `regret.exe`
 ZIP with the Peer Pressure TUI and no Python prerequisite.
 
 
-[Play in the browser](https://bytes.coffee/bad-decisions/web/) ·
+[Play in the browser](https://bytes.coffee/bad-decisions/) ·
 [Explore the API](https://bytes.coffee/bad-decisions/docs/) ·
 [Get started in 60 seconds](docs/GETTING_STARTED.md)
 
@@ -44,7 +44,7 @@ overengineering is part of the joke.
 
 - **`regret deal`** — get a terrible idea from any compatible service in one command.
 - **[Peer Pressure](docs/PEER_PRESSURE.md)** — install-free browser or terminal multiplayer with ephemeral authenticated rooms and a rotating Responsible Adult.
-- **[Browser client](https://bytes.coffee/bad-decisions/web/)** — choose packs, deal rounds, and opt into feedback without installing anything.
+- **[Browser client](https://bytes.coffee/bad-decisions/)** — choose packs, deal rounds, and opt into feedback without installing anything.
 - **[OpenAPI](https://bytes.coffee/bad-decisions/docs/)** — a versioned contract for building clients that should never have existed.
 - **[CardDeck](docs/CARDDECK.md)** — portable, validated `.carddeck` archives with licensing and provenance inside.
 - **[Remote catalog](docs/REMOTE_IMPORTS.md)** — discover and safely import public packs without making the runtime mutable.

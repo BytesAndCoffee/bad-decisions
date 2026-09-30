@@ -71,8 +71,8 @@ def _check_server(prefix: Path, version: str) -> None:
         assert status == 200 and health.get("version") == version, f"/healthz reported {health}"
         status, body = _get(f"{base}/v2/round")
         assert status == 200 and json.loads(body).get("result"), "/v2/round did not deal"
-        status, body = _get(f"{base}/web/")
-        assert status == 200 and "<html" in body.lower(), "/web/ did not serve the web client"
+        status, body = _get(f"{base}/")
+        assert status == 200 and "<html" in body.lower(), "/ did not serve the web client"
     finally:
         server.terminate()
         try:

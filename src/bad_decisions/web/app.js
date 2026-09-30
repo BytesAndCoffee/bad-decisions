@@ -49,7 +49,7 @@ let indexedPacks = [];
 let indexedSelection = new Set();
 let indexedDraft = new Set();
 let indexedModalReturnFocus = null;
-const apiBase = window.location.pathname.replace(/\/web\/?$/, "/v2");
+const apiBase = new URL("../v2", document.baseURI).pathname.replace(/\/$/, "");
 
 function apiUrl(path) {
   return `${apiBase}/${path}`;

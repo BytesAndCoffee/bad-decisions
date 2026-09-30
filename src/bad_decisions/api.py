@@ -16,7 +16,7 @@ from typing import Annotated, Any
 from fastapi import FastAPI, Header, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.routing import Match
@@ -39,7 +39,6 @@ ERROR_STATUS = {
 }
 CLIENT_HEADERS = ["Authorization", "Content-Type", "If-None-Match", "X-Request-ID", "X-Client-ID", "X-Session-ID", "X-Feedback-Token"]
 WEB_ASSETS = {
-    "index.html": "text/html; charset=utf-8",
     "app.js": "application/javascript; charset=utf-8",
     "style.css": "text/css; charset=utf-8",
     "together.js": "application/javascript; charset=utf-8",
@@ -335,45 +334,13 @@ def create_app() -> FastAPI:
         registry: Registry = request.app.state.registry
         return {"status": "ok", "version": __version__, "pack_count": len(registry.packs)}
 
-    @app.get("/", response_class=PlainTextResponse, include_in_schema=False)
-    def howto():
-        prefix = settings.root_path.rstrip("/")
-        return f"""Bad Decisions API {__version__}
-
-Reusable service for fill-in-the-blank card games.
-
-Deal a completed round:
-  GET {prefix}{API}/round
-  GET {prefix}{API}/round?packs=example
-  GET {prefix}{API}/round?prompt_packs=example&answer_packs=example
-
-Inspect the loaded registry:
-  GET {prefix}{API}/packs
-  GET {prefix}{API}/packs/{{pack_id}}
-
-Portable packs:
-  bad-decisions pack validate example.carddeck
-  Format documentation: CARDDECK.md
-
-Peer Pressure multiplayer:
-  Browser table: {prefix}/peerpressure
-  regret together ROOM_ID
-  Protocol documentation: PEER_PRESSURE.md
-
-Service interfaces:
-  Interactive API docs: {prefix}/docs
-  OpenAPI schema: {prefix}/openapi.json
-  Health: {prefix}/healthz
-"""
-
     # --- web client --------------------------------------------------------------
 
-    @app.get("/web", include_in_schema=False)
-    @app.get("/web/", include_in_schema=False)
+    @app.get("/", include_in_schema=False)
     def web_index(request: Request):
         root_path = request.scope.get("root_path", "").rstrip("/")
         document = files("bad_decisions").joinpath("web", "index.html").read_text(encoding="utf-8")
-        document = document.replace("__WEB_BASE__", f"{root_path}/web/").replace("__ASSET_VERSION__", web_asset_version)
+        document = document.replace("__WEB_BASE__", f"{root_path}/assets/").replace("__ASSET_VERSION__", web_asset_version)
         return HTMLResponse(document, headers={"Cache-Control": "no-cache"})
 
     @app.get("/peerpressure", include_in_schema=False)
@@ -381,16 +348,22 @@ Service interfaces:
     def web_together(request: Request):
         root_path = request.scope.get("root_path", "").rstrip("/")
         document = files("bad_decisions").joinpath("web", "together.html").read_text(encoding="utf-8")
-        document = document.replace("__WEB_BASE__", f"{root_path}/web/").replace("__ASSET_VERSION__", web_asset_version)
+        document = document.replace("__WEB_BASE__", f"{root_path}/assets/").replace("__ASSET_VERSION__", web_asset_version)
         return HTMLResponse(document, headers={"Cache-Control": "no-cache"})
+
+    @app.get("/web", include_in_schema=False)
+    @app.get("/web/", include_in_schema=False)
+    def removed_web(request: Request):
+        root_path = request.scope.get("root_path", "").rstrip("/")
+        return error(request, "path_removed", "The web client moved to the service root", 410, {"current_path": f"{root_path}/"})
 
     @app.get("/web/together", include_in_schema=False)
     @app.get("/web/together/", include_in_schema=False)
-    def old_web_together(request: Request):
+    def removed_web_together(request: Request):
         root_path = request.scope.get("root_path", "").rstrip("/")
-        return RedirectResponse(f"{root_path}/peerpressure", status_code=307)
+        return error(request, "path_removed", "The Peer Pressure client moved", 410, {"current_path": f"{root_path}/peerpressure"})
 
-    @app.get("/web/{asset:path}", include_in_schema=False)
+    @app.get("/assets/{asset:path}", include_in_schema=False)
     def web_file(asset: str, request: Request):
         media_type = WEB_ASSETS.get(asset)
         if media_type is None:

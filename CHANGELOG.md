@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [2.2.2] - The front door is the front door
+
+### Changed
+
+- The one-shot browser client is now the service front door at `/`; its static
+  files live under `/assets/`, and former `/web` paths return HTTP 410 with the
+  replacement path in the standard error envelope.
+
 ## [2.2.1] - Regret after dark
 
 ### Added

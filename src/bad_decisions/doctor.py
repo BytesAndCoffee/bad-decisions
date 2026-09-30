@@ -90,13 +90,13 @@ def check_service(report: Report, base: str, expected_version: str | None, timeo
     except (OSError, ValueError) as exc:
         report.fail(f"/v2/round failed: {exc}")
     try:
-        status, _headers, body = _get(f"{base}/web/", timeout)
+        status, _headers, body = _get(f"{base}/", timeout)
         if status == 200 and b"<html" in body.lower():
-            report.ok("/web/ serves the web client")
+            report.ok("/ serves the web client")
         else:
-            report.fail(f"/web/ returned HTTP {status}")
+            report.fail(f"/ returned HTTP {status}")
     except OSError as exc:
-        report.fail(f"/web/ failed: {exc}")
+        report.fail(f"/ failed: {exc}")
     try:
         status, headers, _body = _get(f"{base}/docs/", timeout, follow=False)
         location = headers.get("location", headers.get("Location", ""))

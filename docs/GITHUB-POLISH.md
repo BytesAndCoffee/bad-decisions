@@ -6,7 +6,7 @@ GitHub after reviewing them.
 ## About panel
 
 - **Description:** An absurdly overengineered open-source party game engine, with a terminal client called Regret.
-- **Homepage:** `https://bytes.coffee/bad-decisions/web/`
+- **Homepage:** `https://bytes.coffee/bad-decisions/`
 - **Topics:** `party-game`, `cli`, `terminal`, `python`, `openapi`, `self-hosted`, `multiplayer`, `homebrew`, `rest-api`, `game-engine`
 - Keep Issues enabled. Discussions are enabled; use Issues for reproducible bugs
   and concrete feature requests, and keep Discussions lightweight with

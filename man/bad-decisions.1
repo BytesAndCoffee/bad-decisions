@@ -1,4 +1,4 @@
-.TH BAD-DECISIONS 1 "2026-09-30" "Bad Decisions 2.2.1" "User Commands"
+.TH BAD-DECISIONS 1 "2026-09-30" "Bad Decisions 2.2.2" "User Commands"
 .SH NAME
 bad-decisions \- deal, validate, import, and inspect Bad Decisions card packs
 .SH SYNOPSIS
@@ -26,8 +26,8 @@ is the command-line engine and service toolkit for portable card-deck packs. Wit
 An omitted pack selector means every pack in the loaded registry. Set BAD_DECISIONS_PACK_DIR to use a custom registry.
 .SH WEB INTERFACES
 .TP
-.B /web/
-The responsive one-shot browser client, with bundled/custom and indexed pack selection plus optional Consequences voting.
+.B /
+The responsive one-shot browser client, with bundled/custom and indexed pack selection plus optional Consequences voting. Static browser assets are served under /assets/. The removed /web paths return HTTP 410 with the current path in the standard error envelope.
 .TP
 .B /peerpressure
 The responsive Peer Pressure multiplayer table. A room creator selects an immutable set of packs before joining; the hosted client defaults to the regular non-custom pack and offers custom and indexed packs as opt-in choices. Later participants join the room's existing deck. Browser room capabilities are saved in local storage for reconnection and removed when the player explicitly leaves. The versioned transport is under /v2/peer-pressure/rooms.
@@ -107,7 +107,7 @@ Show systemctl status for bad-decisions.service.
 Reload or stop bad-decisions.service. Require root.
 .TP
 .BI doctor " [--url url] [--expect-version version | --any-version] [--app-root path] [--min-free-mb n] [--timeout seconds]"
-Check a running deployment without changing anything: /healthz reports the expected version (by default this command's), /v2/packs agrees with its pack count, /v2/round deals, /web/ serves, and /docs/ redirects stay within the public prefix. When APP_ROOT exists it also reports a pending activation request, unused staged files, and free disk space. Give the public base URL, including any prefix, with --url (default http://127.0.0.1:8000). Exits 1 if any check fails.
+Check a running deployment without changing anything: /healthz reports the expected version (by default this command's), /v2/packs agrees with its pack count, /v2/round deals, / serves the browser client, and /docs/ redirects stay within the public prefix. When APP_ROOT exists it also reports a pending activation request, unused staged files, and free disk space. Give the public base URL, including any prefix, with --url (default http://127.0.0.1:8000). Exits 1 if any check fails.
 .SH LOCAL DEPLOYMENT COMMANDS
 These talk to a root-owned activator installed once with sudo ./deploy.sh bootstrap-rootless; the caller must be in the deployment group. They refuse to run from inside APP_ROOT/current or APP_ROOT/releases: install the management command separately, for example with pipx. Only one request can be pending; a second is refused until the activator writes its result.
 .TP
