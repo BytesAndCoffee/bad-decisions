@@ -28,6 +28,15 @@ regret feedback clear
 The first interactive deal asks once when no preference is stored;
 non-interactive use never opts in automatically.
 
+The hosted one-shot browser asks whether to enable **card voting** before it
+sends a Consequences identity. Enabling it permits Enjoy/Regret votes and
+stores a random pseudonymous identifier in that browser. The browser then sends
+that identifier and a per-page session ID with every request, so the votes, the
+drawn cards, and the request details described above are recorded against
+them. Continuing without voting sends neither votes nor either identifier. The footer's
+**Voting & privacy preference** control reopens the choice without requiring
+site-storage cleanup.
+
 ## Server configuration
 
 Use a local persistent SQLite path owned by the service account:

@@ -4,7 +4,7 @@
 
 - [Install Regret and make the first draw](GETTING_STARTED.md)
 - [Regret terminal-client reference](../client/README.md)
-- [Peer Pressure multiplayer](PEER_PRESSURE.md)
+- [Peer Pressure browser and terminal multiplayer](PEER_PRESSURE.md)
 - [Configuration and easy self-hosting](EASY_DEPLOY.md)
 
 ## Building with Bad Decisions

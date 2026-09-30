@@ -18,6 +18,7 @@ from .together import (
     TogetherClient,
     always,
     can_advance,
+    can_end,
     can_judge,
     can_start,
     can_submit,
@@ -56,6 +57,7 @@ class PeerPressureApp(App[None]):
         ("r", "refresh", "Refresh"),
         ("s", "start", "Start"),
         ("enter", "primary", "Choose / act"),
+        ("e", "end", "End room"),
         ("q", "leave", "Leave"),
     ]
     CSS = """
@@ -89,6 +91,8 @@ class PeerPressureApp(App[None]):
         self._heartbeat_running = False
         self._heartbeat_failed = False
         self.leave_error: str | None = None
+        self.ended = False
+        self._confirm_end = False
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -110,6 +114,7 @@ class PeerPressureApp(App[None]):
                     yield Button("Advance", id="advance", variant="primary")
                     yield Button("Refresh", id="refresh")
                     yield Button("Leave", id="leave", variant="error")
+                    yield Button("End room", id="end", variant="error")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -131,6 +136,7 @@ class PeerPressureApp(App[None]):
         message: str,
         *,
         exit_after: bool = False,
+        exit_on_success: bool = False,
     ) -> None:
         if self._busy:
             self.notify("Still waiting on the table; try again in a moment.", severity="warning")
@@ -145,7 +151,7 @@ class PeerPressureApp(App[None]):
             except Exception as exc:
                 self.call_from_thread(self._network_finished, None, f"Peer Pressure faltered: {exc}", exit_after)
             else:
-                self.call_from_thread(self._network_finished, state, None, exit_after)
+                self.call_from_thread(self._network_finished, state, None, exit_after or exit_on_success)
 
         self.run_worker(task, thread=True, group="peer-pressure-network")
 
@@ -273,6 +279,7 @@ class PeerPressureApp(App[None]):
             "advance": room_state == "ROUND_RESULT" and adult,
             "refresh": True,
             "leave": True,
+            "end": can_end(self.state),
         }
         for button_id, allowed in enabled.items():
             self.query_one(f"#{button_id}", Button).disabled = self._busy or not allowed
@@ -308,7 +315,11 @@ class PeerPressureApp(App[None]):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         button_id = event.button.id
-        if button_id == "start":
+        if button_id != "end":
+            self._confirm_end = False
+        if button_id == "end":
+            self.action_end()
+        elif button_id == "start":
             self._mutate("start", "Starting a regrettable round…", still_valid=can_start)
         elif button_id == "submit":
             self._mutate("submit", "Submitting your decision privately…", still_valid=can_submit(self._round(), list(self.selected_cards)), card_instance_ids=list(self.selected_cards))
@@ -340,6 +351,23 @@ class PeerPressureApp(App[None]):
                 button.press()
                 return
 
+    def action_end(self) -> None:
+        """End the room for everyone; the host confirms by asking twice."""
+        if self.query_one("#end", Button).disabled:
+            return
+        if not self._confirm_end:
+            self._confirm_end = True
+            self._set_message("End this room for everyone? Press e (or End room) again to confirm.")
+            return
+        self._confirm_end = False
+
+        def operation() -> None:
+            self.client.mutate("end", still_valid=can_end)
+            self.ended = True
+            return None
+
+        self._run_network(operation, "Ending the room for everyone…", exit_on_success=True)
+
     def action_leave(self) -> None:
         if (self.state.get("room") or {}).get("state") == "ENDED":
             self.exit()
@@ -355,6 +383,8 @@ class PeerPressureApp(App[None]):
 def run_together_tui(client: TogetherClient, heartbeat_interval: float = 5.0) -> int:
     app = PeerPressureApp(client, heartbeat_interval)
     app.run()
-    if app.leave_error:
+    if app.ended:
+        print("The room has ended.")
+    elif app.leave_error:
         print(f"regret: left without telling the table ({app.leave_error}); your seat will expire", file=sys.stderr)
     return 0

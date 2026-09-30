@@ -273,6 +273,7 @@ def test_leaving_an_unreachable_table_still_exits(monkeypatch, capsys):
 
     class Finished:
         leave_error = "Cannot reach API"
+        ended = False
 
         def __init__(self, *_args):
             pass
@@ -317,5 +318,82 @@ def test_tui_actions_carry_their_stale_revision_checks():
         moved_on = state()
         moved_on["room"]["round"] = 4
         assert check(moved_on) is False  # a new round: the old selection is meaningless
+
+    asyncio.run(exercise())
+
+
+class RefusingEndClient(FakeClient):
+    def mutate(self, action, *, still_valid=None, **payload):
+        super().mutate(action, still_valid=still_valid, **payload)
+        raise RuntimeError("not_room_owner: Only the room's host may end it")
+
+
+def test_the_host_ends_the_room_after_confirming(capsys):
+    async def exercise():
+        client = FakeClient(state("WAITING", adult=None))
+        app = PeerPressureApp(client, heartbeat_interval=3600)
+        async with app.run_test(size=(140, 40)) as pilot:
+            await settle(app, pilot)
+            assert not app.query_one("#end", Button).disabled
+            await pilot.press("e")
+            await settle(app, pilot)
+            assert client.mutations == []  # the first press only asks
+            assert "again to confirm" in str(app.query_one("#instruction", Static).render())
+            await pilot.press("e")
+            await settle(app, pilot)
+        action, check = client.checks[0]
+        assert action == "end" and check(state("WAITING", adult=None)) is True
+        assert check(state("ENDED", adult=None)) is False
+        return app
+
+    app = asyncio.run(exercise())
+    assert app.ended and app.leave_error is None
+
+    class Ended:
+        ended = True
+        leave_error = None
+
+        def __init__(self, *_args):
+            pass
+
+        def run(self):
+            pass
+
+    original = together_tui.PeerPressureApp
+    together_tui.PeerPressureApp = Ended
+    try:
+        assert together_tui.run_together_tui(FakeClient(state())) == 0
+    finally:
+        together_tui.PeerPressureApp = original
+    assert "The room has ended." in capsys.readouterr().out
+
+
+def test_only_the_host_can_end_the_room():
+    async def exercise():
+        client = FakeClient(state("WAITING"))  # player_2 hosts; we are player_1
+        client.state["you"]["room_owner"] = False
+        app = PeerPressureApp(client, heartbeat_interval=3600)
+        async with app.run_test(size=(140, 40)) as pilot:
+            await settle(app, pilot)
+            assert app.query_one("#end", Button).disabled
+            await pilot.press("e")
+            await pilot.press("e")
+            await settle(app, pilot)
+        assert client.mutations == []
+
+    asyncio.run(exercise())
+
+
+def test_a_refused_end_keeps_the_table_open():
+    async def exercise():
+        client = RefusingEndClient(state("WAITING", adult=None))
+        app = PeerPressureApp(client, heartbeat_interval=3600)
+        async with app.run_test(size=(140, 40)) as pilot:
+            await settle(app, pilot)
+            await pilot.press("e")
+            await pilot.press("e")
+            await settle(app, pilot)
+            assert app.is_running and not app.ended
+            assert "not_room_owner" in str(app.query_one("#instruction", Static).render())
 
     asyncio.run(exercise())

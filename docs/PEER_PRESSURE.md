@@ -1,8 +1,21 @@
 # Peer Pressure multiplayer
 
 Peer Pressure adds ephemeral, server-authoritative multiplayer to Bad
-Decisions. Pick a room ID, share it with the other players, and run the same
-command on every computer:
+Decisions, in the browser or the terminal.
+
+The hosted browser table is available at
+[bytes.coffee/bad-decisions/peerpressure](https://bytes.coffee/bad-decisions/peerpressure).
+Enter a room code and display name, then share the room link with at least two
+friends. It uses the same server-authoritative game and revision protocol as
+Regret, while adapting the prompt, private hand, players, anonymous judging,
+and table controls to the browser. The room creator chooses its packs before
+joining. The hosted browser defaults new rooms to the regular base pack, keeps
+the owner-authorized custom packs immediately visible, and offers catalog
+packs in a multi-select dialog. That selection belongs to the room and cannot
+be changed by later joiners.
+
+In the terminal, pick a room ID, share it with the other players, and run the
+same command on every computer:
 
 ```bash
 regret together ohno --name Michael
@@ -67,6 +80,9 @@ scores, presence, Responsible Adult, and result visible together. Use Enter to
 select the highlighted choice, the action buttons to move the round forward,
 `r` to synchronize immediately, and `q` to leave. If the table cannot be
 reached, `q` still closes the TUI and your seat expires with the room. The
+room's host can end the room for everyone: press `e` (or **End room**) twice
+in the TUI, or answer `e` and then `y` at any line-mode prompt. Leaving never
+ends a room; an abandoned room expires six hours (by default) after its last change. The
 default interface still has no third-party dependencies; Homebrew installs the
 complete client, including the TUI.
 
@@ -111,7 +127,9 @@ Room sessions use an opaque player ID and an unguessable bearer token. Servers
 store only SHA-256 token verifiers. Regret saves the token in
 `~/.regret-peer-pressure.json` with mode `0600`; it is independent of the
 optional Consequences analytics identity. Raw tokens and private hands are not
-written to normal request logs.
+written to normal request logs. The browser table keeps its room session in
+that browser's local storage so it can reconnect after a refresh; leaving the
+room removes the saved browser session.
 
 Every mutation includes a request ID (`req_` followed by 32 lowercase
 hexadecimal digits, unique per player) and the room revision it expects. SQLite
@@ -143,6 +161,14 @@ surface provides room creation/join, synchronization, heartbeat, leave,
 start, submit, judge, advance, end, and state operations. OpenAPI at `/docs`
 is the authoritative transport reference. Errors use the same stable JSON
 envelope as the rest of the API.
+
+The join request accepts an optional `packs` array when `create` is true. If
+the room does not exist, those IDs become its immutable prompt and answer
+pools; omitting `packs` preserves the API-wide rule and selects every pack in
+the loaded registry. Once the room exists, later join requests cannot change
+its deck. Every room projection reports the authoritative selection as
+`room.packs`. The hosted browser deliberately sends an explicit selection and
+defaults that selection to the hosted registry's regular non-custom pack.
 
 ## Configuration
 

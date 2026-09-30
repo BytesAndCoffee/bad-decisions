@@ -46,6 +46,11 @@ def can_start(state: dict[str, Any]) -> bool:
     return state["room"]["state"] == "WAITING" and is_responsible_adult(state)
 
 
+@_checked
+def can_end(state: dict[str, Any]) -> bool:
+    return state["room"]["state"] != "ENDED" and bool(state["you"]["room_owner"])
+
+
 def can_submit(round_: Any, card_instance_ids: list[str]) -> StillValid:
     @_checked
     def check(state: dict[str, Any]) -> bool:
@@ -179,7 +184,8 @@ class TogetherClient:
                     raise
         with self._lock:
             self.revision = int(response["revision"])
-        self.sync()
+        if action != "end":  # an ended room is deleted; there is nothing left to synchronize
+            self.sync()
         return response
 
     def _send(self, action: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -193,7 +199,14 @@ class TogetherClient:
             if "Cannot reach API" not in str(exc):
                 raise
             # A lost acknowledgement: resend the same request id so it applies once.
-            response, _ = self.request_json(f"{self.endpoint}/{action}", timeout=self.timeout, method="POST", payload=body, headers=self._headers())
+            try:
+                response, _ = self.request_json(f"{self.endpoint}/{action}", timeout=self.timeout, method="POST", payload=body, headers=self._headers())
+            except RuntimeError as retry_exc:
+                # Ending deletes the room with its replay record, so the resend of an
+                # end that already succeeded finds no room rather than the stored reply.
+                if action == "end" and str(retry_exc).startswith("room_not_found"):
+                    return {"request_id": request_id, "revision": revision}
+                raise
         return response
 
 
@@ -236,12 +249,12 @@ def render(state: dict[str, Any]) -> None:
         print(f"Peer pressure worked on {state['result']['winning_player']['name']}.")
 
 
-def choose_answers(state: dict[str, Any], input_: Callable[[str], str]) -> list[str] | None:
+def choose_answers(state: dict[str, Any], input_: Callable[[str], str], extra: str = "") -> list[str] | None:
     hand = state["you"]["hand"]
     for index, card in enumerate(hand, 1):
         print(f"  {index:2}. {card['text']}")
     needed = state["prompt"]["slots"]
-    raw = input_(f"Choose {needed} answer{'s' if needed != 1 else ''} (comma-separated, or q): ").strip()
+    raw = input_(f"Choose {needed} answer{'s' if needed != 1 else ''} (comma-separated, or q){extra}: ").strip()
     if raw.lower() == "q":
         return None
     try:
@@ -254,6 +267,10 @@ def choose_answers(state: dict[str, Any], input_: Callable[[str], str]) -> list[
     return [hand[index - 1]["card_instance_id"] for index in indexes]
 
 
+class _EndRequested(Exception):
+    """The room host typed e at a prompt."""
+
+
 def run_together(client: TogetherClient, input_: Callable[[str], str] = input, heartbeat_interval: float = 5.0) -> int:
     print("Giving in to Peer Pressure…")
     with Heartbeat(client, heartbeat_interval) as heartbeat:
@@ -264,31 +281,40 @@ def run_together(client: TogetherClient, input_: Callable[[str], str] = input, h
             you = state["you"]
             adult = is_responsible_adult(state)
             round_ = state["room"]["round"]
+            host = can_end(state)
+            end = " · [e] End room" if host else ""
+
+            def ask(prompt: str) -> str:
+                raw = input_(prompt).strip()
+                if host and raw.lower() == "e":
+                    raise _EndRequested
+                return raw
+
             try:
                 if room_state == "WAITING":
-                    command = input_("[s] Start" + ("" if adult else " (Responsible Adult only)") + " · [Enter] Refresh · [q] Regret alone: ").strip().lower()
+                    command = ask("[s] Start" + ("" if adult else " (host only)") + f" · [Enter] Refresh · [q] Regret alone{end}: ").strip().lower()
                     if command == "s" and adult:
                         client.mutate("start", still_valid=can_start)
                     elif command == "q":
                         client.mutate("leave", still_valid=always)
                         break
                 elif room_state == "PLAYING" and adult:
-                    if input_("Waiting for everyone else to decide. [Enter] Refresh · [q] Regret alone: ").strip().lower() == "q":
+                    if ask(f"Waiting for everyone else to decide. [Enter] Refresh · [q] Regret alone{end}: ").strip().lower() == "q":
                         client.mutate("leave", still_valid=always); break
                 elif room_state == "PLAYING" and not you["submitted"]:
-                    cards = choose_answers(state, input_)
+                    cards = choose_answers(state, ask, end)
                     if cards is None:
                         client.mutate("leave", still_valid=always); break
                     if cards:
                         client.mutate("submit", still_valid=can_submit(round_, cards), card_instance_ids=cards)
                 elif room_state == "PLAYING":
-                    if input_("Decision submitted. [Enter] Refresh · [q] Regret alone: ").strip().lower() == "q":
+                    if ask(f"Decision submitted. [Enter] Refresh · [q] Regret alone{end}: ").strip().lower() == "q":
                         client.mutate("leave", still_valid=always); break
                 elif room_state == "JUDGING" and adult:
                     decisions = state["judging"]["decisions"]
                     for index, decision in enumerate(decisions, 1):
                         print(f"  {index:2}. " + " / ".join(decision["answers"]))
-                    raw = input_("Choose the consequence (number, or q): ").strip()
+                    raw = ask(f"Choose the consequence (number, or q){end}: ").strip()
                     if raw.lower() == "q":
                         client.mutate("leave", still_valid=always); break
                     try:
@@ -301,17 +327,26 @@ def run_together(client: TogetherClient, input_: Callable[[str], str] = input, h
                     else:
                         print("The Responsible Adult must make a responsible selection.", file=sys.stderr)
                 elif room_state == "JUDGING":
-                    if input_("The Responsible Adult is deciding. [Enter] Refresh · [q] Regret alone: ").strip().lower() == "q":
+                    if ask(f"The Responsible Adult is deciding. [Enter] Refresh · [q] Regret alone{end}: ").strip().lower() == "q":
                         client.mutate("leave", still_valid=always); break
                 elif room_state == "ROUND_RESULT" and adult:
-                    if input_("[Enter] Make another bad decision · [q] Regret alone: ").strip().lower() == "q":
+                    if ask(f"[Enter] Make another bad decision · [q] Regret alone{end}: ").strip().lower() == "q":
                         client.mutate("leave", still_valid=always); break
                     client.mutate("advance", still_valid=can_advance(round_))
                 elif room_state == "ROUND_RESULT":
-                    if input_("[Enter] Await further pressure · [q] Regret alone: ").strip().lower() == "q":
+                    if ask(f"[Enter] Await further pressure · [q] Regret alone{end}: ").strip().lower() == "q":
                         client.mutate("leave", still_valid=always); break
                 else:
                     break
+            except _EndRequested:
+                if input_("End this room for everyone? [y/N]: ").strip().lower() in ("y", "yes"):
+                    try:
+                        client.mutate("end", still_valid=can_end)
+                    except RuntimeError as exc:
+                        print(f"Peer Pressure faltered: {exc}", file=sys.stderr)
+                    else:
+                        print("The room has ended.")
+                        return 0
             except RuntimeError as exc:
                 print(f"Peer Pressure faltered: {exc}", file=sys.stderr)
                 time.sleep(min(heartbeat_interval, 1.0))

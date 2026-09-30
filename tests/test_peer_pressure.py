@@ -30,6 +30,20 @@ def multiplayer_registry() -> Registry:
     return Registry(MappingProxyType({"party": pack}))
 
 
+def selectable_registry() -> Registry:
+    packs = {}
+    for pack_id in ("regular", "custom"):
+        packs[pack_id] = make_pack(
+            pack_id,
+            prompts=tuple(
+                Prompt(id=f"q{index}", text=f"{pack_id} question {index}: _", template=f"{pack_id} question {index}: {{}}", slots=1, pack=pack_id)
+                for index in range(4)
+            ),
+            answers=tuple(Answer(id=f"r{index}", text=f"{pack_id} response {index}", pack=pack_id) for index in range(40)),
+        )
+    return Registry(MappingProxyType(packs))
+
+
 def join_table(service: PeerPressureService, room: str = "ohno"):
     alice = service.join(room, "Alice", create=True)
     bob = service.join(room, "Bob")
@@ -54,6 +68,47 @@ def test_rooms_are_isolated_ephemeral_databases(tmp_path):
     assert service.sync("first", *credentials(first))["state"]["players"][0]["name"] == "Alice"
     assert service.sync("second", *credentials(second))["state"]["players"][0]["name"] == "Bob"
     assert "session_token" not in service.sync("first", *credentials(first))["state"]
+
+
+def test_room_pack_selection_is_immutable_and_limits_every_draw(tmp_path):
+    service = PeerPressureService(tmp_path, selectable_registry(), hand_size=3)
+    alice = service.join("chosen", "Alice", create=True, packs=["custom"])
+    bob = service.join("chosen", "Bob", create=True, packs=["regular"])
+    carol = service.join("chosen", "Carol", packs=["regular"])
+    assert alice["state"]["room"]["packs"] == ["custom"]
+    assert bob["state"]["room"]["packs"] == ["custom"]
+    started = service.start("chosen", *credentials(alice), request(900), carol["revision"])
+    state = service.sync("chosen", *credentials(bob))["state"]
+    assert started["revision"] == state["room"]["revision"]
+    assert state["prompt"]["pack"] == "custom"
+    assert {card["pack"] for card in state["you"]["hand"]} == {"custom"}
+
+
+def test_selection_pool_cache_is_bounded(tmp_path, monkeypatch):
+    from bad_decisions.peer_pressure import service as service_module
+
+    monkeypatch.setattr(service_module, "SELECTION_POOL_CACHE_SIZE", 1)
+    service = PeerPressureService(tmp_path, selectable_registry(), hand_size=3)
+    for room, packs in (("first", ["regular"]), ("second", ["custom"])):
+        players = [service.join(room, name, create=True, packs=packs) for name in ("Alice", "Bob", "Carol")]
+        service.start(room, *credentials(players[0]), request(700 + len(room)), players[-1]["revision"])
+        state = service.sync(room, *credentials(players[1]))["state"]
+        assert {card["pack"] for card in state["you"]["hand"]} == set(packs)  # uncached selections still draw correctly
+    assert len(service._selection_pools) == 1
+
+
+def test_room_pack_selection_defaults_to_all_and_rejects_invalid_values(tmp_path):
+    service = PeerPressureService(tmp_path, selectable_registry(), hand_size=3)
+    joined = service.join("default", "Alice", create=True)
+    assert joined["state"]["room"]["packs"] == ["regular", "custom"]
+    for room, packs, reason in (
+        ("empty", [], "invalid_selector"),
+        ("duplicate", ["regular", "regular"], "invalid_selector"),
+        ("unknown", ["missing"], "unknown_pack"),
+    ):
+        with pytest.raises(PeerPressureError) as refused:
+            service.create_room(room, packs)
+        assert refused.value.reason == reason
 
 
 def test_private_hands_anonymous_judging_and_idempotent_score(tmp_path):
@@ -212,6 +267,39 @@ def test_http_protocol_uses_responsible_adult_and_protects_state(tmp_path, monke
         assert all("hand" not in player for player in state["players"])
         schema = client.get("/openapi.json").text.lower()
         assert "card czar" not in schema and "choose_peer_consequence" in schema
+
+
+def test_http_room_creation_accepts_and_exposes_pack_selection(tmp_path, monkeypatch):
+    monkeypatch.setenv("BAD_DECISIONS_PEER_PRESSURE_DIR", str(tmp_path))
+    with TestClient(create_app()) as client:
+        joined = [
+            client.post(
+                "/v2/peer-pressure/rooms/selected/join",
+                json={"display_name": name, "create": True, "packs": ["maha"]},
+            ).json()
+            for name in ("Alice", "Bob", "Carol")
+        ]
+        assert all(item["state"]["room"]["packs"] == ["maha"] for item in joined)
+        headers = {"Authorization": f"Bearer {joined[0]['session_token']}"}
+        started = client.post(
+            "/v2/peer-pressure/rooms/selected/start",
+            headers=headers,
+            json={"request_id": request(41), "revision": joined[-1]["revision"]},
+        )
+        assert started.status_code == 200
+        state = client.post(
+            "/v2/peer-pressure/rooms/selected/sync",
+            headers={"Authorization": f"Bearer {joined[1]['session_token']}"},
+        ).json()["state"]
+        assert state["prompt"]["pack"] == "maha"
+        assert {card["pack"] for card in state["you"]["hand"]} == {"maha"}
+
+        invalid = client.post(
+            "/v2/peer-pressure/rooms/nope/join",
+            json={"display_name": "Alice", "create": True, "packs": ["missing"]},
+        )
+        assert invalid.status_code == 422
+        assert invalid.json()["error"]["code"] == "unknown_pack"
 
 
 # --- departures, streaming draws, and room creation -------------------------

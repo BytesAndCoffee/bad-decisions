@@ -38,7 +38,15 @@ ERROR_STATUS = {
     "pack_configuration": 500, "answer_arity": 500,
 }
 CLIENT_HEADERS = ["Authorization", "Content-Type", "If-None-Match", "X-Request-ID", "X-Client-ID", "X-Session-ID", "X-Feedback-Token"]
-WEB_ASSETS = {"index.html": "text/html; charset=utf-8", "app.js": "application/javascript; charset=utf-8", "style.css": "text/css; charset=utf-8", "favicon.svg": "image/svg+xml"}
+WEB_ASSETS = {
+    "index.html": "text/html; charset=utf-8",
+    "app.js": "application/javascript; charset=utf-8",
+    "style.css": "text/css; charset=utf-8",
+    "together.js": "application/javascript; charset=utf-8",
+    "together.css": "text/css; charset=utf-8",
+    "favicon.svg": "image/svg+xml",
+}
+WEB_DOCUMENTS = ("index.html", "together.html")
 PACK_CACHE = "public, max-age=300"
 POOL_CACHE_SIZE = 256  # distinct selectors remembered; invalid ones are never cached
 
@@ -55,11 +63,13 @@ class FeedbackInput(StrictInput):
 
 class RoomInput(StrictInput):
     room: str
+    packs: list[str] | None = None
 
 
 class JoinInput(StrictInput):
     display_name: str
     create: StrictBool = True
+    packs: list[str] | None = None
 
 
 class HeartbeatInput(StrictInput):
@@ -157,6 +167,11 @@ def create_app() -> FastAPI:
     logger = logging.getLogger("bad_decisions.api")
     limiter = RateLimiter(settings.rate_limit_per_minute)
     pool_cache: dict[tuple[str | None, str | None, str | None], Any] = {}
+    web_digest = hashlib.sha256()
+    for name in sorted(set(WEB_ASSETS) | set(WEB_DOCUMENTS)):
+        web_digest.update(name.encode("utf-8"))
+        web_digest.update(files("bad_decisions").joinpath("web", name).read_bytes())
+    web_asset_version = web_digest.hexdigest()[:16]
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -339,6 +354,7 @@ Portable packs:
   Format documentation: CARDDECK.md
 
 Peer Pressure multiplayer:
+  Browser table: {prefix}/peerpressure
   regret together ROOM_ID
   Protocol documentation: PEER_PRESSURE.md
 
@@ -355,15 +371,31 @@ Service interfaces:
     def web_index(request: Request):
         root_path = request.scope.get("root_path", "").rstrip("/")
         document = files("bad_decisions").joinpath("web", "index.html").read_text(encoding="utf-8")
-        return HTMLResponse(document.replace("__WEB_BASE__", f"{root_path}/web/"), headers={"Cache-Control": "no-cache"})
+        document = document.replace("__WEB_BASE__", f"{root_path}/web/").replace("__ASSET_VERSION__", web_asset_version)
+        return HTMLResponse(document, headers={"Cache-Control": "no-cache"})
+
+    @app.get("/peerpressure", include_in_schema=False)
+    @app.get("/peerpressure/", include_in_schema=False)
+    def web_together(request: Request):
+        root_path = request.scope.get("root_path", "").rstrip("/")
+        document = files("bad_decisions").joinpath("web", "together.html").read_text(encoding="utf-8")
+        document = document.replace("__WEB_BASE__", f"{root_path}/web/").replace("__ASSET_VERSION__", web_asset_version)
+        return HTMLResponse(document, headers={"Cache-Control": "no-cache"})
+
+    @app.get("/web/together", include_in_schema=False)
+    @app.get("/web/together/", include_in_schema=False)
+    def old_web_together(request: Request):
+        root_path = request.scope.get("root_path", "").rstrip("/")
+        return RedirectResponse(f"{root_path}/peerpressure", status_code=307)
 
     @app.get("/web/{asset:path}", include_in_schema=False)
     def web_file(asset: str, request: Request):
         media_type = WEB_ASSETS.get(asset)
         if media_type is None:
             return error(request, "path_not_found", "Path not found", 404)
-        # index.html links assets with ?v=<version>, so those URLs never change content.
-        versioned = request.query_params.get("v") == __version__
+        # Documents carry a digest of the complete web bundle, so a rootless
+        # same-version review deploy cannot pair new HTML with stale immutable assets.
+        versioned = request.query_params.get("v") == web_asset_version
         cache = "public, max-age=31536000, immutable" if versioned else "no-cache"
         return FileResponse(str(files("bad_decisions").joinpath("web", asset)), media_type=media_type, headers={"Cache-Control": cache})
 
@@ -488,7 +520,7 @@ Service interfaces:
 
     @app.post(rooms, status_code=201, responses=ERRORS)
     def create_peer_room(body: RoomInput, request: Request):
-        return rate_limited(request, "rooms") or peer_service(request).create_room(body.room)
+        return rate_limited(request, "rooms") or peer_service(request).create_room(body.room, body.packs)
 
     @app.post(f"{rooms}/{{room}}/join", responses=ERRORS)
     def join_peer_room(room: str, body: JoinInput, request: Request, authorization: Annotated[str | None, Header()] = None):
@@ -496,7 +528,13 @@ Service interfaces:
         limited = rate_limited(request, "join")
         if limited is not None:
             return limited
-        return peer_service(request).join(room, body.display_name, session_token=peer_token(authorization, required=False), create=body.create)
+        return peer_service(request).join(
+            room,
+            body.display_name,
+            session_token=peer_token(authorization, required=False),
+            create=body.create,
+            packs=body.packs,
+        )
 
     @app.post(f"{rooms}/{{room}}/sync", responses=ERRORS)
     def sync_peer_room(room: str, request: Request, authorization: Annotated[str | None, Header()] = None):

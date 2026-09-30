@@ -6,8 +6,8 @@
     <meta name="description" content="Deal a hand with Bad Decisions.">
     <base href="__WEB_BASE__">
     <title>Bad Decisions — deal badly, professionally</title>
-    <link rel="icon" href="favicon.svg?v=2.1.6" type="image/svg+xml">
-    <link rel="stylesheet" href="style.css?v=2.1.6">
+    <link rel="icon" href="favicon.svg?v=__ASSET_VERSION__" type="image/svg+xml">
+    <link rel="stylesheet" href="style.css?v=__ASSET_VERSION__">
   </head>
   <body>
     <main class="shell">
@@ -16,7 +16,11 @@
           <span class="wordmark-mark">B</span>
           <span>Bad<br><strong>Decisions</strong></span>
         </a>
-        <span class="consequences-splash">Now with Consequences!</span>
+        <nav class="primary-nav" aria-label="Primary">
+          <a href="./" aria-current="page">Solo draw</a>
+          <a class="nav-feature" href="../peerpressure">Peer Pressure <span aria-hidden="true">→</span></a>
+          <a href="../docs">API</a>
+        </nav>
         <p class="build-note"><span></span> API online. Regrets pending.</p>
       </header>
 
@@ -25,26 +29,6 @@
         <h1 id="page-title">Make a <em>terrible</em><br>decision.</h1>
         <p>Choose the packs, deal a round, and let a suspiciously well-engineered API do the rest.</p>
       </section>
-
-      <aside class="peer-pressure-teaser" aria-labelledby="peer-pressure-title">
-        <div class="peer-pressure-copy">
-          <p class="eyebrow">PEER PRESSURE · COMING TO THE WEB</p>
-          <h2 id="peer-pressure-title">Regret loves company.</h2>
-          <p>Soon you’ll be able to open a room right here, invite friends with a code, and let a rotating Responsible Adult make everything worse.</p>
-          <a href="https://github.com/BytesAndCoffee/bad-decisions/blob/main/docs/PEER_PRESSURE.md">Terminal rooms are available now <span aria-hidden="true">→</span></a>
-        </div>
-        <div class="peer-pressure-preview" aria-label="Preview of a future browser multiplayer room">
-          <div class="peer-pressure-room">
-            <span>ROOM</span>
-            <strong>OHNO</strong>
-            <small>3 questionable adults</small>
-          </div>
-          <div class="peer-pressure-players" aria-hidden="true">
-            <span>M</span><span>P</span><span>?</span>
-          </div>
-          <span class="peer-pressure-badge">Web rooms coming soon</span>
-        </div>
-      </aside>
 
       <section class="table" aria-label="Card round table">
         <aside class="deck-panel" aria-labelledby="deck-heading">
@@ -110,19 +94,19 @@
         <a href="../docs">API docs</a>
         <a href="https://github.com/BytesAndCoffee/bad-decisions">Source</a>
         <span>Unofficial fan project.</span>
-        <button id="change-consequences" class="footer-control" type="button">Consequences preference</button>
+        <button id="change-consequences" class="footer-control" type="button">Voting &amp; privacy preference</button>
       </footer>
     </main>
     <div id="consequences-modal" class="modal-backdrop" hidden>
       <section class="consent-modal" role="dialog" aria-modal="true" aria-labelledby="consent-title">
-        <p class="eyebrow">A SMALL DISCLAIMER</p>
-        <h2 id="consent-title">Now with Consequences.</h2>
-        <p>Consequences controls voting and the pseudonymous vote telemetry that makes it work. No account is required, and nothing is enabled until you choose.</p>
+        <p class="eyebrow">OPTIONAL CARD FEEDBACK</p>
+        <h2 id="consent-title">“Consequences” means card voting.</h2>
+        <p>If enabled, each draw gets <strong>Enjoy it</strong> and <strong>Regret it</strong> buttons. Your votes, the cards you are dealt, and basic request details (route, status, timing) are recorded with a random identifier stored in this browser, so the project owner can learn which card combinations work. No account is required. Declining disables voting and sends no Consequences identity.</p>
         <div class="consent-actions">
-          <button id="enjoy-consequences" type="button">Enjoy Consequences</button>
-          <button id="regret-consequences" type="button">Regret Consequences</button>
+          <button id="enjoy-consequences" type="button">Enable card voting</button>
+          <button id="regret-consequences" type="button">Continue without voting</button>
         </div>
-        <p class="consent-note">You can change this later. We're not Facebook.</p>
+        <p class="consent-note">You can change this later under “Voting &amp; privacy preference.” We’re not Facebook.</p>
       </section>
     </div>
     <div id="indexed-packs-modal" class="modal-backdrop" hidden>
@@ -146,6 +130,6 @@
         </div>
       </section>
     </div>
-    <script src="app.js?v=2.1.6" defer></script>
+    <script src="app.js?v=__ASSET_VERSION__" defer></script>
   </body>
 </html>

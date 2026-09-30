@@ -1,4 +1,4 @@
-.TH REGRET 1 "2026-09-29" "Bad Decisions Client 2.1.6" "User Commands"
+.TH REGRET 1 "2026-09-29" "Bad Decisions Client 2.2.0" "User Commands"
 .SH NAME
 regret \- deal rounds from a Bad Decisions API
 .SH SYNOPSIS
@@ -97,9 +97,11 @@ Add
 .B --tui
 to use the optional full-screen Textual table. It displays players, scores, presence, the Responsible Adult, prompt, private hand, anonymous judging choices, and result together. Install it with
 .BR "pipx install 'bad-decisions-client[tui]'" .
-The line-oriented interface remains the dependency-free default. In the TUI, q closes the table even when the service cannot be told you left.
+The line-oriented interface remains the dependency-free default. In the TUI, q closes the table even when the service cannot be told you left, and the room's host presses e twice (or End room) to end the room for everyone.
 .PP
-The prompt follows the room: the Responsible Adult presses s to start, players choose answers by number (comma-separated when a prompt needs several), the Responsible Adult picks the consequence, and Enter refreshes or advances. q leaves the room. When the service refuses an action, regret prints its reason and message, with a hint when the display name is taken or the game has already started.
+The official hosted service also provides an install-free browser table at https://bytes.coffee/bad-decisions/peerpressure. It uses the same rooms and protocol as Regret.
+.PP
+The prompt follows the room: the room's host presses s to start (and becomes the first Responsible Adult), players choose answers by number (comma-separated when a prompt needs several), the Responsible Adult picks the consequence, and Enter refreshes or advances. q leaves the room. The room's host may type e at any prompt, then y to confirm, to end the room for everyone; leaving never ends a room, and an abandoned room expires six hours (by default) after its last change. When the service refuses an action, regret prints its reason and message, with a hint when the display name is taken or the game has already started.
 .TP
 .BI doctor " [--api-url url]"
 Check this installation and print a fix for each problem, changing nothing: how regret was installed, whether it is on PATH, whether
@@ -110,7 +112,7 @@ Homebrew is the suggested install on macOS and Linux and includes the Peer Press
 .B brew install bytesandcoffee/tap/regret
 also links this page into Homebrew's manual path. pipx install bad-decisions-client and pip install bad-decisions-client also work; installers cannot run setup code, so use regret doctor to check shell integration.
 .PP
-Python package installers provide the TUI through the optional Bbad-decisions-client[tui]R extra; the base Python package remains dependency-free.
+Python package installers provide the TUI through the optional \fBbad-decisions-client[tui]\fR extra; the base Python package remains dependency-free.
 .SH CONSENT
 On the first interactive deal, an unset or stale consent preference prompts once. Choose Enjoy Consequences or Regret Consequences. The choice and consent schema version are stored locally and survive upgrades. Pressing Enter chooses regret. Non-interactive invocations never block for consent.
 .SH FILES

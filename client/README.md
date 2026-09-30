@@ -53,6 +53,11 @@ Join an ephemeral multiplayer room with Peer Pressure:
 regret together ohno --name Michael
 ```
 
+No installation is required for the hosted
+[browser table](https://bytes.coffee/bad-decisions/peerpressure). It uses the
+same rooms and protocol as Regret; the room creator chooses the deck before
+joining, and later participants inherit that selection.
+
 For the full-screen table, install the optional interface and add `--tui`:
 
 ```bash
@@ -100,6 +105,7 @@ export MANPATH=":$(python3 -c 'import sys; print(sys.prefix)')/share/man"
 
 - [Bad Decisions repository](https://github.com/BytesAndCoffee/bad-decisions)
 - [Hosted browser client](https://bytes.coffee/bad-decisions/web/)
+- [Hosted Peer Pressure table](https://bytes.coffee/bad-decisions/peerpressure)
 - [OpenAPI](https://bytes.coffee/bad-decisions/docs/)
 - [Client changelog](https://github.com/BytesAndCoffee/bad-decisions/blob/main/client/CHANGELOG.md)
 - [Issue tracker](https://github.com/BytesAndCoffee/bad-decisions/issues)

@@ -1,4 +1,4 @@
-.TH BAD-DECISIONS 1 "2026-09-29" "Bad Decisions 2.1.6" "User Commands"
+.TH BAD-DECISIONS 1 "2026-09-29" "Bad Decisions 2.2.0" "User Commands"
 .SH NAME
 bad-decisions \- deal, validate, import, and inspect Bad Decisions card packs
 .SH SYNOPSIS
@@ -24,6 +24,15 @@ bad-decisions \- deal, validate, import, and inspect Bad Decisions card packs
 is the command-line engine and service toolkit for portable card-deck packs. With no subcommand it deals an interactive round. It can also produce one-shot output, stream rounds, manage .carddeck archives, and inspect the local Consequences analytics database.
 .PP
 An omitted pack selector means every pack in the loaded registry. Set BAD_DECISIONS_PACK_DIR to use a custom registry.
+.SH WEB INTERFACES
+.TP
+.B /web/
+The responsive one-shot browser client, with bundled/custom and indexed pack selection plus optional Consequences voting.
+.TP
+.B /peerpressure
+The responsive Peer Pressure multiplayer table. A room creator selects an immutable set of packs before joining; the hosted client defaults to the regular non-custom pack and offers custom and indexed packs as opt-in choices. Later participants join the room's existing deck. Browser room capabilities are saved in local storage for reconnection and removed when the player explicitly leaves. The versioned transport is under /v2/peer-pressure/rooms.
+.PP
+Both pages derive immutable asset cache keys from the packaged web bundle, so a same-version review redeploy cannot combine new HTML with stale CSS or JavaScript.
 .SH OPTIONS
 .TP
 .BR --version

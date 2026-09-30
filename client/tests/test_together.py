@@ -339,3 +339,121 @@ def test_out_of_range_judgments_are_refused(raw, capsys):
     assert run_together(client, input_=lambda prompt: next(answers), heartbeat_interval=3600) == 0
     assert client.mutations == [("leave", {})]  # nothing was judged, then the adult left
     assert "responsible selection" in capsys.readouterr().err
+
+
+def _waiting_state(*, host=True):
+    return {
+        "room": {"code": "ohno", "round": 0, "state": "WAITING", "revision": 3},
+        "players": [], "result": None, "prompt": None, "responsible_adult": None,
+        "you": {"id": "player_1", "room_owner": host, "submitted": False, "hand": []},
+        "judging": None,
+    }
+
+
+def test_the_host_can_end_the_room_from_line_mode(capsys):
+    from bad_decisions_client.together import run_together
+
+    client = _ScriptedClient(_waiting_state())
+    prompts = []
+    answers = iter(["e", "y"])
+
+    def input_(prompt):
+        prompts.append(prompt)
+        return next(answers)
+
+    assert run_together(client, input_=input_, heartbeat_interval=3600) == 0
+    assert client.mutations == [("end", {})]
+    assert "[e] End room" in prompts[0] and "for everyone" in prompts[1]
+    out = capsys.readouterr().out
+    assert "The room has ended." in out and "Regret alone." not in out
+
+
+def test_ending_needs_confirmation(capsys):
+    from bad_decisions_client.together import run_together
+
+    client = _ScriptedClient(_waiting_state())
+    answers = iter(["e", "", "q"])
+    assert run_together(client, input_=lambda prompt: next(answers), heartbeat_interval=3600) == 0
+    assert client.mutations == [("leave", {})]
+
+
+def test_only_the_host_is_offered_the_end(capsys):
+    from bad_decisions_client.together import run_together
+
+    client = _ScriptedClient(_waiting_state(host=False))
+    prompts = []
+    answers = iter(["e", "q"])
+
+    def input_(prompt):
+        prompts.append(prompt)
+        return next(answers)
+
+    assert run_together(client, input_=input_, heartbeat_interval=3600) == 0
+    assert client.mutations == [("leave", {})]  # e was just a refresh
+    assert not any("End room" in prompt for prompt in prompts)
+
+
+def test_a_refused_end_keeps_playing(capsys):
+    from bad_decisions_client.together import run_together
+
+    class Refusing(_ScriptedClient):
+        def mutate(self, action, *, still_valid=None, **payload):
+            super().mutate(action, **payload)
+            if action == "end":
+                raise RuntimeError("not_room_owner: Only the room's host may end it")
+
+    client = Refusing(_waiting_state())
+    answers = iter(["e", "y", "q"])
+    assert run_together(client, input_=lambda prompt: next(answers), heartbeat_interval=3600) == 0
+    assert [action for action, _ in client.mutations] == ["end", "leave"]
+    assert "not_room_owner" in capsys.readouterr().err
+
+
+def test_ending_does_not_synchronize_with_the_deleted_room():
+    from bad_decisions_client.together import can_end
+
+    calls = []
+
+    def request_json(url, **kwargs):
+        calls.append(url.rsplit("/", 1)[-1])
+        return {"request_id": kwargs["payload"]["request_id"], "revision": 4}, {}
+
+    client = TogetherClient("https://example.invalid", "ohno", 4, request_json)
+    client.player_id, client.session_token, client.revision = "player_1", "token", 3
+    client.mutate("end", still_valid=can_end)
+    assert calls == ["end"]
+    assert can_end(_waiting_state()) and not can_end(_waiting_state(host=False))
+    assert not can_end({"room": {"state": "ENDED"}, "you": {"room_owner": True}})
+    assert not can_end({})  # malformed: not offered
+
+
+def test_a_lost_end_acknowledgement_still_counts_as_ended():
+    from bad_decisions_client.together import can_end
+
+    sent = []
+
+    def request_json(url, **kwargs):
+        sent.append(kwargs["payload"]["request_id"])
+        if len(sent) == 1:
+            raise RuntimeError("Cannot reach API: connection reset")
+        raise RuntimeError("room_not_found: That room does not exist or has expired")
+
+    client = TogetherClient("https://example.invalid", "ohno", 4, request_json)
+    client.player_id, client.session_token, client.revision = "player_1", "token", 3
+    client.mutate("end", still_valid=can_end)  # the first send ended and deleted the room
+    assert len(sent) == 2 and sent[0] == sent[1]
+
+
+def test_a_lost_acknowledgement_for_other_actions_still_reports_a_missing_room():
+    calls = []
+
+    def request_json(url, **kwargs):
+        calls.append(url)
+        if len(calls) == 1:
+            raise RuntimeError("Cannot reach API: connection reset")
+        raise RuntimeError("room_not_found: That room does not exist or has expired")
+
+    client = TogetherClient("https://example.invalid", "ohno", 4, request_json)
+    client.player_id, client.session_token, client.revision = "player_1", "token", 3
+    with pytest.raises(RuntimeError, match="room_not_found"):
+        client.mutate("start")

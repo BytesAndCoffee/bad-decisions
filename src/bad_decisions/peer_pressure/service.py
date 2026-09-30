@@ -22,9 +22,11 @@ PLAYER_ID = re.compile(r"^player_[0-9a-f]{32}$")
 REQUEST_ID = re.compile(r"^req_[0-9a-f]{32}$")
 STATES = {"WAITING", "PLAYING", "JUDGING", "ROUND_RESULT", "ENDED"}
 ACTIVE_STATES = {"PLAYING", "JUDGING", "ROUND_RESULT"}
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 # Half-built rooms live under this name until they are linked into place.
 BUILDING_SUFFIX = ".building"
+# Distinct room pack selections whose card pools are remembered; others are rebuilt per draw.
+SELECTION_POOL_CACHE_SIZE = 64
 
 
 class PeerPressureError(Exception):
@@ -50,6 +52,9 @@ CREATE TABLE room(
   id INTEGER PRIMARY KEY CHECK(id=1), room_code TEXT NOT NULL, state TEXT NOT NULL,
   revision INTEGER NOT NULL, round_number INTEGER NOT NULL, hand_size INTEGER NOT NULL,
   created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, expires_at INTEGER NOT NULL
+);
+CREATE TABLE room_packs(
+  pack_id TEXT PRIMARY KEY, position INTEGER NOT NULL UNIQUE
 );
 CREATE TABLE players(
   id TEXT PRIMARY KEY, display_name TEXT NOT NULL, session_token_hash TEXT NOT NULL UNIQUE,
@@ -86,7 +91,7 @@ CREATE TABLE processed_requests(
   result_revision INTEGER NOT NULL, result_payload TEXT NOT NULL, created_at INTEGER NOT NULL,
   PRIMARY KEY(request_id, player_id)
 );
-PRAGMA user_version=4;
+PRAGMA user_version=5;
 """
 
 class PeerPressureService:
@@ -128,10 +133,11 @@ class PeerPressureService:
         self.min_free_mb = min_free_mb
         self.now = now
         self.rng = rng or random.SystemRandom()
-        self._pools: dict[str, tuple[tuple[str, Any], ...]] = {
-            "prompt": tuple((f"{card.pack}:{card.id}", card) for pack in registry.packs.values() for card in pack.prompts),
-            "answer": tuple((f"{card.pack}:{card.id}", card) for pack in registry.packs.values() for card in pack.answers),
+        self._pack_pools: dict[str, dict[str, tuple[tuple[str, Any], ...]]] = {
+            "prompt": {pack_id: tuple((f"{card.pack}:{card.id}", card) for card in pack.prompts) for pack_id, pack in registry.packs.items()},
+            "answer": {pack_id: tuple((f"{card.pack}:{card.id}", card) for card in pack.answers) for pack_id, pack in registry.packs.items()},
         }
+        self._selection_pools: dict[tuple[str, tuple[str, ...]], tuple[tuple[str, Any], ...]] = {}
 
     @staticmethod
     def validate_room(room: str) -> str:
@@ -197,9 +203,26 @@ class PeerPressureService:
                 continue
         return removed
 
-    def create_room(self, room: str) -> dict[str, Any]:
+    def _select_packs(self, packs: list[str] | None) -> tuple[str, ...]:
+        selected = tuple(self.registry.ids) if packs is None else tuple(packs)
+        if not selected:
+            raise PeerPressureError("invalid_selector", "At least one pack must be selected", status=422)
+        if len(set(selected)) != len(selected):
+            raise PeerPressureError("invalid_selector", "Each selected pack may occur only once", status=422)
+        unknown = sorted(set(selected) - set(self.registry.ids))
+        if unknown:
+            raise PeerPressureError("unknown_pack", f"Unknown pack: {unknown[0]}", status=422)
+        normalized = tuple(pack_id for pack_id in self.registry.ids if pack_id in selected)
+        if not any(self._pack_pools["prompt"][pack_id] for pack_id in normalized):
+            raise PeerPressureError("empty_pool", "The selected packs contain no prompts", status=422)
+        if not any(self._pack_pools["answer"][pack_id] for pack_id in normalized):
+            raise PeerPressureError("empty_pool", "The selected packs contain no answers", status=422)
+        return normalized
+
+    def create_room(self, room: str, packs: list[str] | None = None) -> dict[str, Any]:
         """Build the room privately, then link it into place so nobody sees a half-made room."""
         room = self.validate_room(room)
+        selected_packs = self._select_packs(packs)
         self.cleanup_expired()
         path = self._path(room)
         if path.exists():
@@ -219,11 +242,15 @@ class PeerPressureService:
                     "INSERT INTO room VALUES(1,?,?,?,?,?,?,?,?)",
                     (room, "WAITING", 0, 0, self.hand_size, now, now, now + self.room_ttl_seconds),
                 )
+                connection.executemany(
+                    "INSERT INTO room_packs(pack_id,position) VALUES(?,?)",
+                    [(pack_id, position) for position, pack_id in enumerate(selected_packs)],
+                )
             try:
                 os.link(building, path)
             except FileExistsError as exc:
                 raise PeerPressureError("room_exists", "That room already exists", status=409) from exc
-            return {"room": room, "state": "WAITING", "revision": 0}
+            return {"room": room, "state": "WAITING", "revision": 0, "packs": list(selected_packs)}
         finally:
             building.unlink(missing_ok=True)
 
@@ -231,12 +258,12 @@ class PeerPressureService:
     def _hash_token(token: str) -> str:
         return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
-    def join(self, room: str, display_name: str, *, player_id: str | None = None, session_token: str | None = None, create: bool = False) -> dict[str, Any]:
+    def join(self, room: str, display_name: str, *, player_id: str | None = None, session_token: str | None = None, create: bool = False, packs: list[str] | None = None) -> dict[str, Any]:
         room = self.validate_room(room)
         display_name = self.validate_name(display_name)
         if create and not self._path(room).exists():
             try:
-                self.create_room(room)
+                self.create_room(room, packs)
             except PeerPressureError as exc:
                 if exc.reason != "room_exists":
                     raise
@@ -501,7 +528,13 @@ class PeerPressureService:
         """Draw ``count`` cards this room has not drawn before, straight from the registry."""
         if count <= 0:
             return []
-        pool = self._pools[kind]
+        selected = tuple(row[0] for row in connection.execute("SELECT pack_id FROM room_packs ORDER BY position"))
+        cache_key = (kind, selected)
+        pool = self._selection_pools.get(cache_key)
+        if pool is None:
+            pool = tuple(card for pack_id in selected for card in self._pack_pools[kind][pack_id])
+            if len(self._selection_pools) < SELECTION_POOL_CACHE_SIZE:
+                self._selection_pools[cache_key] = pool
         drawn = {row[0] for row in connection.execute("SELECT card_key FROM drawn_cards WHERE kind=?", (kind,))}
         if len(pool) - len(drawn) < count:
             raise PeerPressureError(f"{kind}_deck_exhausted", f"There are not enough unused {kind}s left", status=409)
@@ -558,7 +591,13 @@ class PeerPressureService:
         self._ensure_live(room, metadata)
         players = [dict(row) for row in connection.execute("SELECT id,display_name,score,connected,seat_order FROM players ORDER BY seat_order")]
         value: dict[str, Any] = {
-            "room": {"code": room, "state": metadata["state"], "revision": metadata["revision"], "round": metadata["round_number"]},
+            "room": {
+                "code": room,
+                "state": metadata["state"],
+                "revision": metadata["revision"],
+                "round": metadata["round_number"],
+                "packs": [row[0] for row in connection.execute("SELECT pack_id FROM room_packs ORDER BY position")],
+            },
             "players": [{"id": row["id"], "name": row["display_name"], "score": row["score"], "connected": bool(row["connected"])} for row in players],
             "responsible_adult": None,
             "prompt": None,

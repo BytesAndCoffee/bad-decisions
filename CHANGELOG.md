@@ -2,6 +2,40 @@
 
 ## [Unreleased]
 
+## [2.2.0] - Peer Pressure escaped the terminal
+
+### Added
+
+- Peer Pressure is now a complete install-free browser multiplayer client at
+  `/peerpressure`, with room creation and invitation links, reconnectable
+  sessions, heartbeats, presence, private hands, anonymous judgment, scores,
+  Responsible Adult rotation, and the complete room lifecycle.
+- Room creators can choose an immutable deck from bundled custom packs and any
+  indexed packs. The hosted browser defaults to the regular non-custom pack;
+  later joiners use the room's established selection.
+- The Peer Pressure API accepts an optional `packs` array when creating or
+  joining (with `create`) a room, and every room projection reports the
+  room's immutable selection as `room.packs`. Omitting `packs` still selects
+  every pack in the loaded registry.
+- Room hosts can end a room from Regret's line mode and TUI.
+
+### Changed
+
+- Peer Pressure is a prominent primary-navigation action rather than a landing
+  page teaser.
+- The Consequences consent dialog now explains that it enables optional card
+  voting, states what is recorded with its identifier, and offers an explicit
+  “Continue without voting” choice. The unexplained masthead shout was removed.
+- Web assets now use a content-derived cache key, preventing same-version
+  review deployments from mixing fresh HTML with stale immutable CSS or
+  JavaScript.
+
+### Upgrade notes
+
+- The Peer Pressure room database schema is now version 5. Rooms that are live
+  when a 2.1.x server is upgraded answer `410 room_expired`; players start a
+  new room.
+
 ## [2.1.6]
 
 ### Documentation

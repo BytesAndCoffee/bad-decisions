@@ -28,9 +28,9 @@ Workflows run in the repository the package metadata links to
 
 ## Release procedure
 
-1. Bump the version in all four sources and the `?v=` cache busters in
-   `src/bad_decisions/web/index.html`. `tests/test_release_versions.py` fails if
-   any of them disagree.
+1. Bump the version in all four sources. Web `?v=` cache busters are derived
+   automatically from the packaged web bundle. `tests/test_release_versions.py`
+   fails if version sources or cache-buster placeholders drift.
 2. Update the manual pages, `man/bad-decisions.1` and `client/man/regret.1`:
    the `.TH` date and version, plus every command, option, environment
    variable, and file this release adds or changes. Preview each page with

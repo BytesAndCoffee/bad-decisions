@@ -47,7 +47,12 @@ draw from its protected local record; it does not make a network request.
 
 ## Play together
 
-Pick a room ID and share it with the other players:
+Open the hosted [Peer Pressure browser table](https://bytes.coffee/bad-decisions/peerpressure),
+enter a room code and display name, choose the new room's packs, and share the
+invite. The first person fixes the room's deck; later participants join that
+same selection.
+
+Prefer the terminal? Pick a room ID and share it with the other players:
 
 ```bash
 regret together ohno --name Michael
@@ -76,6 +81,7 @@ Read [Consequences](CONSEQUENCES.md) for the exact data boundary.
 ## Next steps
 
 - [Use the browser client](https://bytes.coffee/bad-decisions/web/)
+- [Play Peer Pressure in the browser](https://bytes.coffee/bad-decisions/peerpressure)
 - [Build a client from OpenAPI](https://bytes.coffee/bad-decisions/docs/)
 - [Make a CardDeck](../examples/minimal-pack/)
 - [Self-host Bad Decisions](EASY_DEPLOY.md)

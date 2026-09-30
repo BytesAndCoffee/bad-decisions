@@ -189,8 +189,8 @@ For a server release, build and validate the exact artifacts:
 - PyPI versions are immutable. Check the current published version and bump it
   before uploading; never rebuild different contents under an existing version.
 - Releases publish from CI, not from a laptop: bump every version source (four
-  files plus the `?v=` cache busters in `web/index.html`; a test keeps them
-  equal), merge to `main` with CI green, then push a `vX.Y.Z` tag to
+  files; web asset cache busters are injected from a bundle digest at runtime),
+  merge to `main` with CI green, then push a `vX.Y.Z` tag to
   `origin`. `release.yml` verifies the tag matches the versions, is on `main`,
   and has a `## [X.Y.Z]` section in both changelogs, runs the tests, builds and
   `twine check`s both packages once, smoke-tests those exact wheels in a clean

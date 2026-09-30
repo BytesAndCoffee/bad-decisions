@@ -27,8 +27,9 @@ def test_every_version_source_agrees():
     assert set(versions.values()) == {__version__}, versions
 
 
-def test_web_asset_cache_busters_use_the_release_version():
-    html = (ROOT / "src/bad_decisions/web/index.html").read_text(encoding="utf-8")
-    busters = re.findall(r'(?:href|src)="[^"?]+\?v=([^"]+)"', html)
-    assert busters, "expected ?v= cache busters in index.html"
-    assert set(busters) == {__version__}
+def test_web_asset_cache_busters_are_injected_from_the_bundle_digest():
+    for name in ("index.html", "together.html"):
+        html = (ROOT / "src/bad_decisions/web" / name).read_text(encoding="utf-8")
+        busters = re.findall(r'(?:href|src)="[^"?]+\?v=([^"]+)"', html)
+        assert busters, f"expected ?v= cache busters in {name}"
+        assert set(busters) == {"__ASSET_VERSION__"}

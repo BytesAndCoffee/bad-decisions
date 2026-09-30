@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import uuid
 
 import pytest
@@ -88,8 +89,11 @@ def test_pack_responses_revalidate_with_etags(api):
 
 def test_versioned_web_assets_are_immutable_and_the_page_is_not(api):
     with api() as client:
-        assert client.get("/web/").headers["Cache-Control"] == "no-cache"
-        assert "immutable" in client.get(f"/web/app.js?v={__version__}").headers["Cache-Control"]
+        page = client.get("/web/")
+        assert page.headers["Cache-Control"] == "no-cache"
+        digest = re.search(r'app\.js\?v=([0-9a-f]{16})', page.text).group(1)
+        assert "immutable" in client.get(f"/web/app.js?v={digest}").headers["Cache-Control"]
+        assert client.get(f"/web/app.js?v={__version__}").headers["Cache-Control"] == "no-cache"
         assert client.get("/web/app.js?v=0.0.1").headers["Cache-Control"] == "no-cache"
 
 

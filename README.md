@@ -43,7 +43,7 @@ overengineering is part of the joke.
 ## What has gone wrong so far
 
 - **`regret deal`** — get a terrible idea from any compatible service in one command.
-- **[Peer Pressure](docs/PEER_PRESSURE.md)** — ephemeral, authenticated multiplayer with a rotating Responsible Adult.
+- **[Peer Pressure](docs/PEER_PRESSURE.md)** — install-free browser or terminal multiplayer with ephemeral authenticated rooms and a rotating Responsible Adult.
 - **[Browser client](https://bytes.coffee/bad-decisions/web/)** — choose packs, deal rounds, and opt into feedback without installing anything.
 - **[OpenAPI](https://bytes.coffee/bad-decisions/docs/)** — a versioned contract for building clients that should never have existed.
 - **[CardDeck](docs/CARDDECK.md)** — portable, validated `.carddeck` archives with licensing and provenance inside.
@@ -129,6 +129,9 @@ Invite friends into an ephemeral Peer Pressure room:
 ```bash
 regret together ohno --name Michael
 ```
+
+Or use the hosted [browser table](https://bytes.coffee/bad-decisions/peerpressure)
+with no installation.
 
 The default endpoint is `https://bytes.coffee/bad-decisions`. Override it with
 `--api-url`; local preferences live in protected files under your home

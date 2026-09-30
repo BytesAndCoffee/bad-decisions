@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Play Peer Pressure in your browser.">
+    <base href="__WEB_BASE__">
+    <title>Peer Pressure — Bad Decisions</title>
+    <link rel="icon" href="favicon.svg?v=__ASSET_VERSION__" type="image/svg+xml">
+    <link rel="stylesheet" href="together.css?v=__ASSET_VERSION__">
+  </head>
+  <body>
+    <main class="peer-shell">
+      <header class="peer-masthead">
+        <a class="peer-wordmark" href="./"><span>B</span><b>Bad<br>Decisions</b></a>
+        <div><strong>PEER PRESSURE</strong><small>Poor judgment is better with friends.</small></div>
+        <p id="connection"><i></i> Ready to make acquaintances worse.</p>
+      </header>
+
+      <section id="join-view" class="join-view" aria-labelledby="join-title">
+        <div class="join-copy">
+          <p class="eyebrow">REAL-TIME MULTIPLAYER</p>
+          <h1 id="join-title">Bring your own<br><em>bad influence.</em></h1>
+          <p>Choose a room, invite at least two friends, and take turns being the Responsible Adult. Rooms are temporary. The consequences may not be.</p>
+        </div>
+        <form id="join-form" class="join-card">
+          <label>Room code<input id="room-input" name="room" required minlength="3" maxlength="32" pattern="[a-z0-9-]+" autocomplete="off" placeholder="ohno"></label>
+          <label>Your name<input id="name-input" name="name" required maxlength="32" autocomplete="nickname" placeholder="Questionable Adult"></label>
+          <fieldset class="pack-picker">
+            <legend>New-room packs</legend>
+            <div id="core-packs" class="core-packs"><span>Loading packs…</span></div>
+            <button id="choose-indexed" class="indexed-button" type="button" disabled>
+              <span id="indexed-summary">Loading indexed packs…</span><b aria-hidden="true">Choose</b>
+            </button>
+            <small>Only the first person sets the deck. Existing rooms keep their own selection.</small>
+          </fieldset>
+          <button id="join-room" type="submit" disabled>Enter the room <b aria-hidden="true">→</b></button>
+          <p id="join-status" role="status">The first person creates the room. Everyone else joins it.</p>
+        </form>
+      </section>
+
+      <section id="table-view" class="table-view" hidden aria-live="polite">
+        <header class="room-bar">
+          <div><span>ROOM</span><strong id="room-code">—</strong><button id="copy-room" type="button">Copy invite</button></div>
+          <div><span>ROUND</span><strong id="round-number">0</strong></div>
+          <div class="room-packs"><span>PACKS</span><strong id="room-packs">0</strong></div>
+          <div><span>PHASE</span><strong id="phase">Waiting</strong></div>
+        </header>
+
+        <div class="game-grid">
+          <aside class="players-panel">
+            <p class="eyebrow">THE TABLE</p>
+            <div id="players" class="players"></div>
+            <p id="seat-note" class="seat-note"></p>
+          </aside>
+
+          <section class="play-panel">
+            <article id="prompt-card" class="peer-prompt">
+              <p>THE PROMPT</p>
+              <blockquote id="peer-prompt-text">Waiting for someone to make the first mistake.</blockquote>
+              <span>P</span>
+            </article>
+
+            <article id="result-card" class="peer-result" hidden>
+              <p class="eyebrow">THE CONSEQUENCE</p>
+              <blockquote id="result-text"></blockquote>
+              <p id="winner-text"></p>
+            </article>
+
+            <div class="choice-heading"><div><p class="eyebrow" id="choice-label">YOUR HAND</p><h2 id="choice-title">Choose irresponsibly.</h2></div><span id="selection-count"></span></div>
+            <div id="choices" class="peer-choices"></div>
+
+            <div class="action-dock">
+              <p id="instruction" role="status">Synchronizing with the table…</p>
+              <div>
+                <button id="start-room" type="button">Start game</button>
+                <button id="submit-choice" type="button">Submit decision</button>
+                <button id="judge-choice" type="button">Choose consequence</button>
+                <button id="advance-room" type="button">Next round</button>
+                <button id="refresh-room" class="secondary" type="button">Refresh</button>
+                <button id="leave-room" class="secondary" type="button">Leave</button>
+                <button id="end-room" class="danger" type="button">End room</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <footer><span>Ephemeral rooms. Durable embarrassment.</span><a href="./">One-shot mode</a><a href="https://github.com/BytesAndCoffee/bad-decisions/blob/main/docs/PEER_PRESSURE.md">How to play</a></footer>
+    </main>
+    <div id="pack-modal" class="modal-backdrop" hidden>
+      <section class="pack-modal" role="dialog" aria-modal="true" aria-labelledby="pack-modal-title">
+        <header><div><p class="eyebrow">EXPAND YOUR REGRETS</p><h2 id="pack-modal-title">Choose indexed packs</h2></div><button id="close-packs" type="button" aria-label="Close pack selection">×</button></header>
+        <p>These public packs come from the CardDeck catalog. Their own licenses and provenance still apply.</p>
+        <div class="pack-tools"><button id="select-all-indexed" type="button">Select all</button><button id="clear-indexed" type="button">Clear</button></div>
+        <div id="indexed-options" class="indexed-options"></div>
+        <footer><button id="cancel-packs" type="button">Cancel</button><button id="apply-packs" type="button">Use selected packs</button></footer>
+      </section>
+    </div>
+    <script src="together.js?v=__ASSET_VERSION__" defer></script>
+  </body>
+</html>

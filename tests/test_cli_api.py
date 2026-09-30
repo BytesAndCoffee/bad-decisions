@@ -37,6 +37,7 @@ def test_api_success_metadata_and_cache():
         assert howto.status_code == 200
         assert howto.headers["content-type"].startswith("text/plain")
         assert "/v2/round" in howto.text
+        assert "/peerpressure" in howto.text
         assert "CARDDECK.md" in howto.text
         assert client.get("/healthz").json() == {"status": "ok", "version": __version__, "pack_count": 3}
         web = client.get("/web/")
@@ -50,11 +51,14 @@ def test_api_success_metadata_and_cache():
         assert 'id="indexed-packs-modal"' in web.text
         assert 'id="indexed-pack-options"' in web.text
         assert '<select id="indexed-packs"' not in web.text
-        assert 'id="peer-pressure-title"' in web.text
-        assert "PEER PRESSURE · COMING TO THE WEB" in web.text
-        assert "Web rooms coming soon" in web.text
-        assert "Terminal rooms are available now" in web.text
-        assert 'href="https://github.com/BytesAndCoffee/bad-decisions/blob/main/docs/PEER_PRESSURE.md"' in web.text
+        assert '<nav class="primary-nav"' in web.text
+        assert 'class="nav-feature" href="../peerpressure">Peer Pressure' in web.text
+        assert '“Consequences” means card voting.' in web.text
+        assert "Your votes, the cards you are dealt, and basic request details (route, status, timing) are recorded" in web.text
+        assert "Continue without voting" in web.text
+        assert "Voting &amp; privacy preference" in web.text
+        assert "Now with Consequences!" not in web.text
+        assert 'class="peer-pressure-teaser"' not in web.text
         assert "regret together ROOM --tui" not in web.text
         assert 'let indexedSelection = new Set();' in app_js.text
         assert 'indexedSelection = new Set(indexedDraft)' in app_js.text
@@ -64,7 +68,34 @@ def test_api_success_metadata_and_cache():
         assert "contain: layout paint" in style.text
         assert "--orange: #b85618; --orange-dark: #78341f" in style.text
         assert ".prompt-card" in style.text and "background: var(--orange)" in style.text
-        assert ".peer-pressure-teaser" in style.text
+        assert ".peer-pressure-teaser" not in style.text
+        peer_pressure = client.get("/peerpressure")
+        assert peer_pressure.status_code == 200
+        assert '<base href="/web/">' in peer_pressure.text
+        assert 'id="join-form"' in peer_pressure.text
+        assert 'id="table-view"' in peer_pressure.text
+        assert 'id="core-packs"' in peer_pressure.text
+        assert 'id="pack-modal"' in peer_pressure.text
+        assert 'id="indexed-options"' in peer_pressure.text
+        assert client.get("/peerpressure/").status_code == 200
+        old_peer_pressure = client.get("/web/together", follow_redirects=False)
+        assert old_peer_pressure.status_code == 307
+        assert old_peer_pressure.headers["location"] == "/peerpressure"
+        together_js = client.get("/web/together.js")
+        assert together_js.status_code == 200
+        assert 'replace(/\\/peerpressure\\/?$/, "/v2")' in together_js.text
+        assert "/peer-pressure/rooms/" in together_js.text
+        # A refused or unsent end must not forget the host's session.
+        assert 'if(await mutate("end",{},false)){forgetSession();leaveLocal("The room has ended.");}' in together_js.text
+        assert "return true;" in together_js.text and "return false; }" in together_js.text
+        # Before the first round the host, not a Responsible Adult, may start the room.
+        assert "adult ? adult.id === state?.you?.id : Boolean(state?.you?.room_owner)" in together_js.text
+        assert "packs:[...selectedPacks]" in together_js.text
+        assert "pack.custom===false" in together_js.text
+        assert "availablePacks.filter(isIndexedPack)" in together_js.text
+        together_style = client.get("/web/together.css")
+        assert together_style.status_code == 200
+        assert ".game-grid" in together_style.text
         favicon = client.get("/web/favicon.svg")
         assert favicon.headers["content-type"].startswith("image/svg+xml")
         packs = client.get("/v2/packs").json()
@@ -85,6 +116,12 @@ def test_web_client_works_with_proxy_root_path(monkeypatch):
     with TestClient(create_app()) as client:
         assert client.get("/web/").status_code == 200
         assert '<base href="/bad-decisions/web/">' in client.get("/web").text
+        peer_pressure = client.get("/peerpressure")
+        assert peer_pressure.status_code == 200
+        assert '<base href="/bad-decisions/web/">' in peer_pressure.text
+        old_peer_pressure = client.get("/web/together", follow_redirects=False)
+        assert old_peer_pressure.status_code == 307
+        assert old_peer_pressure.headers["location"] == "/bad-decisions/peerpressure"
         assert client.get("/web/style.css").status_code == 200
         assert client.get("/web/../api.py").status_code == 404
 

@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.2.0]
+
+### Changed
+
+- Lockstep release with the server's complete browser Peer Pressure client,
+  immutable per-room pack selection, clarified Consequences consent, and
+  content-derived web asset cache keys.
+
+### Added
+
+- The room's host can end a Peer Pressure room for everyone from Regret:
+  `e` then `y` at any line-mode prompt, or `e` twice (or **End room**) in the
+  TUI. Previously only the browser table could end a room.
+
 ## [2.1.6]
 
 ### Documentation
