@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [2.2.1] - Regret after dark
+
+### Added
+
+- The one-shot browser client and the Peer Pressure table have a dark mode in
+  the same palette: warm near-black surfaces, cream text, and the burnt-orange
+  accents. It follows the system setting by default; a footer toggle switches
+  light or dark and remembers the choice in that browser.
+
 ## [2.2.0] - Peer Pressure escaped the terminal
 
 ### Added

@@ -1,0 +1,36 @@
+/* Colour tokens shared by every page. Dark mode follows the system unless the
+   footer toggle stored an explicit choice (theme.js sets html[data-theme]). */
+:root {
+  color-scheme: light;
+  --ink: #171511; --paper: #f4efe4; --cream: #fffbf2; --orange: #b85618; --orange-dark: #78341f; --line: #d7cec0; --muted: #706b62;
+  --muted-soft: #777066; --text-body: #514b43;
+  --page: #e8e0d3; --page-a: #eee7dc; --page-b: #e6ddce; --page-c: #dfd3c2;
+  --panel: #f8f4ec; --panel-sunk: #ede5d9; --panel-sunk-glass: #ede5d9ee;
+  --border: #cfc4b4; --border-soft: #d9d0c4; --border-card: #d2c6b7; --border-strong: #a89e8f;
+  --shadow-hard: #cdbfae; --shadow-soft: #d0c3b3; --shadow-modal: #17151155; --shadow-diffuse: #5f49321c;
+  --accent-deep: #78341f; --on-accent: #fffbf2; --on-ink: #fffbf2;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ink: #f1e8da; --paper: #1f1a15; --cream: #29221c; --orange: #c2601f; --orange-dark: #e8a47d; --line: #3a3129; --muted: #a3988a;
+    --muted-soft: #9a8f82; --text-body: #cdc2b1;
+    --page: #15120f; --page-a: #1d1915; --page-b: #181410; --page-c: #120f0c;
+    --panel: #231d18; --panel-sunk: #1a1612; --panel-sunk-glass: #1a1612ee;
+    --border: #3d342b; --border-soft: #2f2821; --border-card: #40362d; --border-strong: #6b5f52;
+    --shadow-hard: #0c0a08; --shadow-soft: #0f0c0a; --shadow-modal: #00000099; --shadow-diffuse: #00000059;
+    --accent-deep: #9a4418; --on-accent: #fffbf2; --on-ink: #1d1914;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #f1e8da; --paper: #1f1a15; --cream: #29221c; --orange: #c2601f; --orange-dark: #e8a47d; --line: #3a3129; --muted: #a3988a;
+  --muted-soft: #9a8f82; --text-body: #cdc2b1;
+  --page: #15120f; --page-a: #1d1915; --page-b: #181410; --page-c: #120f0c;
+  --panel: #231d18; --panel-sunk: #1a1612; --panel-sunk-glass: #1a1612ee;
+  --border: #3d342b; --border-soft: #2f2821; --border-card: #40362d; --border-strong: #6b5f52;
+  --shadow-hard: #0c0a08; --shadow-soft: #0f0c0a; --shadow-modal: #00000099; --shadow-diffuse: #00000059;
+  --accent-deep: #9a4418; --on-accent: #fffbf2; --on-ink: #1d1914;
+}
+.theme-toggle { border: 0; padding: 0; color: var(--orange-dark); background: transparent; cursor: pointer; font: inherit; }
+.theme-toggle:hover { text-decoration: underline; }

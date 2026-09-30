@@ -44,6 +44,8 @@ WEB_ASSETS = {
     "style.css": "text/css; charset=utf-8",
     "together.js": "application/javascript; charset=utf-8",
     "together.css": "text/css; charset=utf-8",
+    "theme.css": "text/css; charset=utf-8",
+    "theme.js": "application/javascript; charset=utf-8",
     "favicon.svg": "image/svg+xml",
 }
 WEB_DOCUMENTS = ("index.html", "together.html")

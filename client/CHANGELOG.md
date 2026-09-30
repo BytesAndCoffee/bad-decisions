@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.1]
+
+### Changed
+
+- Lockstep release with the server's dark mode for the hosted browser pages.
+  Regret's terminal behavior is unchanged.
+
 ## [2.2.0]
 
 ### Changed

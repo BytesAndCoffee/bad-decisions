@@ -66,7 +66,7 @@ def test_api_success_metadata_and_cache():
         assert "backdrop-filter" not in style.text
         assert "overscroll-behavior: contain" in style.text
         assert "contain: layout paint" in style.text
-        assert "--orange: #b85618; --orange-dark: #78341f" in style.text
+        assert "--orange: #b85618; --orange-dark: #78341f" in client.get("/web/theme.css").text  # the light palette
         assert ".prompt-card" in style.text and "background: var(--orange)" in style.text
         assert ".peer-pressure-teaser" not in style.text
         peer_pressure = client.get("/peerpressure")

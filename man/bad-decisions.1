@@ -1,4 +1,4 @@
-.TH BAD-DECISIONS 1 "2026-09-29" "Bad Decisions 2.2.0" "User Commands"
+.TH BAD-DECISIONS 1 "2026-09-30" "Bad Decisions 2.2.1" "User Commands"
 .SH NAME
 bad-decisions \- deal, validate, import, and inspect Bad Decisions card packs
 .SH SYNOPSIS
@@ -32,7 +32,7 @@ The responsive one-shot browser client, with bundled/custom and indexed pack sel
 .B /peerpressure
 The responsive Peer Pressure multiplayer table. A room creator selects an immutable set of packs before joining; the hosted client defaults to the regular non-custom pack and offers custom and indexed packs as opt-in choices. Later participants join the room's existing deck. Browser room capabilities are saved in local storage for reconnection and removed when the player explicitly leaves. The versioned transport is under /v2/peer-pressure/rooms.
 .PP
-Both pages derive immutable asset cache keys from the packaged web bundle, so a same-version review redeploy cannot combine new HTML with stale CSS or JavaScript.
+Both pages follow the system light or dark colour scheme; a footer toggle overrides it and is remembered in that browser's local storage. Both pages derive immutable asset cache keys from the packaged web bundle, so a same-version review redeploy cannot combine new HTML with stale CSS or JavaScript.
 .SH OPTIONS
 .TP
 .BR --version
