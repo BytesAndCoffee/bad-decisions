@@ -51,8 +51,10 @@ def test_api_success_metadata_and_cache():
         assert 'id="indexed-pack-options"' in web.text
         assert '<select id="indexed-packs"' not in web.text
         assert 'id="peer-pressure-title"' in web.text
-        assert "regret together ROOM --tui" in web.text
-        assert "ephemeral multiplayer room" in web.text
+        assert "PEER PRESSURE · COMING TO THE WEB" in web.text
+        assert "Web rooms coming soon" in web.text
+        assert "Terminal rooms are available now" in web.text
+        assert "regret together ROOM --tui" not in web.text
         assert 'let indexedSelection = new Set();' in app_js.text
         assert 'indexedSelection = new Set(indexedDraft)' in app_js.text
         assert 'return [...selected, ...indexedSelection];' in app_js.text

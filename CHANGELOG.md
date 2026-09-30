@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [2.1.5]
+
+### Changed
+
+- The Peer Pressure website teaser now previews forthcoming browser multiplayer
+  with a room code and player lobby, while clearly identifying terminal rooms
+  as the multiplayer option available today.
+
 ## [2.1.4]
 
 ### Added

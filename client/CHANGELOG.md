@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.1.5]
+
+### Changed
+
+- Lockstep release with the server's browser-focused Peer Pressure teaser.
+
 ## [2.1.4]
 
 ### Changed
