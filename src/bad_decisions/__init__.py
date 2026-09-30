@@ -1,3 +1,3 @@
 """Reusable engine and service for fill-in-the-blank party card games."""
 
-__version__ = "2.1.2"
+__version__ = "2.1.3"

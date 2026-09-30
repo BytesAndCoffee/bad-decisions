@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.1.3]
+
+### Fixed
+
+- Peer Pressure retries an action refused for a stale revision only while it
+  remains valid after resynchronizing, preventing delayed input from applying
+  to a different round or room state.
+- The Responsible Adult can leave from the line client's judging prompt, and
+  out-of-range choices such as zero no longer select an unintended decision.
+- Generated WinGet manifests include the required schema headers. The server
+  receives the matching lockstep version.
+
 ## [2.1.2]
 
 ### Fixed

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "bad-decisions-client"
-version = "2.1.2"
+version = "2.1.3"
 description = "Dependency-free terminal client called Regret for Bad Decisions services"
 readme = "README.md"
 requires-python = ">=3.10"

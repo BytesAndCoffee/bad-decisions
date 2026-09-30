@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.1.3]
+
 ### Fixed
 
 - Pretend You're Xyzzy imports now produce plain card text: HTML character
@@ -10,6 +12,10 @@
   fail the import. `scripts/clean_pyx_markup.py` applies the same cleaning to
   already-imported archives, changing only card text and recording the change
   in each pack's version and modifications.
+- Peer Pressure clients retry an action refused for a stale revision only while
+  it remains valid after resynchronizing. The line client also lets the
+  Responsible Adult leave while judging and rejects out-of-range choices.
+- Generated WinGet manifests include the required schema headers.
 
 ### Changed
 
