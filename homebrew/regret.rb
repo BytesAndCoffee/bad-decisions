@@ -9,8 +9,8 @@ class Regret < Formula
 
   desc "Terminal client for Bad Decisions, an unofficial fan-made party card game"
   homepage "https://github.com/BytesAndCoffee/bad-decisions"
-  url "https://files.pythonhosted.org/packages/cf/7d/905c96c16f8058026c3c0c99f1235b429deaeea844e9afd53442a51cc5a3/bad_decisions_client-2.2.0.tar.gz"
-  sha256 "bd72b53c025acefd728b589880d93a891ffd0cc53e420e3aeea4eb68a138d91d"
+  url "https://files.pythonhosted.org/packages/1a/37/c9f61e8d41ef4c5021ab8d0eaaabfb8d3e87cdad15b30806e7867dd85228/bad_decisions_client-2.2.1.tar.gz"
+  sha256 "91fe616f5d4ae780f028d6ee059ee7415238aa445e1c5b7c2bf1e28134d61d48"
   license "MIT"
 
   depends_on "python@3.13"
