@@ -56,6 +56,14 @@ overengineering is part of the joke.
 
 ## How the bad decisions travel
 
+A 100-second tour of the architecture, the CardDeck format, the engine, the
+Peer Pressure protocol, and how releases roll back:
+
+
+https://github.com/user-attachments/assets/1f42c093-984e-4eaf-a6e4-36db9eba592d
+
+
+
 ```mermaid
 flowchart TB
     subgraph distribution["1 · PACK DISTRIBUTION"]
