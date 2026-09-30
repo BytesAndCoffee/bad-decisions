@@ -2,10 +2,11 @@
 
 Usage: python scripts/update_homebrew_formula.py 1.8.6
 
-Run it after the release is on PyPI. It rewrites only the formula's own url and
-sha256 (resource blocks, if the client ever needs one again, are left alone; `brew
-update-python-resources` refreshes them). Then test the formula and copy it to
-the tap, as docs/RELEASING.md describes.
+Run it after the release is on PyPI. It rewrites the formula's own url and
+sha256 and resets any formula revision carried by the previous upstream
+version. Resource blocks are left alone; `brew update-python-resources`
+refreshes them. Then test the formula and copy it to the tap, as
+docs/RELEASING.md describes.
 """
 
 from __future__ import annotations
@@ -45,7 +46,9 @@ def rewrite(formula: str, url: str, digest: str) -> str:
     match = HEAD_RE.match(head)
     if not match:
         raise ValueError("formula has no top-level url and sha256 to update")
-    return match.group("before") + url + match.group("middle") + digest + match.group("after") + formula[len(head):]
+    updated_head = match.group("before") + url + match.group("middle") + digest + match.group("after")
+    updated_head = re.sub(r"^  revision \d+\n", "", updated_head, count=1, flags=re.M)
+    return updated_head + formula[len(head):]
 
 
 def main(argv: list[str]) -> int:

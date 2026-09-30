@@ -50,6 +50,9 @@ def test_api_success_metadata_and_cache():
         assert 'id="indexed-packs-modal"' in web.text
         assert 'id="indexed-pack-options"' in web.text
         assert '<select id="indexed-packs"' not in web.text
+        assert 'id="peer-pressure-title"' in web.text
+        assert "regret together ROOM --tui" in web.text
+        assert "ephemeral multiplayer room" in web.text
         assert 'let indexedSelection = new Set();' in app_js.text
         assert 'indexedSelection = new Set(indexedDraft)' in app_js.text
         assert 'return [...selected, ...indexedSelection];' in app_js.text
@@ -58,6 +61,7 @@ def test_api_success_metadata_and_cache():
         assert "contain: layout paint" in style.text
         assert "--orange: #b85618; --orange-dark: #78341f" in style.text
         assert ".prompt-card" in style.text and "background: var(--orange)" in style.text
+        assert ".peer-pressure-teaser" in style.text
         favicon = client.get("/web/favicon.svg")
         assert favicon.headers["content-type"].startswith("image/svg+xml")
         packs = client.get("/v2/packs").json()

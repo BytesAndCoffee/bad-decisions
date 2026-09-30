@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.4]
+
+### Changed
+
+- Lockstep release with the server's Peer Pressure website teaser and
+  Homebrew formula updater correction.
+
 ## [2.1.3]
 
 ### Fixed

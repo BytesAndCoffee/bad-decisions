@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+## [2.1.4]
+
+### Added
+
+- The browser client now teases Peer Pressure multiplayer with the Regret TUI
+  command and a link to the multiplayer API documentation.
+
+### Fixed
+
+- The Homebrew formula updater now clears formula-only revisions when moving
+  to a new upstream release.
+
 ## [2.1.3]
 
 ### Fixed

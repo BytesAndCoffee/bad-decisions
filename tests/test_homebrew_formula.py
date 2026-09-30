@@ -25,7 +25,7 @@ def test_formula_installs_the_client_sdist_with_its_manpage_and_tests_it():
     assert re.search(r'^  url "https://files\.pythonhosted\.org/\S+/bad_decisions_client-\d+\.\d+\.\d+\.tar\.gz"$', FORMULA, re.M)
     assert "virtualenv_install_with_resources" in FORMULA  # links share/man/man1/regret.1
     assert 'license "MIT"' in FORMULA
-    assert "revision 1" in FORMULA, "2.1.0 users must receive the newly bundled TUI on upgrade"
+    assert not re.search(r"^  revision ", FORMULA, re.M), "a new upstream version resets the formula revision"
     for dependency in ("linkify-it-py", "markdown-it-py", "mdit-py-plugins", "mdurl", "platformdirs", "pygments", "rich", "textual", "typing-extensions"):
         assert f'resource "{dependency}"' in FORMULA
     assert FORMULA.count('  resource "') == 9
@@ -35,12 +35,12 @@ def test_formula_installs_the_client_sdist_with_its_manpage_and_tests_it():
     assert "Cards Against" not in FORMULA, "unofficial fan project: no trade names in the description"
 
 
-def test_rewrite_changes_only_the_formula_url_and_digest():
-    updated = updater.rewrite(FORMULA, NEW_URL, NEW_SHA)
+def test_rewrite_changes_the_formula_url_and_digest_and_resets_revision():
+    formula = FORMULA.replace('  license "MIT"\n', '  license "MIT"\n  revision 7\n')
+    updated = updater.rewrite(formula, NEW_URL, NEW_SHA)
     assert f'url "{NEW_URL}"' in updated and f'sha256 "{NEW_SHA}"' in updated
-    changed = [(old, new) for old, new in zip(FORMULA.splitlines(), updated.splitlines()) if old != new]
-    assert len(changed) == 2 and all(old.startswith(("  url ", "  sha256 ")) for old, _new in changed)
-    assert updated.count("\n") == FORMULA.count("\n")
+    assert not re.search(r"^  revision ", updated, re.M)
+    assert updated.count("\n") == formula.count("\n") - 1
 
 
 def test_formula_tui_resource_versions_match_the_extras_lock():
