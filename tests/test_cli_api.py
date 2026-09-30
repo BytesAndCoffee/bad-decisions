@@ -54,6 +54,7 @@ def test_api_success_metadata_and_cache():
         assert "PEER PRESSURE · COMING TO THE WEB" in web.text
         assert "Web rooms coming soon" in web.text
         assert "Terminal rooms are available now" in web.text
+        assert 'href="https://github.com/BytesAndCoffee/bad-decisions/blob/main/docs/PEER_PRESSURE.md"' in web.text
         assert "regret together ROOM --tui" not in web.text
         assert 'let indexedSelection = new Set();' in app_js.text
         assert 'indexedSelection = new Set(indexedDraft)' in app_js.text

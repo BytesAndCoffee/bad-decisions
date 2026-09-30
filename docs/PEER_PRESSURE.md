@@ -1,19 +1,65 @@
 # Peer Pressure multiplayer
 
 Peer Pressure adds ephemeral, server-authoritative multiplayer to Bad
-Decisions. Start or rejoin a room from the terminal client:
+Decisions. Pick a room ID, share it with the other players, and run the same
+command on every computer:
 
 ```bash
 regret together ohno --name Michael
 ```
 
-For a full-screen Textual table, install the optional client extra and add
-`--tui`:
+The first person to use a new room ID creates the room. Later players join it;
+returning players rejoin their existing seats while the room is alive. Add
+`--tui` for the full-screen table:
+
+```bash
+regret together ohno --name Michael --tui
+```
+
+No account or API key is required for the free BytesAndCoffee-hosted service.
+
+## Install on macOS or Linux
+
+Homebrew is the recommended installation and includes the full-screen TUI:
+
+```bash
+brew install bytesandcoffee/tap/regret
+regret doctor
+regret together ohno --name Michael --tui
+```
+
+Or install the TUI-enabled client with Python 3.10+ and pipx:
 
 ```bash
 pipx install 'bad-decisions-client[tui]'
+regret doctor
 regret together ohno --name Michael --tui
 ```
+
+Omit `[tui]` and `--tui` for the dependency-free, line-oriented interface.
+
+## Install on Windows
+
+Install Python 3.10 or newer, then install pipx and Regret from PowerShell:
+
+```powershell
+py -m pip install --user pipx
+py -m pipx ensurepath
+```
+
+Restart PowerShell so the updated `PATH` takes effect, then run:
+
+```powershell
+pipx install "bad-decisions-client[tui]"
+regret doctor
+regret together ohno --name Michael --tui
+```
+
+A self-contained `regret.exe` is also attached to each GitHub release. A
+WinGet installation is coming soon; until its community listing is approved,
+pipx is the supported Windows package-manager path.
+
+## At the table
 
 The TUI follows the same authenticated revision protocol as the line-oriented
 client. It keeps the prompt, private hand, anonymous judging choices, players,

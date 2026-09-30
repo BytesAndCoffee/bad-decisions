@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.6]
+
+### Documentation
+
+- Added OS-specific Peer Pressure installation and room-usage instructions;
+  the server receives the matching lockstep version.
+
 ## [2.1.5]
 
 ### Changed

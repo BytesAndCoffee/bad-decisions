@@ -3,6 +3,7 @@
 - [x] Reduced AWS fixed costs with one task, scale-to-two, one-AZ endpoints, and private compute retained.
 - [x] Build and smoke-test a self-contained Windows Regret executable in GitHub Actions, with one checksummed release ZIP feeding generated WinGet and Chocolatey packages.
 - [x] Reframe the website's Peer Pressure teaser as a preview of browser multiplayer, while pointing to terminal rooms as the available option today.
+- [x] Point the web teaser to an OS-specific Peer Pressure client guide for Homebrew and pipx, with WinGet clearly marked as pending.
 - [x] Replaced the legacy CDK stack with a compatibility shim so the missing-`curl` ECS health-check failure cannot recur.
 - [x] Validate the native v2.1.2 client and package manifests through WSL Win32 interop; add the schema headers requested by WinGet.
 

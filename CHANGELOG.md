@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [2.1.6]
+
+### Documentation
+
+- The website's terminal-room link now opens a dedicated Peer Pressure guide
+  with Homebrew and pipx instructions for macOS and Linux, pipx instructions
+  for Windows, and WinGet accurately marked as coming soon.
+
 ## [2.1.5]
 
 ### Changed
