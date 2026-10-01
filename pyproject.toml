@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling==1.27.0"]
+requires = ["hatchling==1.32.4"]
 build-backend = "hatchling.build"
 
 [project]
@@ -23,18 +23,18 @@ classifiers = [
   "Topic :: Games/Entertainment :: Board Games",
 ]
 dependencies = [
-  "fastapi==0.116.1",
-  "pydantic==2.11.7",
-  "uvicorn==0.35.0",
+  "fastapi==0.141.1",
+  "pydantic==2.13.5",
+  "uvicorn==0.54.0",
 ]
 
 [project.optional-dependencies]
 # Optional features; the server itself needs none of them.
-aws = ["boto3==1.40.75"]
-aws-deploy = ["boto3==1.40.75", "aws-cdk-lib==2.231.0", "constructs>=10.0.0,<11.0.0"]
+aws = ["boto3==1.43.104"]
+aws-deploy = ["boto3==1.43.104", "aws-cdk-lib==2.271.0", "constructs>=10.0.0,<11.0.0"]
 tui = ["textual==8.2.8"]
 dev = [
-  "build==1.3.0",
+  "build==1.6.1",
   "httpx==0.28.1",
   "pytest==9.1.1",
 ]
