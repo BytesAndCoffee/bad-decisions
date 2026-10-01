@@ -182,6 +182,38 @@ def _request_json(url: str, *, timeout: float, method: str="GET", payload: dict[
     except (URLError,TimeoutError,ConnectionError,http.client.HTTPException) as exc:
         raise RuntimeError(f"Cannot reach API: {exc.reason if isinstance(exc,URLError) else exc}") from exc
 
+def _event_source(url: str, headers: dict[str,str], stop_event) -> Any:
+    request=Request(url,headers={"Accept":"text/event-stream","User-Agent":f"bad-decisions-client/{__version__}",**headers})
+    try:
+        with urlopen(request,timeout=30) as response:
+            if not str(response.headers.get("Content-Type","")).lower().startswith("text/event-stream"):
+                raise RuntimeError("API returned something other than a Peer Pressure event stream")
+            event="message"; data=[]; size=0
+            for raw in response:
+                if stop_event.is_set(): return
+                size += len(raw)
+                if size > MAX_RESPONSE_BYTES: raise RuntimeError("Peer Pressure event is too large")
+                try: line=raw.decode("utf-8").rstrip("\r\n")
+                except UnicodeDecodeError as exc: raise RuntimeError("Peer Pressure event stream is not UTF-8") from exc
+                if not line:
+                    if data:
+                        try: payload=json.loads("\n".join(data))
+                        except json.JSONDecodeError as exc: raise RuntimeError("Peer Pressure event stream returned invalid JSON") from exc
+                        if event=="state": yield payload
+                        elif event=="error": raise RuntimeError(f"{payload.get('code','stream_error')}: {payload.get('message','The room stream ended')}")
+                    event="message"; data=[]; size=0; continue
+                if line.startswith(":"): continue
+                field,separator,value=line.partition(":")
+                if separator and value.startswith(" "): value=value[1:]
+                if field=="event": event=value
+                elif field=="data": data.append(value)
+    except HTTPError as exc:
+        try: body=json.loads(exc.read(MAX_RESPONSE_BYTES).decode("utf-8")); error=body.get("error",{})
+        except (UnicodeDecodeError,json.JSONDecodeError,OSError,http.client.HTTPException): error={}
+        raise RuntimeError(f"{error.get('code')}: {error.get('message')}" if error.get("code") else f"HTTP {exc.code}: {exc.reason}") from exc
+    except (URLError,TimeoutError,ConnectionError,http.client.HTTPException) as exc:
+        raise RuntimeError(f"Cannot reach API: {exc.reason if isinstance(exc,URLError) else exc}") from exc
+
 def _feedback_url(api_url: str, path: str) -> str:
     """Resolve the server's feedback path against the API origin; it already includes any public prefix."""
     base=_base_url(api_url)
@@ -291,7 +323,7 @@ def _together(argv: Sequence[str]) -> int:
     if not name:
         print("regret: --name is required when no saved room session exists",file=sys.stderr)
         return 1
-    client=TogetherClient(base,args.room,args.timeout,_request_json)
+    client=TogetherClient(base,args.room,args.timeout,_request_json,_event_source)
     try:
         try:
             joined=client.join(name,saved)

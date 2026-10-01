@@ -56,6 +56,13 @@ def test_ci_runs_on_main_and_pull_requests_with_the_full_gate():
     assert "\"3.10\"" in CI, "the client supports Python 3.10, its minimum"
 
 
+def test_ci_runs_the_four_player_sse_browser_regression():
+    browser = _job(CI, "peer-pressure-browser")
+    assert "playwright@1.55.0" in browser
+    assert "tests/browser/peer_pressure_sse.js" in browser
+    assert "BAD_DECISIONS_RATE_LIMIT_PER_MINUTE" in browser
+
+
 def test_release_triggers_only_on_version_tags():
     trigger = RELEASE.split("permissions:")[0]
     assert re.search(r'tags: \["v\[0-9\]\+\.\[0-9\]\+\.\[0-9\]\+"\]', trigger)

@@ -1,4 +1,4 @@
-.TH REGRET 1 "2026-09-30" "Bad Decisions Client 2.2.2" "User Commands"
+.TH REGRET 1 "2026-10-01" "Bad Decisions Client 2.3.0" "User Commands"
 .SH NAME
 regret \- deal rounds from a Bad Decisions API
 .SH SYNOPSIS
@@ -91,7 +91,7 @@ Disable voting and vote telemetry entirely.
 Aliases for enjoy and regret.
 .TP
 .BI "together " room
-Join or reconnect to an ephemeral Peer Pressure multiplayer room. The first participant is the initial Responsible Adult. The client maintains authenticated heartbeats, submits private answers, and resynchronizes stale room state automatically. Use --name when no saved room session exists. --heartbeat sets the heartbeat interval in seconds (default 5).
+Join or reconnect to an ephemeral Peer Pressure multiplayer room. The first participant is the initial Responsible Adult. The client receives private room projections over an authenticated Server-Sent Events stream, maintains separate presence heartbeats, submits private answers, and resynchronizes stale mutations automatically. Use --name when no saved room session exists. --heartbeat sets the presence-heartbeat interval in seconds (default 5); it does not control live-update delivery.
 .PP
 Add
 .B --tui

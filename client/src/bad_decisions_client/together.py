@@ -7,14 +7,16 @@ import threading
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterator
 from urllib.parse import quote
 
 SESSION_PATH = Path(os.path.expanduser("~")) / ".regret-peer-pressure.json"
 # Total sends of one action when the server keeps answering stale_revision.
 STALE_RETRIES = 3
+TERMINAL_STREAM_ERRORS = ("invalid_session:", "room_expired:", "room_not_found:")
 
 StillValid = Callable[[dict[str, Any]], bool]
+EventSource = Callable[[str, dict[str, str], threading.Event], Iterator[dict[str, Any]]]
 
 
 def is_responsible_adult(state: dict[str, Any]) -> bool:
@@ -109,11 +111,12 @@ def save_session(api_url: str, room: str, session: dict[str, str], atomic_json: 
 
 
 class TogetherClient:
-    def __init__(self, api_url: str, room: str, timeout: float, request_json: Callable[..., tuple[Any, Any]]):
+    def __init__(self, api_url: str, room: str, timeout: float, request_json: Callable[..., tuple[Any, Any]], event_source: EventSource | None = None):
         self.api_url = api_url.rstrip("/")
         self.room = room
         self.timeout = timeout
         self.request_json = request_json
+        self.event_source = event_source
         self.player_id = ""
         self.session_token = ""
         self.revision = 0
@@ -160,10 +163,16 @@ class TogetherClient:
             f"{self.endpoint}/heartbeat", timeout=self.timeout, method="POST",
             payload={"revision": revision}, headers=self._headers(),
         )
-        if response.get("resync"):
-            self.sync()
-            return True
-        return False
+        return bool(response.get("resync"))
+
+    def events(self, stop_event: threading.Event) -> Iterator[dict[str, Any]]:
+        if self.event_source is None:
+            raise RuntimeError("Peer Pressure live updates are unavailable")
+        for payload in self.event_source(f"{self.endpoint}/events", self._headers(), stop_event):
+            if stop_event.is_set():
+                return
+            self._apply(payload)
+            yield self.state
 
     def mutate(self, action: str, *, still_valid: StillValid | None = None, **payload: Any) -> dict[str, Any]:
         """Send one action.
@@ -210,30 +219,58 @@ class TogetherClient:
         return response
 
 
-class Heartbeat:
-    def __init__(self, client: TogetherClient, interval: float):
+class PeerConnection:
+    def __init__(self, client: TogetherClient, interval: float, on_state: Callable[[dict[str, Any]], None] | None = None, *, heartbeats: bool = True):
         self.client = client
         self.interval = interval
+        self.on_state = on_state
+        self.send_heartbeats = heartbeats
         self.stop_event = threading.Event()
         self.changed = threading.Event()
         self.error: Exception | None = None
-        self.thread = threading.Thread(target=self._run, name="regret-peer-pressure-heartbeat", daemon=True)
+        self.heartbeat_thread = threading.Thread(target=self._heartbeats, name="regret-peer-pressure-heartbeat", daemon=True)
+        self.events_thread = threading.Thread(target=self._events, name="regret-peer-pressure-events", daemon=True)
 
-    def _run(self) -> None:
+    def _heartbeats(self) -> None:
         while not self.stop_event.wait(self.interval):
             try:
-                if self.client.heartbeat():
-                    self.changed.set()
+                self.client.heartbeat()
             except Exception as exc:
                 self.error = exc
+                if str(exc).startswith(TERMINAL_STREAM_ERRORS):
+                    self.stop_event.set()
+                    return
+
+    def _events(self) -> None:
+        delay = 0.5
+        while not self.stop_event.is_set():
+            try:
+                for state in self.client.events(self.stop_event):
+                    self.error = None
+                    self.changed.set()
+                    if self.on_state is not None:
+                        self.on_state(state)
+                delay = 0.5
+            except Exception as exc:
+                self.error = exc
+                if str(exc).startswith(TERMINAL_STREAM_ERRORS):
+                    self.stop_event.set()
+                    return
+            if self.stop_event.wait(delay):
+                return
+            delay = min(delay * 2, 5.0)
 
     def __enter__(self):
-        self.thread.start()
+        if self.send_heartbeats:
+            self.heartbeat_thread.start()
+        self.events_thread.start()
         return self
 
     def __exit__(self, *_args):
         self.stop_event.set()
-        self.thread.join(timeout=min(self.interval, 1.0))
+        if self.send_heartbeats:
+            self.heartbeat_thread.join(timeout=min(self.interval, 1.0))
+        self.events_thread.join(timeout=1.0)
 
 
 def render(state: dict[str, Any]) -> None:
@@ -273,9 +310,12 @@ class _EndRequested(Exception):
 
 def run_together(client: TogetherClient, input_: Callable[[str], str] = input, heartbeat_interval: float = 5.0) -> int:
     print("Giving in to Peer Pressure…")
-    with Heartbeat(client, heartbeat_interval) as heartbeat:
+    with PeerConnection(client, heartbeat_interval) as connection:
         while True:
-            state = client.sync()
+            if connection.error is not None and str(connection.error).startswith(TERMINAL_STREAM_ERRORS):
+                print(f"Peer Pressure faltered: {connection.error}", file=sys.stderr)
+                break
+            state = client.state
             render(state)
             room_state = state["room"]["state"]
             you = state["you"]
@@ -350,7 +390,7 @@ def run_together(client: TogetherClient, input_: Callable[[str], str] = input, h
             except RuntimeError as exc:
                 print(f"Peer Pressure faltered: {exc}", file=sys.stderr)
                 time.sleep(min(heartbeat_interval, 1.0))
-            if heartbeat.changed.is_set():
-                heartbeat.changed.clear()
+            if connection.changed.is_set():
+                connection.changed.clear()
     print("Regret alone.")
     return 0

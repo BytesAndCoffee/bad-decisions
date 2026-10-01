@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import json
@@ -16,7 +17,7 @@ from typing import Annotated, Any
 from fastapi import FastAPI, Header, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.routing import Match
@@ -50,6 +51,13 @@ WEB_ASSETS = {
 WEB_DOCUMENTS = ("index.html", "together.html")
 PACK_CACHE = "public, max-age=300"
 POOL_CACHE_SIZE = 256  # distinct selectors remembered; invalid ones are never cached
+
+
+def sse_event(event: str, payload: dict[str, Any], *, event_id: int | None = None) -> str:
+    """Encode one JSON Server-Sent Event without permitting line injection."""
+    data = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    identifier = f"id: {event_id}\n" if event_id is not None else ""
+    return f"{identifier}event: {event}\ndata: {data}\n\n"
 
 
 # --- request bodies -------------------------------------------------------------
@@ -514,6 +522,48 @@ def create_app() -> FastAPI:
     @app.post(f"{rooms}/{{room}}/sync", responses=ERRORS)
     def sync_peer_room(room: str, request: Request, authorization: Annotated[str | None, Header()] = None):
         return peer_service(request).sync(room, None, peer_token(authorization))
+
+    @app.get(
+        f"{rooms}/{{room}}/events",
+        responses={200: {"content": {"text/event-stream": {}}}, **ERRORS},
+    )
+    async def peer_room_events(room: str, request: Request, authorization: Annotated[str | None, Header()] = None):
+        """Stream this player's authoritative room projection whenever its revision changes."""
+        service = peer_service(request)
+        token = peer_token(authorization)
+        initial = await asyncio.to_thread(service.project, room, None, token)
+
+        async def stream():
+            state = initial
+            revision = -1
+            keepalive_at = time.monotonic() + 15
+            yield "retry: 2000\n\n"
+            while not await request.is_disconnected():
+                current = int(state["room"]["revision"])
+                if current != revision:
+                    revision = current
+                    yield sse_event("state", {"revision": revision, "state": state}, event_id=revision)
+                    keepalive_at = time.monotonic() + 15
+                await asyncio.sleep(0.5)
+                try:
+                    changed = await asyncio.to_thread(service.watch, room, None, token, revision)
+                    if changed is not None:
+                        state = changed
+                except PeerPressureError as exc:
+                    yield sse_event("error", {"code": exc.reason, "message": exc.message})
+                    return
+                if time.monotonic() >= keepalive_at:
+                    yield ": keepalive\n\n"
+                    keepalive_at = time.monotonic() + 15
+
+        return StreamingResponse(
+            stream(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-store",
+                "X-Accel-Buffering": "no",
+            },
+        )
 
     @app.post(f"{rooms}/{{room}}/heartbeat", responses=ERRORS)
     def heartbeat_peer_room(room: str, body: HeartbeatInput, request: Request, authorization: Annotated[str | None, Header()] = None):

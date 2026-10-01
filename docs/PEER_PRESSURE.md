@@ -137,27 +137,35 @@ hexadecimal digits, unique per player) and the room revision it expects. SQLite
 returns the original result, so retries after a lost response are safe. A stale
 revision is refused with HTTP 409 `stale_revision`, whose error details carry
 `resync: true` and the current `revision`. Regret performs full state
-synchronization rather than replaying missed events.
+synchronization before deciding whether a refused action is still valid.
 
 ## Synchronization
 
-Each room has one revision number that only increases. Clients never merge
-changes: they send the revision they last saw, and on any mismatch they fetch
-the full state again rather than replaying missed events. Joining or syncing
-returns `{room, revision, state}` (joining also returns the `player_id` and
-`session_token`); a change returns `{request_id, revision}`; a heartbeat
-returns `{revision, resync}` and also keeps the player marked present. Regret
-runs the heartbeat in the background while `regret together` is open and
-resynchronizes whenever `resync` is true or a change is refused as
-`stale_revision`. Refusals use the API's standard error envelope, not a
-separate message format. Server-sent events remain a future option and will use
-the revision as the event ID.
+Each room has one revision number that only increases. After joining, clients
+open the authenticated `GET .../events` Server-Sent Events stream. Every
+`state` event has the revision as its event ID and carries that player's full,
+private projection; clients replace their local projection rather than merging
+patches. The stream sends comment keepalives and reconnects with bounded
+backoff. Regret implements the stream with Python's standard library, so the
+line client remains dependency-free; the browser uses an authenticated
+streaming `fetch` because the native `EventSource` API cannot attach the bearer
+header.
+
+Joining or explicitly syncing returns `{room, revision, state}` (joining also
+returns the `player_id` and `session_token`); a change returns
+`{request_id, revision}`. Heartbeats remain separate and return
+`{revision, resync}` because they are presence leases, not the state-delivery
+transport. A stale mutation still triggers one authoritative synchronization
+before Regret determines whether it is safe to retry. Refusals use the API's
+standard error envelope; an error after an SSE response has begun is delivered
+as an `error` event and closes that stream.
 
 The versioned HTTP surface is under `/v2/peer-pressure/rooms`. A bearer
 session token alone identifies its player. Joining with the saved token
 rejoins that player; mutations carry a request ID and expected revision.
-Heartbeats return the authoritative revision and a `resync` signal. The
-surface provides room creation/join, synchronization, heartbeat, leave,
+Heartbeats return the authoritative revision and a `resync` signal; the SSE
+stream is the normal state-delivery path. The surface provides room
+creation/join, events, synchronization, heartbeat, leave,
 start, submit, judge, advance, end, and state operations. OpenAPI at `/docs`
 is the authoritative transport reference. Errors use the same stable JSON
 envelope as the rest of the API.

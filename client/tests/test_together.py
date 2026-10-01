@@ -51,7 +51,7 @@ def test_rejoin_sends_only_the_saved_token():
     assert calls[0]["headers"] == {"Authorization": "Bearer token"}
 
 
-def test_heartbeat_resyncs_when_the_server_says_so():
+def test_heartbeat_reports_revision_drift_without_resyncing():
     calls = []
 
     def request_json(url, **kwargs):
@@ -64,7 +64,27 @@ def test_heartbeat_resyncs_when_the_server_says_so():
     client = TogetherClient("https://example.invalid", "ohno", 4, request_json)
     client.session_token, client.revision = "token", 4
     assert client.heartbeat() is True
-    assert calls[-1].endswith("/sync") and client.revision == 5
+    assert calls == ["https://example.invalid/v2/peer-pressure/rooms/ohno/heartbeat"]
+    assert client.revision == 4
+
+
+def test_event_stream_applies_personalized_state():
+    streamed = {
+        "revision": 5,
+        "state": {"room": {"revision": 5}, "you": {"id": "player_1"}},
+    }
+    seen = []
+
+    def events(url, headers, _stop):
+        seen.append((url, headers))
+        yield streamed
+
+    client = TogetherClient("https://example.invalid", "ohno", 4, lambda *_args, **_kwargs: ({}, {}), events)
+    client.session_token, client.revision = "token", 4
+    states = list(client.events(__import__("threading").Event()))
+    assert states == [streamed["state"]]
+    assert client.revision == 5
+    assert seen == [("https://example.invalid/v2/peer-pressure/rooms/ohno/events", {"Authorization": "Bearer token"})]
 
 
 def test_lost_ack_retries_the_same_idempotency_key():

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "bad-decisions"
-version = "2.2.2"
+version = "2.3.0"
 description = "Absurdly overengineered open-source party game engine and REST service"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -48,7 +48,7 @@ Documentation = "https://github.com/BytesAndCoffee/bad-decisions/tree/main/docs"
 Source = "https://github.com/BytesAndCoffee/bad-decisions"
 Issues = "https://github.com/BytesAndCoffee/bad-decisions/issues"
 Changelog = "https://github.com/BytesAndCoffee/bad-decisions/blob/main/CHANGELOG.md"
-Demo = "https://bytes.coffee/bad-decisions/web/"
+Demo = "https://bytes.coffee/bad-decisions/"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/bad_decisions"]

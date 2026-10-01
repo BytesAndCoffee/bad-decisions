@@ -70,6 +70,17 @@ def test_rooms_are_isolated_ephemeral_databases(tmp_path):
     assert "session_token" not in service.sync("first", *credentials(first))["state"]
 
 
+def test_room_watch_returns_only_new_personalized_revisions(tmp_path):
+    service = PeerPressureService(tmp_path, multiplayer_registry(), hand_size=3)
+    alice = service.join("watch", "Alice", create=True)
+    revision = alice["revision"]
+    assert service.watch("watch", *credentials(alice), revision) is None
+    service.join("watch", "Bob")
+    changed = service.watch("watch", *credentials(alice), revision)
+    assert changed["room"]["revision"] > revision
+    assert changed["you"]["id"] == alice["player_id"]
+
+
 def test_room_pack_selection_is_immutable_and_limits_every_draw(tmp_path):
     service = PeerPressureService(tmp_path, selectable_registry(), hand_size=3)
     alice = service.join("chosen", "Alice", create=True, packs=["custom"])

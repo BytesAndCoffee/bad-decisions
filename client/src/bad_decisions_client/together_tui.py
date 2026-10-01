@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sys
+import queue
 from typing import Any, Callable
 
 try:
@@ -15,6 +16,7 @@ except ImportError as exc:
     ) from exc
 
 from .together import (
+    PeerConnection,
     TogetherClient,
     always,
     can_advance,
@@ -79,10 +81,11 @@ class PeerPressureApp(App[None]):
     DataTable > .datatable--cursor { background: #78341f; color: #fffbf2; }
     """
 
-    def __init__(self, client: TogetherClient, heartbeat_interval: float = 5.0) -> None:
+    def __init__(self, client: TogetherClient, heartbeat_interval: float = 5.0, event_queue: queue.SimpleQueue | None = None) -> None:
         super().__init__()
         self.client = client
         self.heartbeat_interval = heartbeat_interval
+        self.event_queue = event_queue
         self.state: dict[str, Any] = client.state
         self.selected_cards: list[str] = []
         self.selected_submission: str | None = None
@@ -122,7 +125,21 @@ class PeerPressureApp(App[None]):
         if self.state:
             self._render_state(self.state)
         self.set_interval(self.heartbeat_interval, self._heartbeat_tick)
+        if self.event_queue is not None:
+            self.set_interval(0.1, self._drain_events)
         self._sync("Synchronizing with the table…")
+
+    def _drain_events(self) -> None:
+        if self.event_queue is None:
+            return
+        newest = None
+        while True:
+            try:
+                newest = self.event_queue.get_nowait()
+            except queue.Empty:
+                break
+        if newest is not None:
+            self._render_state(newest)
 
     def _set_message(self, message: str) -> None:
         self.query_one("#instruction", Static).update(Text(message))
@@ -176,22 +193,22 @@ class PeerPressureApp(App[None]):
             self._render_state(state)
 
     def _heartbeat_tick(self) -> None:
-        # Heartbeats run beside player actions so they never block or relabel them.
+        # Heartbeats are presence leases; SSE delivers state changes separately.
         if self._heartbeat_running:
             return
         self._heartbeat_running = True
 
         def task() -> None:
             try:
-                changed = self.client.heartbeat()
+                self.client.heartbeat()
             except Exception as exc:
-                self.call_from_thread(self._heartbeat_finished, False, f"Peer Pressure faltered: {exc}")
+                self.call_from_thread(self._heartbeat_finished, f"Peer Pressure faltered: {exc}")
             else:
-                self.call_from_thread(self._heartbeat_finished, changed, None)
+                self.call_from_thread(self._heartbeat_finished, None)
 
         self.run_worker(task, thread=True, group="peer-pressure-heartbeat")
 
-    def _heartbeat_finished(self, changed: bool, error: str | None) -> None:
+    def _heartbeat_finished(self, error: str | None) -> None:
         self._heartbeat_running = False
         if error:
             self._heartbeat_failed = True
@@ -199,8 +216,6 @@ class PeerPressureApp(App[None]):
                 self._set_message(error)
             return
         recovered, self._heartbeat_failed = self._heartbeat_failed, False
-        if changed:
-            self._render_newest(None)
         if recovered and not self._busy:
             self._set_message(instruction_for(self.state))
 
@@ -381,8 +396,10 @@ class PeerPressureApp(App[None]):
 
 
 def run_together_tui(client: TogetherClient, heartbeat_interval: float = 5.0) -> int:
-    app = PeerPressureApp(client, heartbeat_interval)
-    app.run()
+    events: queue.SimpleQueue = queue.SimpleQueue()
+    app = PeerPressureApp(client, heartbeat_interval, events)
+    with PeerConnection(client, heartbeat_interval, events.put, heartbeats=False):
+        app.run()
     if app.ended:
         print("The room has ended.")
     elif app.leave_error:

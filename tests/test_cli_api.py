@@ -85,6 +85,7 @@ def test_api_success_metadata_and_cache():
         together_js = client.get("/assets/together.js")
         assert together_js.status_code == 200
         assert 'replace(/\\/peerpressure\\/?$/, "/v2")' in together_js.text
+        assert 'pattern="[a-z0-9\\-]+"' in peer_pressure.text
         assert "/peer-pressure/rooms/" in together_js.text
         # A refused or unsent end must not forget the host's session.
         assert 'if(await mutate("end",{},false)){forgetSession();leaveLocal("The room has ended.");}' in together_js.text
@@ -94,6 +95,11 @@ def test_api_success_metadata_and_cache():
         assert "packs:[...selectedPacks]" in together_js.text
         assert "pack.custom===false" in together_js.text
         assert "availablePacks.filter(isIndexedPack)" in together_js.text
+        assert 'fetch(endpoint("/events")' in together_js.text
+        assert 'Accept:"text/event-stream"' in together_js.text
+        assert 'event === "state"' in together_js.text
+        assert "mutationStillValid" in together_js.text
+        assert "attempt < 3" in together_js.text
         together_style = client.get("/assets/together.css")
         assert together_style.status_code == 200
         assert ".game-grid" in together_style.text

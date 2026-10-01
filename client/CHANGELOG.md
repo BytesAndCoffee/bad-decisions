@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+## [2.3.0]
+
+### Changed
+
+- `regret together` now receives personalized room state over authenticated
+  Server-Sent Events while retaining separate presence heartbeats. The stream
+  uses Python's standard library, so the default client remains dependency-free.
+
 ## [2.2.2]
 
 ### Changed

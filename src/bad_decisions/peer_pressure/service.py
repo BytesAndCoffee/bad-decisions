@@ -586,6 +586,21 @@ class PeerPressureService:
                 connection.rollback()
                 raise
 
+    def watch(self, room: str, player_id: str | None, token: str, revision: int) -> dict[str, Any] | None:
+        """Return a fresh private projection only when the room revision changed."""
+        with closing(self._connect(room)) as connection:
+            connection.execute("BEGIN")
+            try:
+                player_id = self._authenticate(connection, player_id, token)["id"]
+                metadata = self._room(connection)
+                self._ensure_live(room, metadata)
+                value = None if metadata["revision"] == revision else self._project(connection, room, player_id)
+                connection.commit()
+                return value
+            except Exception:
+                connection.rollback()
+                raise
+
     def _project(self, connection: sqlite3.Connection, room: str, player_id: str) -> dict[str, Any]:
         metadata = self._room(connection)
         self._ensure_live(room, metadata)

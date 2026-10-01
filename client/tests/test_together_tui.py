@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import queue
 import threading
 
 import pytest
@@ -80,6 +81,17 @@ def test_role_and_phase_instructions_are_projection_driven():
     waiting = state("WAITING", adult=None)
     assert is_responsible_adult(waiting)
     assert instruction_for(waiting).startswith("Start")
+
+
+def test_tui_drains_live_events_to_the_newest_projection(monkeypatch):
+    events = queue.SimpleQueue()
+    app = PeerPressureApp(FakeClient(state()), event_queue=events)
+    seen = []
+    monkeypatch.setattr(app, "_render_state", seen.append)
+    older, newer = state(), state("WAITING", adult=None)
+    events.put(older); events.put(newer)
+    app._drain_events()
+    assert seen == [newer]
 
 
 def test_tui_selects_exact_hand_size_and_submits_privately():

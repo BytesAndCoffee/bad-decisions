@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## [2.3.0] - The pressure is now a stream
+
+### Changed
+
+- Peer Pressure now delivers personalized room state to Regret and the browser
+  through authenticated Server-Sent Events. Heartbeats remain separate as
+  presence leases, and streams reconnect with bounded backoff and keepalives.
+- Browser actions refused because another player advanced the room revision
+  are retried up to three times only while the refreshed state proves the same
+  action is still valid, matching Regret's concurrency behavior.
+- CI now plays a complete four-browser Peer Pressure round over SSE, including
+  concurrent submissions that exercise stale-revision recovery.
+
 ## [2.2.2] - The front door is the front door
 
 ### Changed

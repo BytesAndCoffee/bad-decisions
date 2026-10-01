@@ -139,7 +139,8 @@ regret together ohno --name Michael
 ```
 
 Or use the hosted [browser table](https://bytes.coffee/bad-decisions/peerpressure)
-with no installation.
+with no installation. Both clients receive private room projections over
+authenticated Server-Sent Events; separate heartbeats maintain presence.
 
 The default endpoint is `https://bytes.coffee/bad-decisions`. Override it with
 `--api-url`; local preferences live in protected files under your home

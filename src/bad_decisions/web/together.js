@@ -18,6 +18,8 @@ let selectedCards = [];
 let selectedSubmission = null;
 let busy = false;
 let heartbeatTimer = null;
+let eventController = null;
+let eventStreamOpen = false;
 let availablePacks = [];
 let indexedPacks = [];
 let selectedPacks = new Set();
@@ -96,6 +98,74 @@ function apply(payload) {
   render();
 }
 
+function parseEventBlock(block) {
+  let event = "message";
+  const data = [];
+  for (const line of block.split("\n")) {
+    if (line.startsWith("event:")) event = line.slice(6).trim();
+    else if (line.startsWith("data:")) data.push(line.slice(5).trimStart());
+  }
+  if (!data.length) return;
+  let payload;
+  try { payload = JSON.parse(data.join("\n")); } catch (_) { return; }
+  if (event === "state") {
+    apply(payload);
+    setConnection(true, "At the table. Live updates connected.");
+  } else if (event === "error") {
+    if (["invalid_session","room_expired","room_not_found"].includes(payload.code)) return leaveLocal(payload.message);
+    $("#instruction").textContent = payload.message || "The table stopped sending updates.";
+  }
+}
+
+async function streamEvents(controller) {
+  let delay = 500;
+  while (token && eventController === controller && !controller.signal.aborted) {
+    try {
+      const response = await fetch(endpoint("/events"), {
+        headers:{Accept:"text/event-stream", Authorization:`Bearer ${token}`},
+        cache:"no-store",
+        signal:controller.signal,
+      });
+      if (!response.ok || !response.body) {
+        let payload = {};
+        try { payload = await response.json(); } catch (_) {}
+        const error = new Error(payload.error?.message || `The update stream returned ${response.status}.`);
+        error.code = payload.error?.code;
+        throw error;
+      }
+      if (eventController !== controller || controller.signal.aborted) return;
+      eventStreamOpen = true;
+      delay = 500;
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (!controller.signal.aborted) {
+        const {value, done} = await reader.read();
+        buffer += decoder.decode(value || new Uint8Array(), {stream:!done}).replaceAll("\r\n", "\n");
+        let boundary;
+        while ((boundary = buffer.indexOf("\n\n")) >= 0) {
+          parseEventBlock(buffer.slice(0, boundary));
+          buffer = buffer.slice(boundary + 2);
+        }
+        if (done) { if (eventController === controller) eventStreamOpen = false; break; }
+      }
+    } catch (error) {
+      if (eventController === controller) eventStreamOpen = false;
+      if (controller.signal.aborted) return;
+      if (["invalid_session","room_expired","room_not_found"].includes(error.code)) return leaveLocal(error.message);
+      setConnection(false, "Reconnecting live updates…");
+    }
+    await new Promise((resolve)=>setTimeout(resolve, delay));
+    delay = Math.min(delay * 2, 5000);
+  }
+}
+
+function startEvents() {
+  eventController?.abort();
+  eventController = new AbortController();
+  streamEvents(eventController);
+}
+
 async function join(event) {
   event.preventDefault();
   room = $("#room-input").value.trim().toLowerCase();
@@ -117,9 +187,9 @@ async function join(event) {
     apply(joined);
     const url = new URL(window.location.href); url.searchParams.set("room", room); history.replaceState(null, "", url);
     joinView.hidden = true; tableView.hidden = false;
-    setConnection(true, "At the table.");
+    setConnection(true, "Connecting live updates…");
     heartbeatTimer = window.setInterval(heartbeat, 5000);
-    await sync();
+    startEvents();
   } catch (error) {
     joinStatus.textContent = error.message;
     token = saved?.token || "";
@@ -134,25 +204,45 @@ async function sync() {
 async function heartbeat() {
   if (!token || document.hidden) return;
   try {
-    const pulse = await api("/heartbeat", {body:{revision}});
-    setConnection(true, "At the table.");
-    if (pulse.resync) await sync();
+    await api("/heartbeat", {body:{revision}});
+    if (eventStreamOpen) setConnection(true, "At the table. Live updates connected.");
   } catch (error) {
     setConnection(false, "Connection questionable.");
     if (["invalid_session","room_expired","room_not_found"].includes(error.code)) return leaveLocal(error.message);
   }
 }
 
+function mutationStillValid(action, extra, expectedRound) {
+  if (!state || state.room.round !== expectedRound) return false;
+  if (action === "start") return phase() === "WAITING" && isAdult();
+  if (action === "submit") {
+    const hand = new Set(state.you.hand.map((card)=>card.card_instance_id));
+    return phase() === "PLAYING" && !isAdult() && !state.you.submitted && extra.card_instance_ids.every((id)=>hand.has(id));
+  }
+  if (action === "judge") return phase() === "JUDGING" && isAdult() && state.judging.decisions.some((decision)=>decision.submission_id===extra.submission_id);
+  if (action === "advance") return phase() === "ROUND_RESULT" && isAdult();
+  if (action === "end") return Boolean(state.you.room_owner);
+  return action === "leave";
+}
+
 async function mutate(action, extra = {}, syncAfter = true) {
   if (busy) return false;
   setBusy(true, "Asking the table to make this official…");
   try {
-    try { revision = Number((await api(`/${action}`, {body:{request_id:requestId(), revision, ...extra}})).revision); }
-    catch (error) {
-      if (error.code !== "stale_revision") throw error;
-      await sync();
-      throw new Error("The table moved before you did. Check the new state and try again.");
+    const expectedRound = state.room.round;
+    let accepted = false;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        revision = Number((await api(`/${action}`, {body:{request_id:requestId(), revision, ...extra}})).revision);
+        accepted = true;
+        break;
+      } catch (error) {
+        if (error.code !== "stale_revision") throw error;
+        await sync();
+        if (!mutationStillValid(action, extra, expectedRound)) throw new Error("The table moved before you did. Check the new state and try again.");
+      }
     }
+    if (!accepted) throw new Error("The table keeps moving. Check the new state and try again.");
     selectedCards = []; selectedSubmission = null;
     if (syncAfter) await sync();
     return true;
@@ -233,7 +323,7 @@ function render() {
   $("#result-card").hidden=!state.result; $("#result-text").textContent=state.result?.rendered || ""; $("#winner-text").textContent=state.result ? `Peer pressure worked on ${state.result.winning_player.name}.` : "";
   renderPlayers(); renderChoices(); if (!busy) $("#instruction").textContent=instruction(); renderActions();
 }
-function leaveLocal(message="You left the room.") { clearInterval(heartbeatTimer); token="";state=null;revision=0;tableView.hidden=true;joinView.hidden=false;joinStatus.textContent=message;setConnection(false,"Ready to make acquaintances worse."); }
+function leaveLocal(message="You left the room.") { clearInterval(heartbeatTimer); eventController?.abort(); eventController=null; eventStreamOpen=false; token="";state=null;revision=0;tableView.hidden=true;joinView.hidden=false;joinStatus.textContent=message;setConnection(false,"Ready to make acquaintances worse."); }
 
 joinForm.addEventListener("submit",join);
 $("#start-room").addEventListener("click",()=>mutate("start"));
@@ -253,6 +343,6 @@ $("#select-all-indexed").addEventListener("click",()=>{indexedDraft=new Set(inde
 $("#clear-indexed").addEventListener("click",()=>{indexedDraft.clear();$("#indexed-options").replaceChildren(...indexedPacks.map(indexedPackLabel));});
 packModal.addEventListener("click",(event)=>{if(event.target===packModal)closePackModal();});
 document.addEventListener("keydown",(event)=>{if(event.key==="Escape"&&!packModal.hidden)closePackModal();});
-document.addEventListener("visibilitychange",()=>{if(!document.hidden&&token)sync();});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&token&&!eventController)startEvents();});
 const invited=new URLSearchParams(window.location.search).get("room"); if(invited) $("#room-input").value=invited.toLowerCase();
 loadPacks();

@@ -58,3 +58,36 @@ jobs:
         run: |
           python -m pip install textual -c requirements-extras.lock -c requirements.lock
           PYTHONPATH=client/src python -m pytest client/tests/test_together_tui.py client/tests/test_together.py
+
+  peer-pressure-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.lock
+      - name: Install the server and pinned browser driver
+        run: |
+          python -m pip install -r requirements.lock
+          python -m pip install --no-deps -e .
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Four-player SSE regression
+        env:
+          BAD_DECISIONS_PEER_PRESSURE_DIR: ${{ runner.temp }}/peer-pressure
+          BAD_DECISIONS_RATE_LIMIT_PER_MINUTE: "1000"
+        run: |
+          python -m uvicorn bad_decisions.api:create_app --factory --host 127.0.0.1 --port 8000 >"$RUNNER_TEMP/server.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true; wait "$server_pid" || true' EXIT
+          for attempt in {1..30}; do
+            curl --fail --silent http://127.0.0.1:8000/healthz >/dev/null && break
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:8000/healthz >/dev/null
+          node tests/browser/peer_pressure_sse.js http://127.0.0.1:8000

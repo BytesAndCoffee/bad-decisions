@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import threading
 
 from unittest.mock import patch
 
@@ -19,6 +20,20 @@ class Response:
 
     def __exit__(self, *_args):
         return False
+
+
+class EventResponse(Response):
+    headers = {"Content-Type": "text/event-stream; charset=utf-8"}
+
+    def __iter__(self):
+        return iter(self.payload.encode("utf-8").splitlines(keepends=True))
+
+
+def test_event_source_parses_state_events_and_ignores_keepalives(monkeypatch):
+    payload = ': keepalive\n\nid: 7\nevent: state\ndata: {"revision":7,"state":{"room":{"revision":7}}}\n\n'
+    monkeypatch.setattr(cli, "urlopen", lambda *_args, **_kwargs: EventResponse(payload))
+    events = list(cli._event_source("https://example.invalid/events", {"Authorization": "Bearer secret"}, threading.Event()))
+    assert events == [{"revision": 7, "state": {"room": {"revision": 7}}}]
 
 
 def test_round_prints_only_result(capsys):

@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from bad_decisions import __version__
-from bad_decisions.api import RateLimiter, create_app
+from bad_decisions.api import RateLimiter, create_app, sse_event
 
 
 @pytest.fixture
@@ -26,6 +26,17 @@ def api(tmp_path, monkeypatch):
 
 def request_id() -> str:
     return f"req_{uuid.uuid4().hex}"
+
+
+def test_peer_pressure_sse_encoding_is_json_and_line_safe():
+    encoded = sse_event("state", {"revision": 7, "state": {"note": "one\ntwo"}}, event_id=7)
+    assert encoded.startswith("id: 7\nevent: state\ndata: ") and encoded.endswith("\n\n")
+    assert "one\\ntwo" in encoded and "one\ntwo" not in encoded
+
+
+def test_peer_pressure_events_are_documented_as_sse():
+    operation = create_app().openapi()["paths"]["/v2/peer-pressure/rooms/{room}/events"]["get"]
+    assert "text/event-stream" in operation["responses"]["200"]["content"]
 
 
 @pytest.mark.parametrize(
