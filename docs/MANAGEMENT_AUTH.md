@@ -5,8 +5,8 @@ in from a device that is on your tailnet, carries an allowed tag, and is
 reachable over the tailnet *right now*. A four-message handshake proves that
 liveness. It splits across two channels, the public HTTPS site and a small
 attest service that listens only on the tailnet. The page repeats the
-handshake silently while it stays open, so access lapses within one session
-TTL after the device leaves the tailnet or loses its tag.
+handshake silently while it stays open, so the session is a short lease that
+lapses within one TTL after the device leaves the tailnet or loses its tag.
 
 The page is read-only. It never imports, edits, or replaces packs; registry
 changes still go only through `bad-decisions pack replace-local` and the root
@@ -22,7 +22,7 @@ activator.
   tailnet); a malicious website opened in a browser on an allowed device; and
   replayed, forged, or tampered handshake messages.
 - **Not provided:** proof of which human is at the keyboard, or protection for
-  a session cookie copied off a device. The short TTL limits how long a
+  a session cookie copied off a device. The short lease limits how long a
   copied cookie stays useful.
 
 ## Parties and channels
@@ -34,7 +34,17 @@ activator.
 | **Client** | `manage.js` in the browser, using only WebCrypto | both |
 
 The two processes share one SQLite database for challenges and sessions, so
-every worker sees the same state.
+every worker sees the same state. The attest service asks `tailscaled` about
+peers through its LocalAPI socket rather than running the `tailscale` command.
+
+## What each message establishes
+
+| Step | Direction | Establishes |
+|---|---|---|
+| 1 | public app → browser | Server freshness, and binding of the challenge to this browser |
+| 2 | browser → attest service | The browser can send on the tailnet now, and holds `C` |
+| 3 | attest service → browser | The browser can receive on the tailnet now, from a node that passed authorization |
+| 4 | browser → public app | The same browser completed the whole exchange |
 
 ## Values and encoding
 
@@ -42,15 +52,42 @@ every worker sees the same state.
 |---|---|---|---|
 | `cid` | 16 bytes | server | Opaque challenge ID: tells the server which `C` and `S` to use |
 | `C` | 32 bytes | server | Challenge; sent only over HTTPS, never over the tailnet |
-| `S` | 32 bytes | server | Per-challenge secret; sent only over the tailnet, and only encrypted |
+| `S` | 32 bytes | server | Per-challenge secret; disclosed only inside H₂ |
 | `N` | 32 bytes | client | Client nonce: freshness the client can check for itself |
 | `IP` | 16 bytes | server | The client's tailnet address; IPv4 in IPv6-mapped form |
 
-Every value is random, single-use, and fixed-length. Each MAC input starts with
-a distinct version label (`bd-mgmt/v1/…`), so no concatenation can be read two
-ways, a MAC from one step can't stand in for another, and a future protocol
-version can't be confused with this one. JSON carries bytes as unpadded
-base64url. `HMAC` means HMAC-SHA256.
+Every value is random, single-use, and fixed-length. Each MAC input and each
+authenticated-data string starts with a distinct version label
+(`bd-mgmt/v1/…`), so no concatenation can be read two ways, a value from one
+step can't stand in for another, and a future protocol version can't be
+confused with this one. JSON carries bytes as unpadded base64url. `HMAC` means
+HMAC-SHA256.
+
+## Challenge states
+
+Each challenge row moves through these states:
+
+```
+pending ──attest──▶ attested ──redeem──▶ redeemed
+   │                    │
+   └── any failure ─────┴──▶ burned
+```
+
+- Every transition is a single conditional `UPDATE … WHERE cid = ? AND status
+  = '<expected>'` that must change exactly one row. That is the concurrency
+  protection: if two attest or two redeem requests race, only one can win.
+- Expiry is a time comparison, not a stored state. A row past its deadline is
+  treated as dead and removed by cleanup.
+- Any failed check burns the challenge. The client starts over with a new one.
+- Authorization (the LocalAPI calls) runs *before* the conditional update and
+  outside any transaction. Holding SQLite's write lock across a LocalAPI call
+  would block every other writer, and the conditional update already makes
+  the transition safe without it.
+
+The challenge row holds `cid`, `C`, `S`, the state cookie's hash, the status,
+and the attestation record (`attested_ip`, `attested_node_id`,
+`attested_tags`, `attested_at`) plus its deadlines. Sessions live in their own
+table because they outlive any one challenge.
 
 ## The handshake
 
@@ -60,8 +97,8 @@ base64url. `HMAC` means HMAC-SHA256.
    |<-------- {cid, C} + state cookie|                                  |
    |                                                                    |
    |  2. POST /attest {cid, N, H1}  ----------------------------------->|
-   |                                     checks: Origin, Host, H1,      |
-   |                                     peer IP, status, whois, tags   |
+   |                                     checks: Origin, Host, cid, H1, |
+   |                                     socket peer, node, tags        |
    |<------------------------------------------------------- {H2}  3.  |
    |                                                                    |
    |  4. POST redeem {cid, R} + state cookie -->|                       |
@@ -70,16 +107,16 @@ base64url. `HMAC` means HMAC-SHA256.
 
 ### 1. Challenge (HTTPS, server to client)
 
-`POST /v2/manage/auth/challenge` creates `cid`, `C`, and `S`, stores them with
-a 30-second deadline for step 2, and returns `{cid, C}`. It also sets a state
-cookie (`HttpOnly`, `Secure`, `SameSite=Strict`, scoped to the auth path),
-whose hash is stored with the challenge.
+`POST /v2/manage/auth/challenge` creates `cid`, `C`, and `S`, stores them as
+`pending` with a 30-second deadline for step 2, and returns `{cid, C}`. It also
+sets a state cookie (`HttpOnly`, `Secure`, `SameSite=Strict`, scoped to the
+auth path), whose hash is stored with the challenge.
 
 **Why it matters:** `C` is fresh and unpredictable, so nothing that follows
 can have been computed before this moment. That gives the server its proof of
-freshness. The state cookie ties the challenge to this one browser, the same
-way OAuth's `state` parameter does, so a challenge issued to anyone else can't
-be redeemed here.
+freshness. The state cookie is browser-instance binding for an outstanding
+challenge: only the browser that received this challenge can redeem it in
+step 4.
 
 ### 2. Attest request (tailnet, client to server)
 
@@ -89,59 +126,62 @@ H1 = HMAC(key=C, "bd-mgmt/v1/h1" ‖ cid ‖ N)
 
 The client picks `N` and sends `{cid, N, H1}` to the attest service as JSON.
 The attest service checks, in this order, and burns the challenge on any
-failure:
+failure that names a real `cid`:
 
 1. **`Origin` is exactly the public site's origin.** Browsers set this header
    and page scripts can't change it.
 2. **`Host` is the attest service's own `ts.net` name**, which defeats DNS
    rebinding (the certificate does too).
-3. **`cid` is pending and inside its window.** The service then marks it
-   attested in the same transaction, so each challenge can be attested once.
+3. **`cid` is `pending` and inside its deadline.**
 4. **`H1` matches**, compared in constant time.
-5. **The peer address is a tailnet address**, taken from the socket, not from
-   any header. The service binds the tailnet IP directly with no proxy in
-   front, so this is the WireGuard-authenticated sender.
-6. **The address is a peer in `tailscale status --json`**, and that peer is not
-   shared in from another tailnet.
-7. **`tailscale whois` reports an allowed tag** (and, if configured, an allowed
-   node ID).
+5. **The socket peer address is a Tailscale address.** It comes from the
+   connection itself; no forwarded-address header is trusted. The service
+   binds the tailnet IP directly with no proxy in front.
+6. **Tailscale identifies that address as a node known to this tailnet**, and
+   confirms it is not a node shared in from another tailnet.
+7. **Tailscale's identity information for that address contains an allowed
+   tag** and, when configured, an allowed node ID.
 
-**Why it matters:** this message proves the client can *send* on the tailnet
-now. H₁ proves the sender holds `C`, which it can only have got from step 1,
-yet `C` itself never crosses the tailnet. Checks 5 to 7 overlap on purpose:
-WireGuard makes the source address unforgeable, `status` confirms it is a
-current peer of this node, and `whois` turns it into an identity that can be
-authorized. Check 1 is the one that stops a malicious website: it shares the
-operator's network position, and without the `Origin` check it could attest
-its own challenge from the operator's browser.
+The service then moves the challenge `pending → attested`, recording the
+address, node ID, tags, and time. If the update changes no rows, another
+request won the race and this one fails.
+
+**Why it matters:** the successful request itself proves the browser can
+*send* on the tailnet now. Tailscale's authenticated data plane binds the
+connection to its source node, so the socket address can't be forged, while
+the node metadata and identity lookups in checks 6 and 7 decide whether that
+node is authorized. H₁ proves the sender holds `C`, which it can only have got
+from step 1, yet `C` itself never crosses the tailnet. Check 1 is the one that
+stops a malicious website: it shares the operator's network position, and
+without the `Origin` check it could attest its own challenge from the
+operator's browser.
 
 ### 3. Attest response (tailnet, server to client)
 
-H₂ carries `IP` and `S` back, encrypted and authenticated with keys only the
-holder of `C` can derive:
+H₂ uses AES-256-GCM with a per-challenge HKDF-derived key and a fresh 96-bit
+IV:
 
 ```
-K_enc ‖ K_mac = HKDF-SHA256(ikm=C, salt=H1, info="bd-mgmt/v1/h2", length=64)
-keystream     = HMAC(K_enc, cid ‖ 0x00) ‖ HMAC(K_enc, cid ‖ 0x01)
-E             = (IP ‖ S) XOR keystream[0:48]
-T             = HMAC(K_mac, "bd-mgmt/v1/h2" ‖ cid ‖ N ‖ E)
-H2            = E ‖ T                                   (80 bytes)
+K   = HKDF-SHA256(ikm=C, salt=H1, info="bd-mgmt/v1/h2", length=32)
+IV  = random(12)
+AAD = "bd-mgmt/v1/h2" ‖ cid ‖ N ‖ H1
+E   = AES-256-GCM-Encrypt(key=K, iv=IV, plaintext=IP ‖ S, aad=AAD)   (includes the 16-byte tag)
+H2  = IV ‖ E                                                          (76 bytes)
 ```
 
-The client derives the same keys, checks `T` first, and only then XORs to
-recover `IP` and `S`.
+The client derives the same `K` and decrypts. WebCrypto checks the GCM tag
+before releasing any plaintext.
 
-**Why it matters:** receiving this proves the client can also *receive* on the
-tailnet now; a one-way path would fail here. Because `T` covers the client's
-own `N`, the client knows H₂ answers this request and is not a replay. That is
-the client's freshness guarantee, matching the server's from step 1. The keys
-come from `C`, which never crossed the tailnet, salted with H₁, so only the
-party that ran step 1 can open H₂, and only for this attest request. A fresh
-`C` per challenge means a key is never reused, so the keystream needs no
-separate nonce. Encryption is the extra layer here, not the main protection:
-WireGuard and TLS already protect this leg, and the H₂ construction means a
-TLS-terminating proxy or a request log on the tailnet side would still never
-see `S`.
+**Why it matters:** receiving this proves the browser can also *receive* on
+the tailnet now; a one-way path would fail here. Because the authenticated
+data covers the client's own `N`, the client knows H₂ answers this request and
+is not a replay. That is the client's freshness guarantee, matching the
+server's from step 1. The key comes from `C`, which never crossed the tailnet,
+salted with H₁, so only the party that ran step 1 can open H₂, and only for
+this attest request. Encryption is the extra layer here, not the main
+protection: WireGuard and TLS already protect this leg, but with H₂ even a
+TLS-terminating proxy or a request log on the tailnet side would never see
+`S`.
 
 ### 4. Redeem (HTTPS, client to server)
 
@@ -149,52 +189,101 @@ see `S`.
 R = HMAC(key=S, "bd-mgmt/v1/redeem" ‖ cid ‖ C ‖ IP)
 ```
 
-The client sends `{cid, R}` to `POST /v2/manage/auth/redeem` within 10 seconds
-of step 3, together with the state cookie. The server checks the cookie
-against `cid`, that `cid` was attested and is inside its window, and `R` in
-constant time against the `IP` it recorded in step 2. It then deletes the
-challenge, records the node, and issues a session cookie.
+The client sends only `{cid, R}` to `POST /v2/manage/auth/redeem`, within 10
+seconds of step 3, together with the state cookie. It never sends `IP`; the
+server uses the address the attest service recorded. The server checks that:
 
-**Why it matters:** this closes the loop. `R` can only be computed by the
-party that received `S` over the tailnet in step 3 *and* holds `C` from step 1,
-and it arrives over HTTPS with the cookie from step 1. So one party controls
-both channels within a few seconds. Neither `S` nor `C` is sent in plain form,
-and binding `IP` ties the session to the node that attested.
+1. `cid` exists and is `attested`, not merely `pending`;
+2. the challenge is inside its deadline;
+3. the state cookie's hash matches the one stored in step 1;
+4. `R` equals `HMAC(S, "bd-mgmt/v1/redeem" ‖ cid ‖ C ‖ attested_ip)`, compared
+   in constant time.
 
-## Sessions and continuous liveness
+It then moves the challenge `attested → redeemed`, requiring exactly one
+changed row, and issues a session.
 
-One handshake only proves liveness at one moment, so the session depends on
-repeating it:
+**Why it matters:** `R` proves possession of `S`. `S` was disclosed only inside
+H₂, and H₂ could only be opened with key material derived from `C`. So a
+successful redeem proves that the browser which received the HTTPS challenge
+also received the successful tailnet attestation response, within a few
+seconds. Binding the recorded `IP` ties the session to the node that attested.
 
-- The server stores `last_attested_at` and the node with each session.
-  Middleware rejects a session once `now - last_attested_at` exceeds the TTL
-  (default 180 seconds). Enforcement is on the server; it doesn't rely on the
-  cookie's own expiry, which the client controls.
+## Sessions: a lease renewed by liveness
+
+One handshake only proves liveness at one moment, so the session is a lease
+that only a fresh handshake can extend:
+
+```
+        successful handshake
+                │
+                ▼
+      ┌───────────────────┐
+      │ lease: 180 seconds │
+      └───────────────────┘
+          ▲            │
+  renewal │            │ no successful
+          │            │ re-attestation
+          │            ▼
+    new handshake   lease expires
+```
+
+- The sessions table stores each session token's hash, the node, and
+  `last_attested_at`. Middleware rejects a session once `now -
+  last_attested_at` exceeds the TTL (default 180 seconds). Enforcement is on
+  the server; it doesn't rely on the cookie's own expiry, which the client
+  controls.
 - The page reruns the handshake about every 60 seconds. Each successful redeem
   rotates the session token.
 - Every renewal reruns every check, so removing the device's tag, removing it
   from the tailnet, or simply leaving the tailnet ends access within one TTL.
+  Nothing has to happen when that occurs: the lease just stops being extended.
 - A renewal from a different node starts a new session for that node and
   revokes the old one.
+
+## What each attacker runs into
+
+| Attacker | Stopped by |
+|---|---|
+| Steals `{cid, C}` | Can't attest without being an authorized tailnet node |
+| On the tailnet, but not authorized | Node identity and tag checks |
+| Malicious website on an authorized device | `Origin` check on `/attest` |
+| Records H₁ | Can't open H₂ without `C` |
+| Records H₂ | A new `C` and `N` make it useless for any other handshake |
+| Records `R` | `cid` is single-use |
+| Obtains `S` alone | `R` also binds `cid`, `C`, and the attested `IP` of one live challenge |
+| Races a second attest or redeem | Conditional state transition: exactly one wins |
+| Leaves the tailnet with a session | Lease expires within one TTL |
 
 ## Where the security actually lives
 
 Each layer is there on purpose, but they don't carry equal weight. If you
 change this code, these are the checks that must not weaken:
 
-1. **WireGuard source authentication plus `whois` tag allowlisting.** Together
-   they decide who may attest.
+1. **Tailscale source authentication plus tag authorization.** Together they
+   decide who may attest.
 2. **The `Origin` check on `/attest`.** It is the only thing that stops a
    malicious website from borrowing an allowed device's network position.
    CORS alone only stops the response being *read*; the request must be
    refused outright.
-3. **Single-use, short-lived server state.** Challenges are attested once and
-   redeemed once, inside tight windows; sessions expire on the server.
+3. **Single-use, short-lived server state.** Conditional state transitions,
+   tight deadlines, and server-enforced session leases.
 4. **TLS on both channels.**
 
-The H₁ and H₂ constructions, the redundant `status` check, and the binding of
-`IP` into `R` add depth. They make the liveness proof explicit and keep
-secrets out of tailnet-side logs, but no single one of them is load-bearing.
+H₁, the encryption of H₂, and the binding of `IP` into `R` add depth. They make
+the liveness proof explicit and keep secrets out of tailnet-side logs, but no
+single one of them is load-bearing.
+
+## Installation
+
+The management page needs AES-GCM on the server, which Python's standard
+library lacks, so it lives in an optional extra:
+
+```bash
+pip install 'bad-decisions[management]'
+```
+
+Installs without the extra don't pull in `cryptography` and don't offer the
+management page.
 
 ## Tailscale setup
 
@@ -210,6 +299,8 @@ secrets out of tailnet-side logs, but no single one of them is load-bearing.
 - **Issue and renew the certificate** for the attest service's `ts.net` name
   with `tailscale cert`. These certificates last 90 days, so renewal must be
   scheduled.
+- **Check LocalAPI access.** The attest service's user must be allowed to
+  query `tailscaled`'s socket for peer identity.
 
 ## Browser notes
 
