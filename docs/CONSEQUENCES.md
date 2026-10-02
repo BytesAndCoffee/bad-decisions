@@ -63,3 +63,19 @@ bad-decisions consequences purge /absolute/path/consequences.sqlite3 --retention
 The Textual dashboard provides summary, combination, prompt, answer, and recent
 draw views with sortable drill-downs. These commands are owner tools; raw
 analytics are not exposed by the public API.
+
+## Storage schema and upgrades
+
+The SQLite store keeps each distinct prompt and answer once in a `contents`
+registry keyed by its content hash. Rounds, combinations, and the ordered
+`combination_answers` slots reference it through enforced foreign keys, and
+`content_stats` caches per-card draws and votes beside `combination_stats`. A
+card counts once per round even when it fills two slots. Hashes are unchanged
+from 1.x, so existing history keeps its identity.
+
+A database written by an earlier release is upgraded in place, in one
+transaction, the first time the service or a write command (`rebuild`,
+`purge`) opens it. The upgrade refuses to commit if it finds dangling
+references. `report` still works on a not-yet-upgraded file, but `tui` asks for
+the upgrade first because it opens the database read-only. `purge` also removes
+combinations and card text that no retained round references.
