@@ -53,8 +53,8 @@ class ConsequencesApp(App[None]):
         table.add_columns(*({
             "dashboard": ("View", "Value"),
             "combinations": ("Combination", "Draws", "Enjoy", "Regret", "Score"),
-            "prompts": ("Prompt hash", "Pack", "Card", "Draws", "Enjoy", "Regret"),
-            "answers": ("Answer hash", "Pack", "Card", "Draws", "Enjoy", "Regret"),
+            "prompts": ("Prompt hash", "Pack", "Card", "Variants", "Draws", "Enjoy", "Regret"),
+            "answers": ("Answer hash", "Pack", "Card", "Variants", "Draws", "Enjoy", "Regret"),
             "recent": ("When", "Round", "Combination", "Vote", "ID"),
         }[kind]))
         if kind == "dashboard":
@@ -64,13 +64,13 @@ class ConsequencesApp(App[None]):
             for row in self.rows["combinations"]: table.add_row(row["hash"][:12], str(row["draws"]), str(row["enjoy"]), str(row["regret"]), "—" if row["score"] is None else f"{row['score']:+.2f}", key=row["hash"])
         elif kind == "prompts":
             for index, row in enumerate(self.rows["prompts"]):
-                # Content hashes can repeat across pack/card provenance records.
+                # One row per content hash; pack/card are its most recent draw's provenance.
                 key = f"{row['hash']}:{row['pack']}:{row['card']}:{index}"
-                table.add_row(row["hash"][:12], row["pack"], row["card"], str(row["draws"]), str(row["enjoy"]), str(row["regret"]), key=key)
+                table.add_row(row["hash"][:12], row["pack"], row["card"], str(row["variants"]), str(row["draws"]), str(row["enjoy"]), str(row["regret"]), key=key)
         elif kind == "answers":
             for index, row in enumerate(self.rows["answers"]):
                 key = f"{row['hash']}:{row['pack']}:{row['card']}:{index}"
-                table.add_row(row["hash"][:12], row["pack"], row["card"], str(row["draws"]), str(row["enjoy"]), str(row["regret"]), key=key)
+                table.add_row(row["hash"][:12], row["pack"], row["card"], str(row["variants"]), str(row["draws"]), str(row["enjoy"]), str(row["regret"]), key=key)
         else:
             for row in self.rows["recent"]:
                 when = datetime.fromtimestamp(row["occurred_at"], timezone.utc).strftime("%Y-%m-%d %H:%M")

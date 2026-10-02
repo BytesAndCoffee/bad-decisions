@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Consequences SQLite schema v3: card text is stored once in a `contents`
+  registry that rounds and combinations reference with enforced foreign keys;
+  per-card draws and votes are cached in `content_stats` (a card counts once per
+  round). The dashboard's prompt and answer views show one row per card text
+  with a count of pack/card variants. `purge` also removes combinations and card
+  text that no retained round references. Existing databases upgrade in place
+  on the first write-mode open; content hashes are unchanged.
+
 ## [2.3.0] - The pressure is now a stream
 
 ### Changed
