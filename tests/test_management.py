@@ -215,7 +215,7 @@ def store(tmp_path, clock):
 
 def _attest(store, issued, tailnet=None, *, n=b"\x07" * 32, peer=PEER):
     h1 = m.compute_h1(issued.c, issued.cid, n)
-    body = {"cid": m.b64encode(issued.cid), "n": m.b64encode(n), "h1": m.b64encode(h1)}
+    body = {"cid": m.b64encode(issued.cid), "N": m.b64encode(n), "H1": m.b64encode(h1)}
     h2 = m.attest(store, tailnet or FakeTailnet(), POLICY, peer, body)
     return m.open_h2(issued.c, issued.cid, n, h1, h2)
 
@@ -248,9 +248,41 @@ def test_attest_is_single_use_and_a_race_has_one_winner(store):
         store.mark_attested(second.cid, m.Attestation(PEER, NODE_ID, "laptop", ("tag:mgmt",)))
 
 
+def test_tailbind_v1_labels_are_exact():
+    assert (m.H1_LABEL, m.H2_LABEL, m.REDEEM_LABEL) == (b"tailbind/v1/h1", b"tailbind/v1/h2", b"tailbind/v1/redeem")
+
+
+def test_predecessor_bd_mgmt_transcripts_are_refused(store):
+    """An H1 computed with the pre-TailBind label is not TailBind v1."""
+    issued = store.issue()
+    n = b"\x01" * 32
+    old_h1 = m._hmac(issued.c, b"bd-mgmt/v1/h1" + issued.cid + n)
+    body = {"cid": m.b64encode(issued.cid), "N": m.b64encode(n), "H1": m.b64encode(old_h1)}
+    with pytest.raises(m.HandshakeError, match="H1"):
+        m.attest(store, FakeTailnet(), POLICY, PEER, body)
+
+
+def test_lowercase_json_names_are_refused(store):
+    issued = store.issue()
+    n = b"\x01" * 32
+    body = {"cid": m.b64encode(issued.cid), "n": m.b64encode(n), "h1": m.b64encode(m.compute_h1(issued.c, issued.cid, n))}
+    with pytest.raises(m.HandshakeError, match="malformed"):
+        m.attest(store, FakeTailnet(), POLICY, PEER, body)
+
+
+def test_challenge_expiry_is_rfc_3339_utc(management_env):
+    from datetime import datetime, timezone
+
+    with _public_client() as public:
+        challenge = public.post("/v2/manage/auth/challenge").json()
+    expires = datetime.strptime(challenge["expires_at"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    remaining = (expires - datetime.now(timezone.utc)).total_seconds()
+    assert m.ATTEST_WINDOW_SECONDS - 5 <= remaining <= m.ATTEST_WINDOW_SECONDS + 1
+
+
 def test_forged_h1_burns_the_challenge(store):
     issued = store.issue()
-    body = {"cid": m.b64encode(issued.cid), "n": m.b64encode(b"\x01" * 32), "h1": m.b64encode(b"\x02" * 32)}
+    body = {"cid": m.b64encode(issued.cid), "N": m.b64encode(b"\x01" * 32), "H1": m.b64encode(b"\x02" * 32)}
     with pytest.raises(m.HandshakeError, match="H1"):
         m.attest(store, FakeTailnet(), POLICY, PEER, body)
     with pytest.raises(m.HandshakeError):
@@ -275,7 +307,7 @@ def test_tailscaled_failure_burns_and_propagates(store):
 
 def test_extra_or_missing_attest_fields_are_refused(store):
     issued = store.issue()
-    for body in ({}, {"cid": m.b64encode(issued.cid)}, {"cid": m.b64encode(issued.cid), "n": "x", "h1": "y", "ip": PEER}, [], "x"):
+    for body in ({}, {"cid": m.b64encode(issued.cid)}, {"cid": m.b64encode(issued.cid), "N": "x", "H1": "y", "ip": PEER}, [], "x"):
         with pytest.raises(m.HandshakeError):
             m.attest(store, FakeTailnet(), POLICY, PEER, body)
 
@@ -390,14 +422,14 @@ ATTEST_HEADERS = {"Origin": PUBLIC, "Content-Type": "application/json"}
 def _browser_handshake(public, attest, *, n=b"\x09" * 32, headers=ATTEST_HEADERS):
     """What manage.js does, step by step."""
     challenge = public.post("/v2/manage/auth/challenge").json()
-    assert challenge["attest_url"] == f"{ATTEST}/attest"
-    cid, c = m.b64decode(challenge["cid"], 16), m.b64decode(challenge["c"], 32)
+    assert set(challenge) == {"cid", "C", "authority", "expires_at"} and challenge["authority"] == ATTEST
+    cid, c = m.b64decode(challenge["cid"], 16), m.b64decode(challenge["C"], 32)
     h1 = m.compute_h1(c, cid, n)
-    response = attest.post("/attest", headers=headers, content=json.dumps({"cid": challenge["cid"], "n": m.b64encode(n), "h1": m.b64encode(h1)}))
+    response = attest.post("/attest", headers=headers, content=json.dumps({"cid": challenge["cid"], "N": m.b64encode(n), "H1": m.b64encode(h1)}))
     if response.status_code != 200:
         return challenge, response
-    ip, s = m.open_h2(c, cid, n, h1, m.b64decode(response.json()["h2"], 76))
-    return challenge, public.post("/v2/manage/auth/redeem", json={"cid": challenge["cid"], "r": m.b64encode(m.compute_r(s, cid, c, ip))})
+    ip, s = m.open_h2(c, cid, n, h1, m.b64decode(response.json()["H2"], 76))
+    return challenge, public.post("/v2/manage/auth/redeem", json={"cid": challenge["cid"], "R": m.b64encode(m.compute_r(s, cid, c, ip))})
 
 
 def test_end_to_end_sign_in_renewal_and_logout(management_env):
@@ -503,7 +535,7 @@ def test_management_routes_are_absent_when_disabled(tmp_path, monkeypatch):
     with TestClient(create_app(), base_url=PUBLIC, headers={"Origin": PUBLIC}) as client:
         for method, path in (("GET", "/manage"), ("POST", "/v2/manage/auth/challenge"), ("POST", "/v2/manage/auth/redeem"),
                              ("GET", "/v2/manage/overview"), ("POST", "/v2/manage/auth/logout")):
-            response = client.request(method, path, json={"cid": "x", "r": "y"} if path.endswith("redeem") else None)
+            response = client.request(method, path, json={"cid": "x", "R": "y"} if path.endswith("redeem") else None)
             assert response.status_code == 404, path
 
 
@@ -512,7 +544,7 @@ def test_public_management_posts_refuse_other_origins(management_env):
         for origin in (None, "https://evil.example"):
             headers = {"Origin": origin} if origin else {}
             assert client.post("/v2/manage/auth/challenge", headers=headers).status_code == 403
-            assert client.post("/v2/manage/auth/redeem", headers=headers, json={"cid": "x", "r": "y"}).status_code == 403
+            assert client.post("/v2/manage/auth/redeem", headers=headers, json={"cid": "x", "R": "y"}).status_code == 403
 
 
 def test_challenge_cookie_is_browser_bound_and_scoped(management_env):
@@ -528,17 +560,17 @@ def test_redeem_with_another_browsers_cookie_fails(management_env):
     with _public_client() as public, _public_client() as other, _attest_client() as attest:
         challenge = public.post("/v2/manage/auth/challenge").json()
         other.post("/v2/manage/auth/challenge")  # a different browser with its own state cookie
-        cid, c = m.b64decode(challenge["cid"], 16), m.b64decode(challenge["c"], 32)
+        cid, c = m.b64decode(challenge["cid"], 16), m.b64decode(challenge["C"], 32)
         n = b"\x0b" * 32
         h1 = m.compute_h1(c, cid, n)
-        h2 = attest.post("/attest", headers=ATTEST_HEADERS, content=json.dumps({"cid": challenge["cid"], "n": m.b64encode(n), "h1": m.b64encode(h1)})).json()["h2"]
+        h2 = attest.post("/attest", headers=ATTEST_HEADERS, content=json.dumps({"cid": challenge["cid"], "N": m.b64encode(n), "H1": m.b64encode(h1)})).json()["H2"]
         ip, s = m.open_h2(c, cid, n, h1, m.b64decode(h2, 76))
         r = m.b64encode(m.compute_r(s, cid, c, ip))
-        assert other.post("/v2/manage/auth/redeem", json={"cid": challenge["cid"], "r": r}).status_code == 401
-        assert public.post("/v2/manage/auth/redeem", json={"cid": challenge["cid"], "r": r}).status_code == 401, "burned"
+        assert other.post("/v2/manage/auth/redeem", json={"cid": challenge["cid"], "R": r}).status_code == 401
+        assert public.post("/v2/manage/auth/redeem", json={"cid": challenge["cid"], "R": r}).status_code == 401, "burned"
 
 
-@pytest.mark.parametrize("body", [{"cid": "x", "r": "y"}, {"cid": "A" * 22, "r": "A" * 43, "extra": 1}, {"cid": 5, "r": "A" * 43}])
+@pytest.mark.parametrize("body", [{"cid": "x", "R": "y"}, {"cid": "A" * 22, "R": "A" * 43, "extra": 1}, {"cid": 5, "R": "A" * 43}, {"cid": "A" * 22, "r": "A" * 43}])
 def test_malformed_redeem_bodies_are_refused(management_env, body):
     with _public_client() as public:
         assert public.post("/v2/manage/auth/redeem", json=body).status_code in {401, 422}

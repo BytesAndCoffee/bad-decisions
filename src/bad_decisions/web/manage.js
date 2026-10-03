@@ -1,12 +1,12 @@
-// Management sign-in by tailnet liveness. docs/MANAGEMENT_AUTH.md is the specification.
+// Management sign-in by tailnet liveness (TailBind v1). docs/MANAGEMENT_AUTH.md is the specification.
 "use strict";
 
 const ManageProtocol = (() => {
   const encoder = new TextEncoder();
   const subtle = globalThis.crypto.subtle;
-  const H1_LABEL = encoder.encode("bd-mgmt/v1/h1");
-  const H2_LABEL = encoder.encode("bd-mgmt/v1/h2");
-  const REDEEM_LABEL = encoder.encode("bd-mgmt/v1/redeem");
+  const H1_LABEL = encoder.encode("tailbind/v1/h1");
+  const H2_LABEL = encoder.encode("tailbind/v1/h2");
+  const REDEEM_LABEL = encoder.encode("tailbind/v1/redeem");
   const SIZES = { cid: 16, secret: 32, ip: 16, h2: 76 };
 
   function concat(...parts) {
@@ -67,21 +67,21 @@ const ManageProtocol = (() => {
     if (!issued.ok) throw new HandshakeFailure("challenge", issued.status);
     const challenge = await issued.json();
     const cid = b64decode(challenge.cid, SIZES.cid);
-    const c = b64decode(challenge.c, SIZES.secret);
+    const c = b64decode(challenge.C, SIZES.secret);
     const n = globalThis.crypto.getRandomValues(new Uint8Array(SIZES.secret));
     const h1 = await computeH1(c, cid, n);
     let attested;
     try {
-      attested = await fetchImpl(challenge.attest_url, {
+      attested = await fetchImpl(`${challenge.authority}/attest`, {
         method: "POST", mode: "cors", credentials: "omit", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cid: challenge.cid, n: b64encode(n), h1: b64encode(h1) }),
+        body: JSON.stringify({ cid: challenge.cid, N: b64encode(n), H1: b64encode(h1) }),
       });
     } catch (_) {
       throw new HandshakeFailure("tailnet", 0);  // unreachable: not on the tailnet, or blocked by the browser
     }
     if (!attested.ok) throw new HandshakeFailure("attest", attested.status);
-    const { ip, s } = await openH2(c, cid, n, h1, b64decode((await attested.json()).h2, SIZES.h2));
-    const redeemed = await post("/auth/redeem", { cid: challenge.cid, r: b64encode(await computeR(s, cid, c, ip)) });
+    const { ip, s } = await openH2(c, cid, n, h1, b64decode((await attested.json()).H2, SIZES.h2));
+    const redeemed = await post("/auth/redeem", { cid: challenge.cid, R: b64encode(await computeR(s, cid, c, ip)) });
     if (!redeemed.ok) throw new HandshakeFailure("redeem", redeemed.status);
     return redeemed.json();
   }

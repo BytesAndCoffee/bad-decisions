@@ -11,6 +11,7 @@ import time
 import uuid
 from collections import deque
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from importlib.resources import files
 from typing import Annotated, Any
 
@@ -102,7 +103,7 @@ class JudgmentInput(MutationInput):
 
 class RedeemInput(StrictInput):
     cid: str
-    r: str
+    R: str
 
 
 # --- response bodies (documented in OpenAPI) -------------------------------------
@@ -401,8 +402,9 @@ def create_app() -> FastAPI:
         except management.HandshakeError:
             return error(request, "busy", "Too many sign-ins in progress; try again shortly", 503, headers={"Retry-After": "10"})
         response = no_store({
-            "cid": management.b64encode(issued.cid), "c": management.b64encode(issued.c),
-            "attest_url": f"{settings.management_attest_url}/attest", "expires_in": management.ATTEST_WINDOW_SECONDS,
+            "cid": management.b64encode(issued.cid), "C": management.b64encode(issued.c),
+            "authority": settings.management_attest_url,
+            "expires_at": datetime.fromtimestamp(issued.expires_at, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         })
         set_cookie(response, request, STATE_COOKIE, issued.state_token, f"{MANAGE}/auth/", management.ATTEST_WINDOW_SECONDS + management.REDEEM_WINDOW_SECONDS)
         return response
@@ -416,7 +418,7 @@ def create_app() -> FastAPI:
         store = management_store(request)
         try:
             cid = management.b64decode(body.cid, management.CID_BYTES)
-            r = management.b64decode(body.r, management.SECRET_BYTES)
+            r = management.b64decode(body.R, management.SECRET_BYTES)
             token, session = store.redeem(cid, r, request.cookies.get(STATE_COOKIE), request.cookies.get(SESSION_COOKIE))
         except management.HandshakeError as exc:
             logger.warning("management redeem refused: %s", exc.reason)

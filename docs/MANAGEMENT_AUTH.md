@@ -8,6 +8,13 @@ attest service that listens only on the tailnet. The page repeats the
 handshake silently while it stays open, so the session is a short lease that
 lapses within one TTL after the device leaves the tailnet or loses its tag.
 
+This is **TailBind v1** in its co-located profile. The public app is the
+relying party and the attest service is the TailBind Authority; because both
+run on one host in one trust boundary, they share a single SQLite file instead
+of talking over a separate control channel. Labels, field sizes, JSON member
+names, and the transcript below are TailBind v1's, so a separated Authority
+could replace the attest service without changing the browser client.
+
 The page is read-only. It never imports, edits, or replaces packs; registry
 changes still go only through `bad-decisions pack replace-local` and the root
 activator.
@@ -58,9 +65,12 @@ peers through its LocalAPI socket rather than running the `tailscale` command.
 
 Every value is random, single-use, and fixed-length. Each MAC input and each
 authenticated-data string starts with a distinct version label
-(`bd-mgmt/v1/…`), so no concatenation can be read two ways, a value from one
+(`tailbind/v1/…`), so no concatenation can be read two ways, a value from one
 step can't stand in for another, and a future protocol version can't be
-confused with this one. JSON carries bytes as unpadded base64url. `HMAC` means
+confused with this one. JSON carries bytes as unpadded, canonical base64url,
+and member names are exactly `cid`, `C`, `N`, `H1`, `H2`, and `R`; endpoints
+refuse missing, unknown, or differently cased members. (Transcripts using the
+earlier `bd-mgmt/v1/…` labels are not accepted.) `HMAC` means
 HMAC-SHA256.
 
 ## Challenge states
@@ -110,8 +120,11 @@ table because they outlive any one challenge.
 ### 1. Challenge (HTTPS, server to client)
 
 `POST /v2/manage/auth/challenge` creates `cid`, `C`, and `S`, stores them as
-`pending` with a 30-second deadline for step 2, and returns `{cid, C}`. It also
-sets a state cookie (`HttpOnly`, `Secure`, `SameSite=Strict`, scoped to the
+`pending` with a 30-second deadline for step 2, and returns
+`{"cid", "C", "authority", "expires_at"}`: `authority` is the attest
+service's base URL and `expires_at` the RFC 3339 end of the window. It refuses
+any request whose `Origin` isn't the public site's, so a malicious website
+can't start a sign-in in your browser. It also sets a state cookie (`HttpOnly`, `Secure`, `SameSite=Strict`, scoped to the
 auth path), whose hash is stored with the challenge.
 
 **Why it matters:** `C` is fresh and unpredictable, so nothing that follows
@@ -123,10 +136,11 @@ step 4.
 ### 2. Attest request (tailnet, client to server)
 
 ```
-H1 = HMAC(key=C, "bd-mgmt/v1/h1" ‖ cid ‖ N)
+H1 = HMAC(key=C, "tailbind/v1/h1" ‖ cid ‖ N)
 ```
 
-The client picks `N` and sends `{cid, N, H1}` to the attest service as JSON.
+The client picks `N` and sends `{cid, N, H1}` to `<authority>/attest` as JSON;
+the response is `{H2}`.
 The attest service checks, in this order, and burns the challenge on any
 failure that names a real `cid`:
 
@@ -164,9 +178,9 @@ H₂ uses AES-256-GCM with a per-challenge HKDF-derived key and a fresh 96-bit
 IV:
 
 ```
-K   = HKDF-SHA256(ikm=C, salt=H1, info="bd-mgmt/v1/h2", length=32)
+K   = HKDF-SHA256(ikm=C, salt=H1, info="tailbind/v1/h2", length=32)
 IV  = random(12)
-AAD = "bd-mgmt/v1/h2" ‖ cid ‖ N ‖ H1
+AAD = "tailbind/v1/h2" ‖ cid ‖ N ‖ H1
 E   = AES-256-GCM-Encrypt(key=K, iv=IV, plaintext=IP ‖ S, aad=AAD)   (includes the 16-byte tag)
 H2  = IV ‖ E                                                          (76 bytes)
 ```
@@ -188,17 +202,18 @@ TLS-terminating proxy or a request log on the tailnet side would never see
 ### 4. Redeem (HTTPS, client to server)
 
 ```
-R = HMAC(key=S, "bd-mgmt/v1/redeem" ‖ cid ‖ C ‖ IP)
+R = HMAC(key=S, "tailbind/v1/redeem" ‖ cid ‖ C ‖ IP)
 ```
 
-The client sends only `{cid, R}` to `POST /v2/manage/auth/redeem`, within 10
+The client sends only `{cid, R}` to `POST /v2/manage/auth/redeem` (which, like
+the challenge endpoint, refuses any other `Origin`), within 10
 seconds of step 3, together with the state cookie. It never sends `IP`; the
 server uses the address the attest service recorded. The server checks that:
 
 1. `cid` exists and is `attested`, not merely `pending`;
 2. the challenge is inside its deadline;
 3. the state cookie's hash matches the one stored in step 1;
-4. `R` equals `HMAC(S, "bd-mgmt/v1/redeem" ‖ cid ‖ C ‖ attested_ip)`, compared
+4. `R` equals `HMAC(S, "tailbind/v1/redeem" ‖ cid ‖ C ‖ attested_ip)`, compared
    in constant time.
 
 It then moves the challenge `attested → redeemed`, requiring exactly one

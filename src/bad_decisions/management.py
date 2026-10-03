@@ -1,6 +1,8 @@
 """Tailnet liveness handshake for the read-only management page.
 
-docs/MANAGEMENT_AUTH.md is the specification; keep the two in step. The public
+This is TailBind v1 in its co-located profile: the public app (the relying
+party) and the attest service (the Authority) share one SQLite file on one
+host. docs/MANAGEMENT_AUTH.md is the specification; keep the two in step. The public
 app issues challenges and redeems them (stdlib only). The attest service, a
 separate process bound to the host's tailnet IP, checks the peer with
 tailscaled's LocalAPI and answers with an AES-256-GCM H2, so only it needs the
@@ -33,9 +35,9 @@ from fastapi.responses import JSONResponse, Response
 CID_BYTES = 16
 SECRET_BYTES = 32  # C, S, N, and session tokens
 IP_BYTES = 16
-H1_LABEL = b"bd-mgmt/v1/h1"
-H2_LABEL = b"bd-mgmt/v1/h2"
-REDEEM_LABEL = b"bd-mgmt/v1/redeem"
+H1_LABEL = b"tailbind/v1/h1"
+H2_LABEL = b"tailbind/v1/h2"
+REDEEM_LABEL = b"tailbind/v1/redeem"
 GCM_IV_BYTES = 12
 GCM_TAG_BYTES = 16
 H2_BYTES = GCM_IV_BYTES + IP_BYTES + SECRET_BYTES + GCM_TAG_BYTES
@@ -182,6 +184,7 @@ class IssuedChallenge:
     cid: bytes
     c: bytes
     state_token: str
+    expires_at: float
 
 
 SCHEMA = """
@@ -261,7 +264,7 @@ class ManagementStore:
             "INSERT INTO challenges (cid, c, s, state_hash, status, created_at, attest_deadline) VALUES (?, ?, ?, ?, 'pending', ?, ?)",
             (cid, c, s, _digest(state_token.encode()), now, now + ATTEST_WINDOW_SECONDS),
         )
-        return IssuedChallenge(cid, c, state_token)
+        return IssuedChallenge(cid, c, state_token, now + ATTEST_WINDOW_SECONDS)
 
     def burn(self, cid: bytes, status: str) -> None:
         """Burn a challenge still in ``status``. A request that lost a race never burns the winner's newer state."""
@@ -451,11 +454,11 @@ class _PeerLimiter:
 
 def attest(store: ManagementStore, directory: TailnetDirectory, policy: Policy, peer: str, body: dict[str, Any]) -> bytes:
     """Steps 2 and 3 after the Origin and Host checks: verify, transition, seal H2."""
-    if not isinstance(body, dict) or set(body) != {"cid", "n", "h1"}:
+    if not isinstance(body, dict) or set(body) != {"cid", "N", "H1"}:
         raise HandshakeError("malformed body")
     cid = b64decode(body["cid"], CID_BYTES)
     try:
-        n, h1 = b64decode(body["n"], SECRET_BYTES), b64decode(body["h1"], SECRET_BYTES)
+        n, h1 = b64decode(body["N"], SECRET_BYTES), b64decode(body["H1"], SECRET_BYTES)
         c, s = store.pending(cid)
         if not hmac.compare_digest(h1, compute_h1(c, cid, n)):
             raise HandshakeError("H1 does not match")
@@ -540,7 +543,7 @@ def create_attest_app(settings=None, directory: TailnetDirectory | None = None):
         except OSError:
             logger.exception("attest failed: tailscaled is unavailable")
             return refuse(503, cors=True)
-        return JSONResponse({"h2": b64encode(h2)}, headers={"Cache-Control": "no-store", "Access-Control-Allow-Origin": origin, "Vary": "Origin"})
+        return JSONResponse({"H2": b64encode(h2)}, headers={"Cache-Control": "no-store", "Access-Control-Allow-Origin": origin, "Vary": "Origin"})
 
     return app
 
