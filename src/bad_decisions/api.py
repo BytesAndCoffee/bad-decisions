@@ -23,6 +23,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.routing import Match
 
 from . import __version__
+from . import management
 from .consequences import ConsequencesStore, valid_uuid
 from .engine import generate_from_resolved
 from .errors import BadDecisionsError
@@ -47,8 +48,10 @@ WEB_ASSETS = {
     "theme.css": "text/css; charset=utf-8",
     "theme.js": "application/javascript; charset=utf-8",
     "favicon.svg": "image/svg+xml",
+    "manage.js": "application/javascript; charset=utf-8",
+    "manage.css": "text/css; charset=utf-8",
 }
-WEB_DOCUMENTS = ("index.html", "together.html")
+WEB_DOCUMENTS = ("index.html", "together.html", "manage.html")
 PACK_CACHE = "public, max-age=300"
 POOL_CACHE_SIZE = 256  # distinct selectors remembered; invalid ones are never cached
 
@@ -95,6 +98,11 @@ class SubmissionInput(MutationInput):
 
 class JudgmentInput(MutationInput):
     submission_id: str
+
+
+class RedeemInput(StrictInput):
+    cid: str
+    r: str
 
 
 # --- response bodies (documented in OpenAPI) -------------------------------------
@@ -218,6 +226,10 @@ def create_app() -> FastAPI:
             min_free_mb=settings.peer_pressure_min_free_mb,
         )
         app.state.peer_pressure.cleanup_expired()
+        app.state.management = (
+            management.ManagementStore(settings.management_db, session_ttl_seconds=settings.management_session_ttl_seconds)
+            if settings.management_enabled else None
+        )
         app.state.ready = True
         yield
         app.state.ready = False
@@ -341,6 +353,124 @@ def create_app() -> FastAPI:
             return error(request, "unauthorized", "Valid management credentials are required", 401)
         registry: Registry = request.app.state.registry
         return {"status": "ok", "version": __version__, "pack_count": len(registry.packs)}
+
+    # --- management page (read-only; sign-in by tailnet liveness, docs/MANAGEMENT_AUTH.md) ---
+
+    MANAGE = f"{API}/manage"
+    STATE_COOKIE, SESSION_COOKIE = "bd_mgmt_state", "bd_mgmt_session"
+
+    def management_store(request: Request) -> management.ManagementStore | None:
+        return getattr(request.app.state, "management", None)
+
+    def management_refusal(request: Request) -> JSONResponse | None:
+        """Disabled looks like absent; a cross-site POST is refused before touching state."""
+        if management_store(request) is None:
+            return error(request, "path_not_found", "Path not found", 404)
+        if request.method == "POST" and request.headers.get("origin") != settings.management_public_origin:
+            return error(request, "forbidden_origin", "Cross-origin management requests are refused", 403)
+        return None
+
+    def cookie_path(request: Request, suffix: str) -> str:
+        return request.scope.get("root_path", "").rstrip("/") + suffix
+
+    def set_cookie(response: Response, request: Request, name: str, value: str, path: str, max_age: int) -> None:
+        response.set_cookie(name, value, max_age=max_age, path=cookie_path(request, path), secure=True, httponly=True, samesite="strict")
+
+    def management_session(request: Request) -> management.Session | None:
+        store = management_store(request)
+        return store.session(request.cookies.get(SESSION_COOKIE)) if store else None
+
+    def no_store(value: Any, status: int = 200) -> JSONResponse:
+        return JSONResponse(value, status_code=status, headers={"Cache-Control": "no-store"})
+
+    def session_body(session: management.Session) -> dict[str, Any]:
+        return {
+            "node": session.node_name, "node_id": session.node_id, "tags": list(session.tags),
+            "lease_expires_at": session.expires_at, "lease_seconds": settings.management_session_ttl_seconds,
+            "renew_after_seconds": 60,
+        }
+
+    @app.post(f"{MANAGE}/auth/challenge", include_in_schema=False)
+    def management_challenge(request: Request):
+        if (refused := management_refusal(request)) is not None:
+            return refused
+        if (limited := rate_limited(request, "manage")) is not None:
+            return limited
+        try:
+            issued = management_store(request).issue()
+        except management.HandshakeError:
+            return error(request, "busy", "Too many sign-ins in progress; try again shortly", 503, headers={"Retry-After": "10"})
+        response = no_store({
+            "cid": management.b64encode(issued.cid), "c": management.b64encode(issued.c),
+            "attest_url": f"{settings.management_attest_url}/attest", "expires_in": management.ATTEST_WINDOW_SECONDS,
+        })
+        set_cookie(response, request, STATE_COOKIE, issued.state_token, f"{MANAGE}/auth/", management.ATTEST_WINDOW_SECONDS + management.REDEEM_WINDOW_SECONDS)
+        return response
+
+    @app.post(f"{MANAGE}/auth/redeem", include_in_schema=False)
+    def management_redeem(body: RedeemInput, request: Request):
+        if (refused := management_refusal(request)) is not None:
+            return refused
+        if (limited := rate_limited(request, "manage")) is not None:
+            return limited
+        store = management_store(request)
+        try:
+            cid = management.b64decode(body.cid, management.CID_BYTES)
+            r = management.b64decode(body.r, management.SECRET_BYTES)
+            token, session = store.redeem(cid, r, request.cookies.get(STATE_COOKIE), request.cookies.get(SESSION_COOKIE))
+        except management.HandshakeError as exc:
+            logger.warning("management redeem refused: %s", exc.reason)
+            return error(request, "handshake_failed", "Sign-in failed; start a new handshake", 401)
+        logger.info("management session node=%s name=%s", session.node_id, session.node_name)
+        response = no_store(session_body(session))
+        set_cookie(response, request, SESSION_COOKIE, token, f"{MANAGE}/", settings.management_session_ttl_seconds)
+        response.delete_cookie(STATE_COOKIE, path=cookie_path(request, f"{MANAGE}/auth/"), secure=True, httponly=True, samesite="strict")
+        return response
+
+    @app.post(f"{MANAGE}/auth/logout", include_in_schema=False)
+    def management_logout(request: Request):
+        if (refused := management_refusal(request)) is not None:
+            return refused
+        management_store(request).end_session(request.cookies.get(SESSION_COOKIE))
+        response = Response(status_code=204, headers={"Cache-Control": "no-store"})
+        response.delete_cookie(SESSION_COOKIE, path=cookie_path(request, f"{MANAGE}/"), secure=True, httponly=True, samesite="strict")
+        return response
+
+    @app.get(f"{MANAGE}/overview", include_in_schema=False)
+    def management_overview(request: Request):
+        if (refused := management_refusal(request)) is not None:
+            return refused
+        session = management_session(request)
+        if session is None:
+            return error(request, "unauthorized", "Sign in from an allowed tailnet device", 401)
+        registry: Registry = request.app.state.registry
+        consequences = getattr(request.app.state, "consequences", None)
+        report = None
+        if consequences is not None and hasattr(consequences, "report"):
+            try:
+                report = consequences.report()
+            except Exception:
+                logger.warning("management overview could not read the Consequences report")
+        rooms_dir = request.app.state.peer_pressure.root
+        return no_store({
+            "session": session_body(session),
+            "service": {"version": __version__, "pack_count": len(registry.packs), "server_time": time.time()},
+            "packs": [
+                {"id": item["id"], "name": item["name"], "version": item["version"], "counts": item["counts"]}
+                for item in request.app.state.pack_summaries.values()
+            ],
+            "peer_pressure": {"room_files": sum(1 for _ in rooms_dir.glob("*.sqlite3"))},
+            "consequences": report,
+        })
+
+    @app.get("/manage", include_in_schema=False)
+    def web_manage(request: Request):
+        if management_store(request) is None:
+            return error(request, "path_not_found", "Path not found", 404)
+        root_path = request.scope.get("root_path", "").rstrip("/")
+        document = files("bad_decisions").joinpath("web", "manage.html").read_text(encoding="utf-8")
+        document = document.replace("__WEB_BASE__", f"{root_path}/assets/").replace("__ASSET_VERSION__", web_asset_version)
+        return HTMLResponse(document, headers={"Cache-Control": "no-cache", "X-Frame-Options": "DENY", "Referrer-Policy": "no-referrer"})
 
     # --- web client --------------------------------------------------------------
 

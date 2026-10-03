@@ -33,6 +33,8 @@ dependencies = [
 aws = ["boto3==1.40.75"]
 aws-deploy = ["boto3==1.40.75", "aws-cdk-lib==2.231.0", "constructs>=10.0.0,<11.0.0"]
 tui = ["textual==8.2.8"]
+# The tailnet attest service for the management page (docs/MANAGEMENT_AUTH.md).
+management = ["cryptography==50.0.2"]
 dev = [
   "build==1.3.0",
   "httpx==0.28.1",
@@ -57,6 +59,7 @@ include = ["src/bad_decisions/data/**", "src/bad_decisions/web/**"]
 # `bad-decisions deploy local` stages this version's exact dependency pins.
 [tool.hatch.build.targets.wheel.force-include]
 "requirements.lock" = "bad_decisions/requirements.lock"
+"requirements-management.lock" = "bad_decisions/requirements-management.lock"
 
 # Installers place this under <prefix>/share/man/man1, which man finds from PATH.
 [tool.hatch.build.targets.wheel.shared-data]

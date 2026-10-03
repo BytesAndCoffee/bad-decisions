@@ -31,6 +31,9 @@ The responsive one-shot browser client, with bundled/custom and indexed pack sel
 .TP
 .B /peerpressure
 The responsive Peer Pressure multiplayer table. A room creator selects an immutable set of packs before joining; the hosted client defaults to the regular non-custom pack and offers custom and indexed packs as opt-in choices. Later participants join the room's existing deck. Browser room capabilities are saved in local storage for reconnection and removed when the player explicitly leaves. Authenticated Server-Sent Events deliver personalized live state while separate heartbeats maintain presence. The versioned transport is under /v2/peer-pressure/rooms.
+.TP
+.B /manage
+The read-only management page, present only when the BAD_DECISIONS_MANAGEMENT_* settings are configured. Sign-in is a four-message handshake that proves the browser's device is on the tailnet right now: the page fetches a challenge over HTTPS, has a separate attest service on the host's tailnet address check the device's Tailscale identity and tags, and redeems the result for a short session lease that the page renews about every minute. Leaving the tailnet or losing the tag ends access within one lease. The page shows the version, loaded packs, Peer Pressure room count, and the Consequences summary; it cannot change anything. Install it with sudo ./deploy.sh install-management. The protocol is specified in docs/MANAGEMENT_AUTH.md.
 .PP
 Both pages follow the system light or dark colour scheme; a footer toggle overrides it and is remembered in that browser's local storage. Both pages derive immutable asset cache keys from the packaged web bundle, so a same-version review redeploy cannot combine new HTML with stale CSS or JavaScript.
 .SH OPTIONS
@@ -111,8 +114,8 @@ Check a running deployment without changing anything: /healthz reports the expec
 .SH LOCAL DEPLOYMENT COMMANDS
 These talk to a root-owned activator installed once with sudo ./deploy.sh bootstrap-rootless; the caller must be in the deployment group. They refuse to run from inside APP_ROOT/current or APP_ROOT/releases: install the management command separately, for example with pipx. Only one request can be pending; a second is refused until the activator writes its result.
 .TP
-.BI "deploy local" " [--wheel path] [--requirements path] [--redeploy] [--allow-older] [--app-root path] [--timeout seconds]"
-Deploy the installed version, so upgrading the management install (pipx upgrade bad-decisions or pip install --upgrade bad-decisions) and then running this command updates the server. It refuses to run when PyPI has a newer version than the installed command (pass --allow-older to deploy it anyway), and the activator refuses to reinstall the version that is already serving unless --redeploy is given. The activator also requires free space under APP_ROOT/releases (1 GiB by default) and, when bootstrapped with PACK_DIR, loads the live pack registry with the new release before switching to it. Interrupting the command does not cancel a request that was already submitted; the activator finishes it. The wheel is ./dist's matching build, --wheel, or else this version's wheel downloaded from PyPI and checked against its published SHA-256; the pinned requirements.lock ships with the package. On failure, the tail of APP_ROOT/activation/log.txt is printed. Stage them for a root-owned release activator previously installed with sudo ./deploy.sh bootstrap-rootless. This application-only update does not grant access to service definitions, nginx, secrets, or existing immutable releases.
+.BI "deploy local" " [--wheel path] [--requirements path] [--with-management] [--redeploy] [--allow-older] [--app-root path] [--timeout seconds]"
+Deploy the installed version, so upgrading the management install (pipx upgrade bad-decisions or pip install --upgrade bad-decisions) and then running this command updates the server. It refuses to run when PyPI has a newer version than the installed command (pass --allow-older to deploy it anyway), and the activator refuses to reinstall the version that is already serving unless --redeploy is given. The activator also requires free space under APP_ROOT/releases (1 GiB by default) and, when bootstrapped with PACK_DIR, loads the live pack registry with the new release before switching to it. Interrupting the command does not cancel a request that was already submitted; the activator finishes it. The wheel is ./dist's matching build, --wheel, or else this version's wheel downloaded from PyPI and checked against its published SHA-256; the pinned requirements.lock ships with the package. Once APP_ROOT/management exists (created by deploy.sh install-management), or with --with-management, the command stages requirements-management.lock instead, which adds the management attest service's dependencies. On failure, the tail of APP_ROOT/activation/log.txt is printed. Stage them for a root-owned release activator previously installed with sudo ./deploy.sh bootstrap-rootless. This application-only update does not grant access to service definitions, nginx, secrets, or existing immutable releases.
 .TP
 .BI "pack replace-local" " old-pack-id url --new-id new-pack-id [--app-root path] [--timeout seconds]"
 Replace one named pack in a rootless install's registry (enabled by bootstrap-rootless with PACK_DIR). The HTTPS CardDeck archive is downloaded within the usual limits, fully validated, and must declare new-pack-id. The activator publishes it without overwriting, retires old-pack-id, restarts, and restores the exact previous files unless /healthz and /v2/packs show the new id without the old one. Passing old-pack-id as new-pack-id updates that pack in place: the archive must declare a different version, and the service must report it.
@@ -205,6 +208,27 @@ Per-client limit, per worker, for room creation, joins, and feedback (default 30
 .TP
 .B BAD_DECISIONS_CORS_ORIGINS
 Comma-separated exact origins (https://host[:port]) whose browser pages may call the API. Unset means no cross-origin access.
+.TP
+.B BAD_DECISIONS_MANAGEMENT_DB
+Absolute path to the SQLite file the API and the attest service share for management challenges and session leases. Setting it enables the management page, which then also requires the next three settings; a partial configuration stops the service at startup.
+.TP
+.B BAD_DECISIONS_MANAGEMENT_PUBLIC_ORIGIN
+The public site's exact https://host[:port] origin. The attest service refuses requests from any other browser origin.
+.TP
+.B BAD_DECISIONS_MANAGEMENT_ATTEST_URL
+The attest service's https://name:port URL on the tailnet, for example https://box.example.ts.net:8443.
+.TP
+.B BAD_DECISIONS_MANAGEMENT_TAGS
+Comma-separated Tailscale tags (tag:name) whose devices may sign in.
+.TP
+.B BAD_DECISIONS_MANAGEMENT_NODES
+Optional comma-separated stable node IDs that must also match.
+.TP
+.B BAD_DECISIONS_MANAGEMENT_SESSION_TTL_SECONDS
+Session lease after the last successful handshake (default 180, minimum 90).
+.TP
+.B BAD_DECISIONS_TAILSCALE_SOCKET
+tailscaled's LocalAPI socket (default /var/run/tailscale/tailscaled.sock).
 .SH FILES
 .TP
 .I ~/.bad-decisions.env
@@ -218,6 +242,9 @@ Immutable releases, the serving release, and the known-good rollback watermark (
 .TP
 .I APP_ROOT/incoming/, APP_ROOT/activation/
 The rootless activator's staging inbox, and its request, result.json, and log.txt.
+.TP
+.I APP_ROOT/management/, APP_ROOT/management-tls/
+The management page's shared SQLite state and the attest service's tailscale cert files, created by deploy.sh install-management.
 .SH EXIT STATUS
 .TP
 .B 0

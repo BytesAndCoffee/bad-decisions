@@ -139,6 +139,15 @@ deployment group, and the local commands refuse to run from inside a release. Re
 from a newer checkout to update the root-owned activator itself; it is
 idempotent.
 
+## Management page (tailnet only)
+
+The read-only `/manage` page lets a device on your tailnet with an allowed
+Tailscale tag sign in through a four-message liveness handshake. Install it
+with `sudo MANAGEMENT_PUBLIC_ORIGIN=https://… MANAGEMENT_TAGS=tag:mgmt
+./deploy.sh install-management`. Once it is installed, deploys use
+`requirements-management.lock`. The protocol, its threat model, and setup are
+in [MANAGEMENT_AUTH.md](MANAGEMENT_AUTH.md).
+
 ## Rollback
 
 A failed deploy rolls itself back automatically (config backups, then the

@@ -70,7 +70,7 @@ def test_a_complete_install_passes(tmp_path, source):
 
 def test_missing_manpage_lock_and_packs_are_each_reported(tmp_path, source):
     problems = checker.check(_prefix(tmp_path / "venv", packs=2, manpages=("regret.1",), lock=False), source)
-    assert [problem.split(":")[0] for problem in problems] == ["bundled packs", "requirements.lock", "no optional extras in the core install", "manual pages"]
+    assert [problem.split(":")[0] for problem in problems] == ["bundled packs", "requirements.lock", "requirements-management.lock", "no optional extras in the core install", "manual pages"]
 
 
 def test_a_version_mismatch_fails_the_cli_and_server_checks(tmp_path, source):

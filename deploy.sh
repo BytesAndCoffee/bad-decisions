@@ -51,8 +51,12 @@ elif [[ ${1:-} == bootstrap-rootless ]]; then
   [[ $# -eq 1 ]] || { echo "Usage: deploy.sh bootstrap-rootless" >&2; exit 1; }
   export APP_NAME SERVICE_NAME SERVICE_USER APP_ROOT BIND_HOST PORT PYTHON PACK_DIR
   exec bash "${SCRIPT_DIR}/deploy/bootstrap-rootless.sh"
+elif [[ ${1:-} == install-management ]]; then
+  [[ $# -eq 1 ]] || { echo "Usage: deploy.sh install-management" >&2; exit 1; }
+  export APP_NAME SERVICE_NAME SERVICE_USER APP_ROOT ENV_FILE BIND_HOST PORT PYTHON
+  exec bash "${SCRIPT_DIR}/deploy/install-management.sh"
 elif [[ $# -gt 0 ]]; then
-  echo "Usage: deploy.sh [rollback [RELEASE_ID] | bootstrap-rootless]" >&2
+  echo "Usage: deploy.sh [rollback [RELEASE_ID] | bootstrap-rootless | install-management]" >&2
   exit 1
 fi
 if [[ ! -x ${PYTHON} ]] || [[ ! -x ${BUILD_PYTHON} ]]; then
@@ -136,7 +140,10 @@ trap rollback_on_error ERR
 
 install -d -o root -g root -m 0755 "${RELEASES_DIR}" "${RELEASE_DIR}" "${BACKUP_DIR}"
 "${PYTHON}" -m venv "${RELEASE_DIR}/.venv"
-"${RELEASE_DIR}/.venv/bin/pip" install --requirement "${SCRIPT_DIR}/requirements.lock"
+# install-management creates APP_ROOT/management; from then on releases carry its dependencies.
+LOCK_FILE=${SCRIPT_DIR}/requirements.lock
+[[ -d ${APP_ROOT}/management ]] && LOCK_FILE=${SCRIPT_DIR}/requirements-management.lock
+"${RELEASE_DIR}/.venv/bin/pip" install --requirement "${LOCK_FILE}"
 "${RELEASE_DIR}/.venv/bin/pip" install --no-deps "${WHEEL}"
 chown -R root:"${SERVICE_USER}" "${RELEASE_DIR}"
 chmod -R u=rwX,g=rX,o= "${RELEASE_DIR}"

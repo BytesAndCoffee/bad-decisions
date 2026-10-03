@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PORT=8000
 
 WORKDIR /app
-COPY pyproject.toml README.md LICENSE requirements.lock ./
+COPY pyproject.toml README.md LICENSE requirements.lock requirements-management.lock ./
 COPY src ./src
 COPY docs ./docs
 COPY man ./man

@@ -10,6 +10,11 @@ validation, licenses, backups, and ZIP-bomb defenses are not.
 
 - `src/bad_decisions/`: engine, pack models, CLI, API, and CardDeck support.
 - `src/bad_decisions/data/packs/`: bundled, validated JSON packs.
+- `src/bad_decisions/management.py`: the tailnet-only management sign-in;
+  `docs/MANAGEMENT_AUTH.md` is its specification, so change both together.
+  It stays read-only, and its Origin check, tag authorization, and single-use
+  state transitions must not weaken (see that document's "Where the security
+  actually lives").
 - `client/`: separate dependency-free terminal-client distribution.
 - `scripts/`: reproducible import/conversion utilities.
 - `man/bad-decisions.1` and `client/man/regret.1`: manual pages, installed by

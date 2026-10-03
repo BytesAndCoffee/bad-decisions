@@ -1,0 +1,27 @@
+[Unit]
+Description=Bad Decisions management attest service (tailnet only)
+After=network-online.target tailscaled.service @SERVICE_NAME@.service
+Wants=network-online.target tailscaled.service
+# Restarts and stops of the API (deploys, rollbacks) carry this service along.
+PartOf=@SERVICE_NAME@.service
+
+[Service]
+Type=exec
+User=@SERVICE_USER@
+Group=@SERVICE_USER@
+WorkingDirectory=@APP_ROOT@/current
+EnvironmentFile=@ENV_FILE@
+# Bound to the tailnet IP with TLS and no proxy headers: the socket peer is the
+# WireGuard-authenticated sender. See docs/MANAGEMENT_AUTH.md.
+ExecStart=@APP_ROOT@/current/.venv/bin/uvicorn bad_decisions.management:create_attest_app --factory --host @ATTEST_BIND@ --port @ATTEST_PORT@ --workers 1 --no-proxy-headers --no-server-header --ssl-certfile @TLS_DIR@/attest.crt --ssl-keyfile @TLS_DIR@/attest.key
+# The tailnet address may appear after boot; keep trying.
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=@APP_ROOT@/management
+
+[Install]
+WantedBy=multi-user.target

@@ -78,7 +78,9 @@ pending ──attest──▶ attested ──redeem──▶ redeemed
   protection: if two attest or two redeem requests race, only one can win.
 - Expiry is a time comparison, not a stored state. A row past its deadline is
   treated as dead and removed by cleanup.
-- Any failed check burns the challenge. The client starts over with a new one.
+- Any failed check burns the challenge, but only from the state that request
+  expected, so a request that lost a race never burns the winner's newer
+  state. The client starts over with a new challenge.
 - Authorization (the LocalAPI calls) runs *before* the conditional update and
   outside any transaction. Holding SQLite's write lock across a LocalAPI call
   would block every other writer, and the conditional update already makes
@@ -275,15 +277,41 @@ single one of them is load-bearing.
 
 ## Installation
 
-The management page needs AES-GCM on the server, which Python's standard
-library lacks, so it lives in an optional extra:
+The attest service needs AES-GCM, which Python's standard library lacks, so it
+uses the optional `management` extra (`pip install 'bad-decisions[management]'`).
+The public app needs only the standard library for its half. On a deployed
+host:
 
-```bash
-pip install 'bad-decisions[management]'
-```
+1. Do the Tailscale setup below, then run, as root from the checkout:
 
-Installs without the extra don't pull in `cryptography` and don't offer the
-management page.
+   ```bash
+   sudo MANAGEMENT_PUBLIC_ORIGIN=https://games.example \
+        MANAGEMENT_TAGS=tag:mgmt \
+        ./deploy.sh install-management
+   ```
+
+   Optional: `MANAGEMENT_NODES` (stable node IDs that must also match),
+   `MANAGEMENT_ATTEST_PORT` (default 8443), `MANAGEMENT_ATTEST_NAME` and
+   `MANAGEMENT_ATTEST_BIND` (default: this node's MagicDNS name and tailnet
+   IPv4 address, from `tailscale status`), and the usual `APP_ROOT`,
+   `SERVICE_NAME`, `ENV_FILE`, `BIND_HOST`, and `PORT`.
+
+2. The first run creates `APP_ROOT/management`. If the serving release lacks the
+   extra, it stops and asks you to redeploy: from then on, `deploy.sh` and
+   `bad-decisions deploy local` install `requirements-management.lock` instead
+   of `requirements.lock` (or pass `deploy local --with-management`). Redeploy,
+   then run step 1 again.
+
+3. It then writes the `BAD_DECISIONS_MANAGEMENT_*` settings into the service's
+   env file; installs `<service>-management-attest.service`, bound to the
+   tailnet address with TLS and `PartOf` the API so deploys and rollbacks
+   restart it; issues the certificate with a weekly `tailscale cert` renewal
+   timer; and restarts the API. It finishes by checking that the attest
+   service allows a preflight from the public origin and refuses one from any
+   other. On failure it restores the previous env file and units.
+
+Open `<public site><root path>/manage` from a tagged device. Rolling back to a
+release without the extra stops the attest service until you redeploy.
 
 ## Tailscale setup
 

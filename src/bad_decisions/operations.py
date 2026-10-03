@@ -247,9 +247,9 @@ MAX_WHEEL_BYTES = 64 * 1024 * 1024
 ACTIVATION_UNIT = "bad-decisions-activate.service"
 
 
-def _release_lock() -> Path | None:
+def _release_lock(name: str = "requirements.lock") -> Path | None:
     """The dependency lock for this exact version: packaged in the wheel, or the source checkout's."""
-    for candidate in (Path(__file__).with_name("requirements.lock"), Path(__file__).resolve().parents[2] / "requirements.lock"):
+    for candidate in (Path(__file__).with_name(name), Path(__file__).resolve().parents[2] / name):
         if candidate.is_file():
             return candidate
     return None
@@ -463,6 +463,10 @@ def deploy_local(argv: list[str]) -> int:
     )
     parser.add_argument("--wheel", type=Path, help="server wheel (default: ./dist's matching wheel, else this version's wheel from PyPI)")
     parser.add_argument("--requirements", type=Path, help="pinned dependency lock (default: the lock shipped with this version)")
+    parser.add_argument(
+        "--with-management", action="store_true",
+        help="install the management attest service's dependencies (automatic once APP_ROOT/management exists)",
+    )
     parser.add_argument("--app-root", type=Path, default=Path("/opt/bad-decisions"))
     parser.add_argument("--timeout", type=float, default=900.0)
     parser.add_argument("--redeploy", action="store_true", help="install this version again even if it is already serving")
@@ -475,7 +479,11 @@ def deploy_local(argv: list[str]) -> int:
             parser.error(f"wheel not found: {args.wheel}")
         if args.wheel.name != expected:
             parser.error(f"wheel must be the running command's {__version__} release ({expected})")
-    lock = args.requirements or _release_lock()
+    # install-management creates APP_ROOT/management, so later deploys keep its dependencies.
+    management = args.with_management or (args.app_root / "management").is_dir()
+    if args.requirements is not None and args.with_management:
+        parser.error("--requirements and --with-management are mutually exclusive")
+    lock = args.requirements or _release_lock("requirements-management.lock" if management else "requirements.lock")
     if lock is None or not lock.is_file():
         parser.error(f"requirements lock not found: {lock or 'not shipped with this install'}; pass --requirements")
     outdated = _outdated_message()

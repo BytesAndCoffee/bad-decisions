@@ -482,6 +482,25 @@ def test_pip_installed_deploy_local_downloads_this_version_and_ships_its_lock(tm
     assert "Downloading" in captured.err and "Deployment complete" in captured.out
 
 
+@pytest.mark.parametrize("marker,flag", [(True, False), (False, True)])
+def test_deploy_local_ships_the_management_lock_when_management_is_installed(tmp_path, monkeypatch, marker, flag):
+    app = _local_app(tmp_path, monkeypatch)
+    _fake_pypi(monkeypatch, b"published-wheel")
+    (app / "activation/result.json").write_text(json.dumps({"release_id": RELEASE_ID, "status": "ok", "version": __version__}))
+    if marker:
+        (app / "management").mkdir()  # created by deploy.sh install-management
+    assert operations.deploy_local(["--app-root", str(app), *(["--with-management"] if flag else [])]) == 0
+    staged = (app / "incoming" / RELEASE_ID / "requirements.lock").read_bytes()
+    assert staged == (ROOT / "requirements-management.lock").read_bytes()
+    activator.validate_lock(staged)
+
+
+def test_deploy_local_refuses_with_management_and_an_explicit_lock(tmp_path, monkeypatch):
+    app = _local_app(tmp_path, monkeypatch)
+    with pytest.raises(SystemExit):
+        operations.deploy_local(["--app-root", str(app), "--with-management", "--requirements", str(ROOT / "requirements.lock")])
+
+
 @pytest.mark.parametrize("kwargs,message", [
     ({"digest": "f" * 64}, "published SHA-256"),
     ({"missing": True}, "not published on PyPI"),

@@ -28,6 +28,7 @@ Tracks fixes from the 2026-09-19 code review. Tick an item when its fix and test
 - [x] 6. `pyx_import.py`: `[0-7]{3}` octal check, handle 1-2 digit octal and `\xHH`, use `split("\n")` instead of `splitlines()`.
 
 ## Added on request
+- [x] Tailnet-only management sign-in: a four-message liveness handshake (AES-256-GCM H2, conditional single-use state transitions, Origin-checked attest service on the tailnet IP, Tailscale tag authorization via the LocalAPI) and a renewable session lease for a read-only `/manage` page; `deploy.sh install-management` installs it, specified in `docs/MANAGEMENT_AUTH.md`.
 - [x] Manual rollback: `deploy.sh rollback [RELEASE_ID]` (`deploy/rollback.sh`), defaulting to the last good release from the `good-releases` watermark.
 - [x] Consequences: optional SQLite request telemetry, durable round provenance, capability-protected Enjoy/Regret feedback, aggregate maintenance, and client integration.
 

@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from bad_decisions.api import create_app
 
 WEB = Path(__file__).resolve().parents[1] / "src/bad_decisions/web"
-PAGES = {"index.html": "style.css", "together.html": "together.css"}
+PAGES = {"index.html": "style.css", "together.html": "together.css", "manage.html": "manage.css"}
 # Light marks on orange cards, the green status dot, and modal backdrops look right in both themes.
 FIXED_COLOURS = {"#fff9ed", "#f2d8cb", "#ffffff35", "#4c9b59", "#4c9b5926", "#171511d1", "#171511b8"}
 

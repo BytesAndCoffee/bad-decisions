@@ -14,7 +14,7 @@ from bad_decisions import cli
 from bad_decisions.errors import MissingExtraError
 
 ROOT = Path(__file__).resolve().parents[1]
-OPTIONAL = {"boto3", "botocore", "aws-cdk-lib", "constructs", "jsii", "textual", "rich"}
+OPTIONAL = {"boto3", "botocore", "aws-cdk-lib", "constructs", "jsii", "textual", "rich", "cryptography", "cffi"}
 
 
 def _names(path: str) -> set[str]:
@@ -26,11 +26,12 @@ def test_core_dependencies_and_runtime_lock_exclude_optional_packages():
     core = {requirement.split("=")[0].split(">")[0].lower() for requirement in project["dependencies"]}
     assert core == {"fastapi", "pydantic", "uvicorn"}
     extras = project["optional-dependencies"]
-    assert {"aws", "aws-deploy", "tui", "dev"} <= set(extras)
+    assert {"aws", "aws-deploy", "tui", "management", "dev"} <= set(extras)
     assert any(item.startswith("aws-cdk-lib") for item in extras["aws-deploy"])
     assert not any(item.startswith("aws-cdk-lib") for item in extras["aws"]), "the AWS runtime must not need the CDK"
     assert not _names("requirements.lock") & OPTIONAL, "deploy local installs requirements.lock"
-    assert {"boto3", "aws-cdk-lib", "textual"} <= _names("requirements-extras.lock")
+    assert {"boto3", "aws-cdk-lib", "textual", "cryptography"} <= _names("requirements-extras.lock")
+    assert "cryptography" not in _names("requirements.lock"), "only the attest service needs AES-GCM"
     assert (ROOT / "requirements-dev.lock").read_text().startswith("-r requirements.lock\n-r requirements-extras.lock\n")
     assert '".[aws]"' in (ROOT / "Dockerfile").read_text()
 
@@ -129,3 +130,12 @@ def test_dockerfile_copies_every_file_the_wheel_build_needs():
     ]
     for source in sources:
         assert any(source == item or source.startswith(f"{item}/") for item in copied), f"Dockerfile must COPY {source}"
+
+
+def test_management_lock_is_the_runtime_lock_plus_the_management_extra():
+    """Deploys of a host with the management page install this lock instead of requirements.lock."""
+    runtime, management, extras = (_pins(ROOT / name) for name in ("requirements.lock", "requirements-management.lock", "requirements-extras.lock"))
+    added = {name: version for name, version in management.items() if name not in runtime}
+    assert {name: management[name] for name in runtime} == runtime
+    assert set(added) == {"cryptography", "cffi", "pycparser"}
+    assert all(extras.get(name) == version for name, version in added.items())

@@ -44,6 +44,7 @@ class MissingExtraError(BadDecisionsError):
         "aws": "AWS support",
         "aws-deploy": "AWS deployment (setup aws, deploy aws)",
         "tui": "the Consequences dashboard",
+        "management": "the management attest service",
     }
 
     def __init__(self, extra: str):

@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Added
+
+- A read-only `/manage` page for operators, reachable only from tailnet
+  devices with an allowed Tailscale tag. Sign-in is a four-message handshake
+  across the public site and a tailnet-only attest service that proves the
+  device is on the tailnet right now; the page renews a short session lease
+  about every minute, so leaving the tailnet ends access within one lease.
+  Install it with `sudo ./deploy.sh install-management`; the attest service
+  uses the new optional `management` extra. See `docs/MANAGEMENT_AUTH.md`.
+
 ## [2.3.0] - The pressure is now a stream
 
 ### Changed

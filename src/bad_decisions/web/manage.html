@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex">
+    <base href="__WEB_BASE__">
+    <title>Management — Bad Decisions</title>
+    <link rel="icon" href="favicon.svg?v=__ASSET_VERSION__" type="image/svg+xml">
+    <link rel="stylesheet" href="theme.css?v=__ASSET_VERSION__">
+    <link rel="stylesheet" href="manage.css?v=__ASSET_VERSION__">
+    <script src="theme.js?v=__ASSET_VERSION__"></script>
+    <script src="manage.js?v=__ASSET_VERSION__" defer></script>
+  </head>
+  <body>
+    <main class="manage-shell">
+      <header class="manage-masthead">
+        <a class="manage-wordmark" href="../"><span>B</span><b>Bad<br>Decisions</b></a>
+        <div><strong>MANAGEMENT</strong><small>Read-only. Tailnet devices only.</small></div>
+      </header>
+
+      <section class="lease" aria-live="polite">
+        <p class="eyebrow">TAILNET LEASE</p>
+        <h1 id="lease-title">Checking your tailnet…</h1>
+        <p id="lease-detail">Proving this device can reach the tailnet right now.</p>
+        <div class="lease-actions">
+          <button id="sign-in" type="button">Sign in again</button>
+          <button id="sign-out" type="button" class="secondary" hidden>Sign out</button>
+        </div>
+      </section>
+
+      <section id="overview" class="overview" hidden>
+        <article class="panel">
+          <p class="eyebrow">SERVICE</p>
+          <dl>
+            <dt>Version</dt><dd id="service-version">—</dd>
+            <dt>Packs loaded</dt><dd id="service-packs">—</dd>
+            <dt>Peer Pressure room files</dt><dd id="service-rooms">—</dd>
+            <dt>Server time</dt><dd id="service-time">—</dd>
+          </dl>
+        </article>
+        <article class="panel">
+          <p class="eyebrow">CONSEQUENCES</p>
+          <dl id="consequences">
+            <dt>Status</dt><dd>—</dd>
+          </dl>
+        </article>
+        <article class="panel wide">
+          <p class="eyebrow">PACKS</p>
+          <table>
+            <thead><tr><th scope="col">ID</th><th scope="col">Name</th><th scope="col">Version</th><th scope="col">Prompts</th><th scope="col">Answers</th></tr></thead>
+            <tbody id="packs"></tbody>
+          </table>
+        </article>
+      </section>
+
+      <footer><span>Nothing here changes anything.</span><a href="https://github.com/BytesAndCoffee/bad-decisions/blob/main/docs/MANAGEMENT_AUTH.md">How sign-in works</a><button id="theme-toggle" class="theme-toggle" type="button">Dark mode</button></footer>
+    </main>
+  </body>
+</html>

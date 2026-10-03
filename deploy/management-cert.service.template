@@ -1,0 +1,11 @@
+[Unit]
+Description=Renew the Bad Decisions management attest certificate
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=@TAILSCALE@ cert --cert-file @TLS_DIR@/attest.crt --key-file @TLS_DIR@/attest.key @ATTEST_NAME@
+ExecStartPost=/bin/chgrp @SERVICE_USER@ @TLS_DIR@/attest.crt @TLS_DIR@/attest.key
+ExecStartPost=/bin/chmod 0640 @TLS_DIR@/attest.crt @TLS_DIR@/attest.key
+ExecStartPost=/bin/systemctl try-restart @SERVICE_NAME@-management-attest.service

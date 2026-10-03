@@ -4,7 +4,7 @@ Usage: python scripts/check_installed.py PREFIX
 
 PREFIX is a clean virtual environment with both wheels installed. The checks
 cover what the unit tests cannot see: files that only exist if packaging put
-them in the wheel (bundled packs, web assets, requirements.lock, manual pages)
+them in the wheel (bundled packs, web assets, dependency locks, manual pages)
 and the console scripts working outside the source tree.
 """
 
@@ -94,9 +94,13 @@ def check(prefix: Path, root: Path = ROOT) -> list[str]:
             prefix, "python", "-c",
             "import importlib.resources as r; print(r.files('bad_decisions').joinpath('requirements.lock').is_file())",
         ).strip(), "True"),
+        "requirements-management.lock": lambda: _expect(_run(
+            prefix, "python", "-c",
+            "import importlib.resources as r; print(r.files('bad_decisions').joinpath('requirements-management.lock').is_file())",
+        ).strip(), "True"),
         "no optional extras in the core install": lambda: _expect(_run(
             prefix, "python", "-c",
-            "import importlib.util as u; print(all(u.find_spec(m) is None for m in ('boto3', 'aws_cdk', 'textual')))",
+            "import importlib.util as u; print(all(u.find_spec(m) is None for m in ('boto3', 'aws_cdk', 'textual', 'cryptography')))",
         ).strip(), "True"),
         "manual pages": lambda: _expect(sorted(page for page in MANPAGES if (prefix / "share/man/man1" / page).is_file()), sorted(MANPAGES)),
         "bad-decisions serve": lambda: _check_server(prefix, version),
